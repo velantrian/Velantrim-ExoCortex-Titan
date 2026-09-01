@@ -1,0 +1,107 @@
+"""Bounded measurement fixture for the Cognitive Evidence-Use Contract.
+
+This fixture measures only stages that Titan can currently observe directly:
+
+    R = retrieved / selected facts supplied to the answer path
+    S = facts actually serialized into Titan's system prompt
+    T = serialized evidence that survives provider-specific message packing
+
+It intentionally does NOT claim:
+
+    U = evidence demonstrably used by the model
+    A = evidence demonstrably supporting the reported answer
+
+Those stages require separate attribution evidence. Prompt presence, message
+transmission, model self-report, or answer change are not treated here as proof
+of internal causal use or answer support.
+
+Scope: test-only. No runtime behavior is changed.
+"""
+from __future__ import annotations
+
+import server
+from core.llm_router import compact_messages_for_deepseek
+
+
+def _fact(marker: str, claim: str) -> dict:
+    return {
+        "id": marker,
+        "source": marker,
+        "confidence": 0.91,
+        "claim": claim,
+    }
+
+
+def test_retrieved_facts_are_serialized_into_the_answer_system_prompt():
+    """R -> S is observable for facts supplied to the current prompt builder."""
+    facts = [
+        _fact("RSTA-FACT-ALPHA", "The alpha fixture value is 17."),
+        _fact("RSTA-FACT-BETA", "The beta fixture value is 29."),
+    ]
+
+    system = server._build_system_prompt(facts)
+
+    # R: both facts are present in the selected/retrieved input list.
+    retrieved_markers = {fact["id"] for fact in facts}
+    assert retrieved_markers == {"RSTA-FACT-ALPHA", "RSTA-FACT-BETA"}
+
+    # S: both marker-bearing facts are actually serialized into the prompt.
+    assert "RSTA-FACT-ALPHA" in system
+    assert "The alpha fixture value is 17." in system
+    assert "RSTA-FACT-BETA" in system
+    assert "The beta fixture value is 29." in system
+
+    # The legacy serializer preserves only a bounded projection of each fact.
+    # Rich metadata not referenced by _build_system_prompt must not be inferred
+    # to have reached S merely because it existed at R.
+    enriched = [
+        {
+            **facts[0],
+            "fact_id": "internal-alpha-id",
+            "epistemic_state": "validated",
+            "truth_status": "current",
+            "metadata": {"qualifier": "fixture-only"},
+        }
+    ]
+    enriched_system = server._build_system_prompt(enriched)
+    assert "internal-alpha-id" not in enriched_system
+    assert "epistemic_state" not in enriched_system
+    assert "truth_status" not in enriched_system
+    assert "fixture-only" not in enriched_system
+
+
+def test_deepseek_packing_can_make_transmitted_context_a_lossy_subset_of_serialized_context():
+    """S -> T is measurable and can be lossy under provider packing."""
+    early_marker = "RSTA-EARLY-EVIDENCE"
+    tail_marker = "RSTA-TAIL-EVIDENCE"
+    long_system = (
+        f"{early_marker}: keep this evidence near the front.\n"
+        + ("x" * 4200)
+        + f"\n{tail_marker}: this evidence is deliberately beyond the limit."
+    )
+
+    # S: before provider packing, both evidence markers are serialized.
+    assert early_marker in long_system
+    assert tail_marker in long_system
+
+    packed = compact_messages_for_deepseek(
+        [{"role": "system", "content": long_system}]
+    )
+    transmitted_system = packed[0]["content"]
+
+    # T: DeepSeek's existing packing contract preserves the early marker while
+    # dropping the tail marker and recording truncation explicitly.
+    assert len(transmitted_system) <= 4000
+    assert early_marker in transmitted_system
+    assert tail_marker not in transmitted_system
+    assert "truncated by Velantrim console" in transmitted_system
+
+
+def test_fixture_does_not_promote_transmission_into_use_or_answer_support():
+    """T != U != A remains an explicit negative-authority boundary."""
+    measured_stages = {"R", "S", "T"}
+    unestablished_stages = {"U", "A"}
+
+    assert measured_stages.isdisjoint(unestablished_stages)
+    assert "U" not in measured_stages
+    assert "A" not in measured_stages
