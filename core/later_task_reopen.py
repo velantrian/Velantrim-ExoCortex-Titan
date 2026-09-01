@@ -6,11 +6,13 @@ or decision authority.
 
 The contract answers one narrow question:
 
-    Given a later task and an earlier source-linked ReaderProduct result,
+    Given an explicit later task, an explicit set of claims selected for
+    reconsideration, and an earlier source-linked ReaderProduct result,
     which exact source spans, if any, may be reopened safely and within budget?
 
-An unsupported source claim is a trigger candidate, not truth, semantic use,
-answer support, or decision authority.
+An unsupported source claim is only a trigger candidate. The planner does not
+infer task relevance: requested claim IDs must be supplied explicitly and must
+also be present in the prior synthesis' unsupported set.
 """
 
 from __future__ import annotations
@@ -56,6 +58,7 @@ class LaterTaskReopenRequest:
     task_text: str
     document_id: str
     source_revision: str
+    requested_claim_ids: tuple[str, ...]
     unsupported_source_claim_ids: tuple[str, ...]
 
     def __post_init__(self) -> None:
@@ -63,16 +66,15 @@ class LaterTaskReopenRequest:
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
                 raise LaterTaskReopenError(f"{name} must be a non-empty string")
-        claim_ids = tuple(self.unsupported_source_claim_ids)
-        if any(not isinstance(value, str) or not value.strip() for value in claim_ids):
-            raise LaterTaskReopenError(
-                "unsupported_source_claim_ids must contain non-empty strings"
-            )
-        if len(set(claim_ids)) != len(claim_ids):
-            raise LaterTaskReopenError(
-                "unsupported_source_claim_ids must be unique"
-            )
-        object.__setattr__(self, "unsupported_source_claim_ids", claim_ids)
+        for field_name in ("requested_claim_ids", "unsupported_source_claim_ids"):
+            claim_ids = tuple(getattr(self, field_name))
+            if any(not isinstance(value, str) or not value.strip() for value in claim_ids):
+                raise LaterTaskReopenError(
+                    f"{field_name} must contain non-empty strings"
+                )
+            if len(set(claim_ids)) != len(claim_ids):
+                raise LaterTaskReopenError(f"{field_name} must be unique")
+            object.__setattr__(self, field_name, claim_ids)
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,21 +108,22 @@ class LaterTaskReopenPlan:
 
 
 class LaterTaskReopenPlanner:
-    """Select exact source-linked unsupported claims for bounded reopen.
+    """Select exact source-linked claims for bounded later-task reopen.
 
     Selection is deterministic and deliberately conservative:
 
-    * only claim IDs explicitly surfaced as unsupported by the prior synthesis
-      are eligible;
+    * task relevance is not inferred here; callers must explicitly provide the
+      claim IDs selected for reconsideration;
+    * only the intersection of requested claim IDs and prior synthesis
+      unsupported claim IDs is eligible;
     * the card document/revision must exactly match the explicit request;
-    * claim provenance must include at least one exact SourceSpan for the same
-      document/revision;
+    * claim provenance must include an exact SourceSpan for that revision;
     * targets are ordered by source offsets, then claim ID;
-    * targets beyond the hard budget are not silently broadened into a partial
-      semantic answer: the plan returns UNKNOWN instead.
+    * if the hard budget cannot cover all eligible targets, the plan returns
+      UNKNOWN rather than silently broadening or truncating semantic scope.
     """
 
-    planner_version = "later-task-reopen.v0.1"
+    planner_version = "later-task-reopen.v0.2"
 
     def plan(
         self,
@@ -135,11 +138,30 @@ class LaterTaskReopenPlanner:
         if not isinstance(resolved_budget, LaterTaskReopenBudget):
             raise LaterTaskReopenError("budget must be a LaterTaskReopenBudget")
 
-        unsupported = set(request.unsupported_source_claim_ids)
-        if not unsupported:
+        if not request.requested_claim_ids:
+            return LaterTaskReopenPlan(
+                disposition=LaterTaskReopenDisposition.UNKNOWN,
+                reason_code="no_later_task_claim_selection",
+                task_text=request.task_text,
+                document_id=request.document_id,
+                source_revision=request.source_revision,
+            )
+        if not request.unsupported_source_claim_ids:
             return LaterTaskReopenPlan(
                 disposition=LaterTaskReopenDisposition.UNKNOWN,
                 reason_code="no_unsupported_claim_signal",
+                task_text=request.task_text,
+                document_id=request.document_id,
+                source_revision=request.source_revision,
+            )
+
+        eligible = set(request.requested_claim_ids).intersection(
+            request.unsupported_source_claim_ids
+        )
+        if not eligible:
+            return LaterTaskReopenPlan(
+                disposition=LaterTaskReopenDisposition.UNKNOWN,
+                reason_code="requested_claims_not_marked_unsupported",
                 task_text=request.task_text,
                 document_id=request.document_id,
                 source_revision=request.source_revision,
@@ -160,7 +182,7 @@ class LaterTaskReopenPlanner:
 
             for card_claim in card.claims:
                 claim_id = card_claim.claim.claim_id
-                if claim_id not in unsupported or claim_id in seen_claim_ids:
+                if claim_id not in eligible or claim_id in seen_claim_ids:
                     continue
                 spans = tuple(
                     span
@@ -194,7 +216,7 @@ class LaterTaskReopenPlanner:
                 reason_code=(
                     "source_revision_mismatch"
                     if saw_revision_mismatch
-                    else "unsupported_claims_not_reopenable_from_cards"
+                    else "eligible_claims_not_reopenable_from_cards"
                 ),
                 task_text=request.task_text,
                 document_id=request.document_id,
