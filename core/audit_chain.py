@@ -184,13 +184,19 @@ CREATE TABLE IF NOT EXISTS memory_events (
 );
 """
 
-_AUDIT_TRIGGERS_DDL = """
+# Two separate single-statement constants — not one script — so
+# verify_schema_ready() can execute() each individually inside its own
+# BEGIN IMMEDIATE (Cursor.executescript() implicitly commits any pending
+# transaction before it runs, which would defeat that lock).
+_AUDIT_TRIGGER_UPDATE_DDL = """
 CREATE TRIGGER IF NOT EXISTS prevent_audit_update
 BEFORE UPDATE ON memory_events
 BEGIN
     SELECT RAISE(ABORT, 'VELANTRIM: audit log is append-only — UPDATE is forbidden');
 END;
+"""
 
+_AUDIT_TRIGGER_DELETE_DDL = """
 CREATE TRIGGER IF NOT EXISTS prevent_audit_delete
 BEFORE DELETE ON memory_events
 BEGIN
@@ -887,9 +893,37 @@ class AuditChain:
             "AND name='memory_events'"
         ).fetchone())
         if not has_events_table:
-            conn.executescript(_MEMORY_EVENTS_TABLE_DDL + _AUDIT_TRIGGERS_DDL)
+            # This check-then-create used to run as three separately
+            # auto-committing statements (executescript() commits each DDL
+            # statement in `_MEMORY_EVENTS_TABLE_DDL + _AUDIT_TRIGGERS_DDL`
+            # on its own — it does not wrap the script in one transaction).
+            # A concurrent connection's own has_events_table check could
+            # land in the gap between this connection's CREATE TABLE commit
+            # and its CREATE TRIGGER commits: it would see the table but
+            # not (yet) the triggers, and fail closed below on a state that
+            # resolves within microseconds (observed under concurrent
+            # SQLiteGraphStore instances in tests/test_sqlite_store_
+            # resilience.py). BEGIN IMMEDIATE + a re-check under the write
+            # lock makes table+trigger creation atomic to every other
+            # connection — the same idiom already used for the facts-table
+            # DDL region in core.memory.SQLiteGraphStore._db() (Issue #347).
             if owns_transaction:
-                conn.commit()
+                conn.execute("BEGIN IMMEDIATE")
+            try:
+                has_events_table = bool(conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name='memory_events'"
+                ).fetchone())
+                if not has_events_table:
+                    conn.execute(_MEMORY_EVENTS_TABLE_DDL)
+                    conn.execute(_AUDIT_TRIGGER_UPDATE_DDL)
+                    conn.execute(_AUDIT_TRIGGER_DELETE_DDL)
+                if owns_transaction:
+                    conn.commit()
+            except BaseException:
+                if owns_transaction:
+                    conn.rollback()
+                raise
 
         # Existing, unmodified self-heal: v2 columns, audit_chain_heads,
         # integrity_checks.
