@@ -193,3 +193,59 @@ async def test_reader_failure_is_observable_without_promoting_execution_to_succe
     assert observation.reader_result.failure.code.startswith(
         "later_task_reopen_reader_exception:"
     )
+
+
+@pytest.mark.asyncio
+async def test_conflicting_span_id_payload_fails_closed_before_reader_call() -> None:
+    source = _source()
+    first_start = source.text.index("Policy R")
+    first_end = first_start + len("Policy R")
+    second_start = source.text.index("Hidden exception X")
+    second_end = second_start + len("Hidden exception X")
+    shared_span_id = "malformed-shared-span-id"
+    first = SourceSpan.from_text(
+        document_id=source.document_id,
+        raw_text=source.text,
+        start_offset=first_start,
+        end_offset=first_end,
+        source_revision=source.source_revision,
+        span_id=shared_span_id,
+    )
+    second = SourceSpan.from_text(
+        document_id=source.document_id,
+        raw_text=source.text,
+        start_offset=second_start,
+        end_offset=second_end,
+        source_revision=source.source_revision,
+        span_id=shared_span_id,
+    )
+    plan = LaterTaskReopenPlan(
+        disposition=LaterTaskReopenDisposition.READY,
+        reason_code="synthetic_malformed_ready_plan",
+        task_text="Synthetic malformed plan collision test",
+        document_id=source.document_id,
+        source_revision=source.source_revision or "",
+        targets=(
+            LaterTaskReopenTarget(
+                claim_id="claim-a",
+                card_id="card-a",
+                unit_id="unit-a",
+                source_span=first,
+            ),
+            LaterTaskReopenTarget(
+                claim_id="claim-b",
+                card_id="card-b",
+                unit_id="unit-b",
+                source_span=second,
+            ),
+        ),
+    )
+    reader = _RecordingReader()
+
+    result = await LaterTaskReopenExecutor().execute(plan, source, reader)
+
+    assert result.executed is False
+    assert result.complete is False
+    assert result.reason_code == "conflicting_span_id_payload"
+    assert result.warnings == ("no_reader_call_for_conflicting_span_id_payload",)
+    assert reader.sources == []
