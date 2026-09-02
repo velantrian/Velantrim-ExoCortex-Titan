@@ -52,7 +52,7 @@ while `docker-compose.prod.yml` pins them off for the hardened profile.
 | Welfare MVP / identity axis (L6) | `ENABLE_L6_WELFARE` | 🔵 proof-of-concept |
 | Predictive fusion (L5.5) | `ENABLE_PREDICTIVE_FUSION` | 🔵 proof-of-concept |
 | Staging (L2.5) | — | 🔬 no code yet (design doc only) |
-| MCP-style capability tool registry | `core/tool_registry.py` | 🔵 contract defined, some handlers are stubs (no gateway transport yet) |
+| MCP-style capability registry + bounded gateway transport | `core/tool_registry.py`, `core/mcp_transport.py` | 🔵 bounded implementation present; capability/session ceilings apply; runtime and production authorization remain false |
 
 ## 3. Known risks
 
@@ -147,9 +147,10 @@ parentheses for traceability.
 
 ### P2 — access and packaging polish
 
-- **MCP-style gateway transport** (Phase 5): wire a real transport (StreamableHTTP +
-  SSE) onto the existing `core/tool_registry.py` contract, replacing placeholder
-  handlers, so multi-role agent access actually works end-to-end.
+- **MCP transport deployment/product evidence**: bounded gateway transport is present
+  in `core/mcp_transport.py`; remaining work is evidence/hardening for concrete
+  deployment and admission paths. Transport presence does not establish production
+  enablement, runtime authority, or unrestricted multi-role access.
 - **Lean "core profile" packaging** (Phase 6): an install path with only stdlib
   dependencies for evaluation, with `fastapi`/graph/embedding dependencies as clearly
   optional extras (already partially true via `pyproject.toml` extras — this is about
