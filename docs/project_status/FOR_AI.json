@@ -10,34 +10,34 @@
     "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
   },
   "current_verification": {
-    "date": "2026-08-27",
+    "date": "2026-09-02",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "verified_main_sha": "0c2cb65787a90e60e6cc5dae762af38fff1739f8",
+    "verified_main_sha": "bd1ccb4e20a1bd095e42033a4ac610fec5f5cbc2",
     "notion_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
     "runtime_authority": false,
     "production_authorized": false,
     "operator_go": false,
-    "live_state_rule": "GitHub live state overrides this checkpoint for volatile PR, issue, check, and head lifecycle",
+    "live_state_rule": "This is a dated main checkpoint; GitHub live state overrides it for later main, PR, issue, check, review, and head lifecycle. Active open PRs are intentionally not mirrored here.",
     "federated_role": {
       "titan": ["orchestration", "execution", "providers_models", "tools", "retrieval", "integration_host"],
       "crystal": ["trusted_evidence", "provenance", "admission", "bounded_canon_authority"]
     },
     "boundary": "Titan-local memory/ESM/TruthGate/provenance mechanisms do not transfer ecosystem-wide evidence sovereignty; integration != authority transfer",
     "recent_lifecycle": {
-      "pr_394": "MERGED_BOUNDED_OPENCLAW_ADOPTION_BOUNDARY",
-      "pr_396": "MERGED_OPERATIONAL_CAPABILITY_PLANE_V0_1",
-      "pr_397": "CLOSED_SUPERSEDED_RELEVANT_DEFENSE_LANDED_VIA_PR_399",
-      "mcp_gateway_transport": "PRESENT_ON_VERIFIED_MAIN"
+      "f2_sequence": "MERGED_THROUGH_PR_436_BOUNDED_REOPEN_CAPABILITIES_WITHOUT_AUTOMATIC_POLICY_OR_U_A_PROOF",
+      "f3_sequence": "MERGED_PRS_437_TO_440_OWNER_LOCAL_STOP_BASIS_EVIDENCE_WITHOUT_UNIVERSAL_STOP_ONTOLOGY",
+      "mcp_gateway_transport": "PRESENT_ON_VERIFIED_MAIN_AS_BOUNDED_IMPLEMENTATION",
+      "open_prs": "INTENTIONALLY_EXCLUDED_VERIFY_LIVE"
     },
     "preservation": {
       "kb_graph.json": "KEEP_VERSIONED_KNOWLEDGE_ASSET"
     },
     "evidence_priority": [
-      "memory evaluation harness (#402 or current successor)",
-      "Reader production evidence program (#120 or current successor)",
-      "controlled measurement on representative corpus",
-      "minimal correction from measured failure",
-      "repeat measurement"
+      "verify the concrete owner-local path before proposing a new construct",
+      "separate retrieval/presence from semantic use U and answer support A",
+      "run controlled measurement on a representative bounded corpus",
+      "make the smallest correction justified by measured failure",
+      "repeat measurement without inferring production authorization"
     ]
   },
   "snapshot": {
