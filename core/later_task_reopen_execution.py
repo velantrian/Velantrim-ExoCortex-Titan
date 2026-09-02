@@ -74,7 +74,7 @@ class LaterTaskReopenExecutionResult:
 class LaterTaskReopenExecutor:
     """Execute one explicit READY plan against one exact caller-supplied source."""
 
-    executor_version = "later-task-reopen-execution.v0.2"
+    executor_version = "later-task-reopen-execution.v0.3"
 
     async def execute(
         self,
@@ -122,6 +122,7 @@ class LaterTaskReopenExecutor:
                 warnings=("no_reader_call_for_source_identity_mismatch",),
             )
 
+        span_payload_by_id: dict[str, tuple[str, str | None, int, int, str]] = {}
         for target in plan.targets:
             span = target.source_span
             if (
@@ -148,14 +149,25 @@ class LaterTaskReopenExecutor:
                     reason_code="reader_budget_too_small_for_planned_span",
                     warnings=("no_reader_call_when_reader_budget_cannot_cover_target",),
                 )
+            payload = _span_payload(span)
+            existing_payload = span_payload_by_id.get(span.span_id)
+            if existing_payload is not None and existing_payload != payload:
+                return LaterTaskReopenExecutionResult(
+                    plan=plan,
+                    executed=False,
+                    reason_code="conflicting_span_id_payload",
+                    warnings=("no_reader_call_for_conflicting_span_id_payload",),
+                )
+            span_payload_by_id[span.span_id] = payload
 
-        results_by_span_id: dict[str, ReaderResult] = {}
+        results_by_span: dict[tuple[str, str | None, int, int, str], ReaderResult] = {}
         warnings: list[str] = [
             "reopen_result_is_read_side_not_evidence_or_answer_support"
         ]
         for target in plan.targets:
             span = target.source_span
-            if span.span_id in results_by_span_id:
+            span_key = _span_payload(span)
+            if span_key in results_by_span:
                 continue
             exact_source = RawSource(
                 document_id=plan.document_id,
@@ -191,7 +203,7 @@ class LaterTaskReopenExecutor:
                     full_source=source,
                     target=target,
                 )
-            results_by_span_id[span.span_id] = result
+            results_by_span[span_key] = result
             if not result.accepted:
                 code = result.failure.code if result.failure is not None else result.status.value
                 warnings.append(f"reopen_target:{span.span_id}:reader_rejected:{code}")
@@ -199,7 +211,7 @@ class LaterTaskReopenExecutor:
         observations = tuple(
             LaterTaskReopenObservation(
                 target=target,
-                reader_result=results_by_span_id[target.source_span.span_id],
+                reader_result=results_by_span[_span_payload(target.source_span)],
             )
             for target in plan.targets
         )
@@ -217,6 +229,18 @@ class LaterTaskReopenExecutor:
         )
 
 
+def _span_payload(span: SourceSpan) -> tuple[str, str | None, int, int, str]:
+    """Return the immutable source identity used for execution deduplication."""
+
+    return (
+        span.document_id,
+        span.source_revision,
+        span.start_offset,
+        span.end_offset,
+        span.content_hash,
+    )
+
+
 def _rebase_reader_result(
     result: ReaderResult,
     *,
@@ -232,6 +256,8 @@ def _rebase_reader_result(
     for claim in capsule.claims:
         rebased_spans: list[SourceSpan] = []
         for local_span in claim.source_spans:
+            # source_revision is the immutable full-source identity; offsets are
+            # interpreted in the coordinate space of exact_source.text here.
             if (
                 local_span.document_id != full_source.document_id
                 or local_span.source_revision != full_source.source_revision
