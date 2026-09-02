@@ -5,6 +5,10 @@ It accepts only a previously planned ``READY`` reopen, verifies the exact source
 identity and every planned ``SourceSpan`` against the caller-supplied immutable
 ``RawSource``, then re-reads only those exact spans.
 
+Reader providers receive an exact source slice, so accepted Reader provenance is
+validated in slice-local coordinates and rebased back onto the immutable full
+source before it is exposed to downstream callers.
+
 It deliberately does not select task relevance, create a scheduler, resolve a
 source from storage/network, persist Reader state, synthesize an answer, write
 memory/Canon, or grant evidence/decision authority.
@@ -18,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from core.knowledge_capsule import CapsuleClaim, KnowledgeCapsule, SourceSpan
 from core.later_task_reopen import (
     LaterTaskReopenDisposition,
     LaterTaskReopenError,
@@ -69,7 +74,7 @@ class LaterTaskReopenExecutionResult:
 class LaterTaskReopenExecutor:
     """Execute one explicit READY plan against one exact caller-supplied source."""
 
-    executor_version = "later-task-reopen-execution.v0.1"
+    executor_version = "later-task-reopen-execution.v0.2"
 
     async def execute(
         self,
@@ -179,6 +184,13 @@ class LaterTaskReopenExecutor:
                     safe_message="Later-task source reopen returned an invalid Reader result.",
                     retryable=False,
                 )
+            if result.accepted:
+                result = _rebase_reader_result(
+                    result,
+                    exact_source=exact_source,
+                    full_source=source,
+                    target=target,
+                )
             results_by_span_id[span.span_id] = result
             if not result.accepted:
                 code = result.failure.code if result.failure is not None else result.status.value
@@ -203,6 +215,81 @@ class LaterTaskReopenExecutor:
             observations=observations,
             warnings=tuple(dict.fromkeys(warnings)),
         )
+
+
+def _rebase_reader_result(
+    result: ReaderResult,
+    *,
+    exact_source: RawSource,
+    full_source: RawSource,
+    target: LaterTaskReopenTarget,
+) -> ReaderResult:
+    capsule = result.capsule
+    if capsule is None or capsule.source_document_id != full_source.document_id:
+        return _span_validation_failure("reader_capsule_source_identity_mismatch")
+
+    rebased_claims: list[CapsuleClaim] = []
+    for claim in capsule.claims:
+        rebased_spans: list[SourceSpan] = []
+        for local_span in claim.source_spans:
+            if (
+                local_span.document_id != full_source.document_id
+                or local_span.source_revision != full_source.source_revision
+                or not local_span.verify(exact_source.text)
+            ):
+                return _span_validation_failure("reader_local_span_verification_failed")
+            absolute_start = target.source_span.start_offset + local_span.start_offset
+            absolute_end = target.source_span.start_offset + local_span.end_offset
+            if absolute_end > target.source_span.end_offset:
+                return _span_validation_failure("reader_local_span_exceeds_reopen_target")
+            rebased_spans.append(
+                SourceSpan.from_text(
+                    document_id=full_source.document_id,
+                    raw_text=full_source.text,
+                    start_offset=absolute_start,
+                    end_offset=absolute_end,
+                    source_revision=full_source.source_revision,
+                )
+            )
+        rebased_claims.append(
+            CapsuleClaim.create(
+                text=claim.text,
+                modality=claim.modality,
+                source_spans=tuple(rebased_spans),
+                extraction_confidence=claim.extraction_confidence,
+                truth_confidence=claim.truth_confidence,
+                qualifiers=claim.qualifiers,
+                uncertainties=claim.uncertainties,
+                applicability_conditions=claim.applicability_conditions,
+                temporal_scope=claim.temporal_scope,
+            )
+        )
+
+    rebased_capsule = KnowledgeCapsule.create(
+        source_document_id=full_source.document_id,
+        essence=capsule.essence,
+        claims=tuple(rebased_claims),
+        reader_id=capsule.reader_id,
+        reader_version=capsule.reader_version,
+        entities=capsule.entities,
+        omitted_questions=capsule.omitted_questions,
+        coverage_score=capsule.coverage_score,
+        compression_ratio=capsule.compression_ratio,
+        prompt_version=capsule.prompt_version,
+        created_at=capsule.created_at,
+    )
+    if result.status is ReaderStatus.PARTIAL:
+        return ReaderResult.partial(rebased_capsule, warnings=result.warnings)
+    return ReaderResult.success(rebased_capsule)
+
+
+def _span_validation_failure(code: str) -> ReaderResult:
+    return ReaderResult.failed(
+        ReaderStatus.SPAN_VALIDATION_FAILED,
+        code=code,
+        safe_message="Later-task source reopen provenance could not be verified.",
+        retryable=False,
+    )
 
 
 __all__ = [
