@@ -112,8 +112,14 @@ async def test_ready_plan_executes_only_the_exact_verified_source_span() -> None
     assert reader.sources[0].text == _EXCEPTION
     assert reader.sources[0].document_id == _DOC
     assert reader.sources[0].source_revision == _REV
-    assert result.observations[0].target == plan.targets[0]
-    assert result.observations[0].accepted is True
+    observation = result.observations[0]
+    assert observation.target == plan.targets[0]
+    assert observation.accepted is True
+    assert observation.reader_result.capsule is not None
+    rebased_span = observation.reader_result.capsule.claims[0].source_spans[0]
+    assert rebased_span.start_offset == plan.targets[0].source_span.start_offset
+    assert rebased_span.end_offset == plan.targets[0].source_span.end_offset
+    assert rebased_span.verify(source.text)
     assert "reopen_result_is_read_side_not_evidence_or_answer_support" in result.warnings
 
 
