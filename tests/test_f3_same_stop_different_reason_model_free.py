@@ -55,6 +55,12 @@ def _prime_evidence_path(monkeypatch) -> None:
     )
 
 
+def _reason_basis(reason_code: str | None) -> str | None:
+    if reason_code is None:
+        return None
+    return reason_code.split(":", 1)[0]
+
+
 def test_f3_same_outward_stop_preserves_distinct_existing_bases(monkeypatch) -> None:
     pipeline = _pipeline()
     model_free = _model_free()
@@ -101,8 +107,9 @@ def test_f3_same_outward_stop_preserves_distinct_existing_bases(monkeypatch) -> 
         "Недостаточно подтверждённых локальных данных."
     }
 
-    # But the existing path does not collapse the material basis to one label.
-    assert tuple(result.reason_code for result in results) == (
+    # Preserve the material basis even when an existing gate appends detail to
+    # its reason_code (for example ``guardian_rejected:f3``).
+    assert tuple(_reason_basis(result.reason_code) for result in results) == (
         "no_local_lexical_retrieval_results",
         "guardian_rejected",
         "truth_gate_rejected",
