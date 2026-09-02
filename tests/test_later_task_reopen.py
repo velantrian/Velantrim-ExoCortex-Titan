@@ -347,3 +347,53 @@ async def test_later_task_reopen_returns_unknown_when_span_budget_cannot_cover_t
     assert plan.disposition is LaterTaskReopenDisposition.UNKNOWN
     assert plan.reason_code == "reopen_budget_insufficient"
     assert plan.targets == ()
+
+
+@pytest.mark.asyncio
+async def test_f3_same_unknown_stop_preserves_distinct_release_conditions() -> None:
+    """F3 probe: one UNKNOWN/no-target outcome retains distinct release bases."""
+    result = await _t1_result()
+    planner = LaterTaskReopenPlanner()
+
+    no_selection = planner.plan(
+        _request(result, requested_claim_ids=()),
+        result.cards,
+    )
+    no_unsupported_signal = planner.plan(
+        _request(result, unsupported_claim_ids=()),
+        result.cards,
+    )
+    budget_insufficient = planner.plan(
+        _request(result),
+        result.cards,
+        budget=LaterTaskReopenBudget(max_spans=100, max_total_chars=1),
+    )
+
+    stopped = (no_selection, no_unsupported_signal, budget_insufficient)
+    assert {plan.disposition for plan in stopped} == {
+        LaterTaskReopenDisposition.UNKNOWN
+    }
+    assert {plan.targets for plan in stopped} == {()}
+    assert tuple(plan.reason_code for plan in stopped) == (
+        "no_later_task_claim_selection",
+        "no_unsupported_claim_signal",
+        "reopen_budget_insufficient",
+    )
+
+    # Each stop is released by changing only the condition named by its existing
+    # reason code; no generic retry/reopen policy is introduced by this test.
+    selection_released = planner.plan(_request(result), result.cards)
+    unsupported_signal_released = planner.plan(_request(result), result.cards)
+    budget_released = planner.plan(
+        _request(result),
+        result.cards,
+        budget=LaterTaskReopenBudget(max_spans=100, max_total_chars=100_000),
+    )
+
+    for plan in (
+        selection_released,
+        unsupported_signal_released,
+        budget_released,
+    ):
+        assert plan.disposition is LaterTaskReopenDisposition.READY
+        assert plan.targets
