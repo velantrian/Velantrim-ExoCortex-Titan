@@ -3,7 +3,7 @@
 **Status:** `RESEARCH INDEX`  
 **Runtime authority:** none  
 **Canon write authority:** none  
-**Updated:** 2026-08-24
+**Updated:** 2026-09-04
 
 This file is the current entry point for future and external architecture research. Historical feature catalogues are preserved separately and must not be read as current runtime claims.
 
@@ -52,6 +52,31 @@ The shadow candidate must not:
 - imply that Continuum Experiment 0 or ecosystem integration is authorized.
 
 Detailed boundaries, cheapest experiments and forbidden shortcuts are defined in [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md#6-initial-candidate-set-from-the-2026-08-07-audit).
+
+## Triaged candidate track — 2026-09-04 external observability / evaluation prior art
+
+| ID | Candidate | State | Return trigger |
+|---|---|---|---|
+| `RT-OBS-EVAL-01` | hierarchical execution observation + non-authoritative evaluation + bounded selective trace reopen | `R1 · CONTRACT · RESEARCH` | a reproducible debugging/evaluation workload requires reconstruction of nested execution or R/S/T loss that the current TRACE/logging baseline cannot represent cleanly |
+
+Contract: [`EXECUTION_OBSERVATION_EVALUATION_CONTRACT.md`](EXECUTION_OBSERVATION_EVALUATION_CONTRACT.md).
+
+The immediate prior-art trigger was `comet-ml/opik@e9adfc9f3564ca0723cc7a80a16e129aa6e59da2`, reviewed only as an architectural donor. No external code or service topology is imported. Titan-native scope is limited to a read-only execution projection, evaluation observations, and fixture/replay inputs that reuse the existing evaluation protocol.
+
+This track deliberately **does not** create a separate failure-fixture program. Failure-derived regression cases extend the existing `RT-REFTRACE-01` / [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) path after explicit classification, sanitization and fixture admission.
+
+Required invariants include:
+
+```text
+SPAN != EVIDENCE
+TRACE != PROOF OF USE
+OBSERVED TRANSMISSION != U
+U != A
+EVALUATION SCORE != TRUTH
+OBSERVATION != CANON
+```
+
+A persistent trace store, OpenTelemetry/OTLP adapter, online evaluator, human annotation UI or runtime sampling path remains **not admitted** by this research card. Any such slice requires its own workload, privacy/retention/erasure review, bounded experiment and separate implementation decision.
 
 ## Triaged candidate tracks — 2026-08-24 lineage reassessment
 
