@@ -184,9 +184,17 @@ replay convenience != retention authority
 evaluation value != lawful retention basis
 ```
 
-Where multiple source artifacts apply, the derived object must respect the most
-restrictive applicable visibility/retention/erasure condition unless an explicit owner
-policy says otherwise.
+Where multiple source artifacts apply, the derived object must respect the intersection
+of all applicable source-owner visibility, retention, restriction, revocation and erasure
+constraints. In practice, that means the most restrictive applicable condition governs.
+No owner-local policy, projection policy, evaluator policy or audit preference may weaken
+another applicable source owner's restriction or create a broader derived entitlement.
+
+A separately authorized audit requirement may retain only the minimum legally and
+policy-permitted non-reversible tombstone metadata needed to record that an invalidation or
+erasure occurred. Such a tombstone must not retain the erased payload, a reversible pointer
+to it, or a linkable identifier whose continued retention would defeat the source
+restriction.
 
 ### 5.2 Digests and opaque references
 
