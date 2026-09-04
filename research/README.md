@@ -13,7 +13,8 @@ The root [`README.md`](../README.md) links to this research directory as the ent
 | [`SMART_CONTEXT_HANDOFF_V0_1.md`](SMART_CONTEXT_HANDOFF_V0_1.md) | bounded Smart Context / Context Observer / state-delta / successor-handoff research contract | research design · shadow candidate · not runtime authority |
 | [`EXTERNAL_ARCHITECTURE_PATTERNS.md`](EXTERNAL_ARCHITECTURE_PATTERNS.md) | neutral Titan-native patterns derived from external prior art | research / prior art |
 | [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) | fixed-corpus baseline, replay, fork and structural-diff protocol | partial offline prototype |
-| [`EXECUTION_OBSERVATION_EVALUATION_CONTRACT.md`](EXECUTION_OBSERVATION_EVALUATION_CONTRACT.md) | hierarchical execution observation, non-authoritative evaluation, failure-derived fixture admission and bounded selective drill-down | R1 contract · research / proposed · no runtime authority |
+| [`EXECUTION_OBSERVATION_EVALUATION_CONTRACT.md`](EXECUTION_OBSERVATION_EVALUATION_CONTRACT.md) | hierarchical execution observation, non-authoritative evaluation, failure-derived fixture approval and bounded selective drill-down | R1 contract · research / proposed · no runtime authority |
+| [`EXECUTION_OBSERVATION_EVALUATION_BOUNDARY_HARDENING.md`](EXECUTION_OBSERVATION_EVALUATION_BOUNDARY_HARDENING.md) | normative clarification of source-of-record, operational-observability, replay, RT-REFTRACE, privacy/erasure and selective-reopen boundaries after independent review | R1 normative clarification · research / proposed · no runtime authority |
 | [`../docs/EVALUATION_REPLAY_QUICKSTART.md`](../docs/EVALUATION_REPLAY_QUICKSTART.md) | command, report classes, critical gates and fixture boundary | PR-ERP-01 implementation guide |
 | [`../docs/research/READER_CORE_LONG_DOCUMENT_ARCHITECTURE.md`](../docs/research/READER_CORE_LONG_DOCUMENT_ARCHITECTURE.md) | progressive book and long-document reading, SectionCards, coverage and selective reread | research / proposed |
 | [`RAPID_CALIBRATED_ORIENTATION.md`](RAPID_CALIBRATED_ORIENTATION.md) | read-only orientation research | research / proposed |
@@ -73,6 +74,6 @@ captured idea
 
 The first shared foundation is [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md). PR-ERP-01 implements only its offline schemas, canonical digests, local fixture loader and structural diff in [`core/evaluation_replay.py`](../core/evaluation_replay.py). It is not connected to production startup, query routing or Canon writes.
 
-The execution-observation contract is deliberately downstream of that foundation: it may propose richer read-only observations and evaluation fixtures, but it does not create a second replay system, TRACE owner or runtime path.
+The execution-observation contract is deliberately downstream of that foundation: it may propose richer read-only observations and evaluation fixtures, but it does not create a second replay system, TRACE owner or runtime path. Any future implementation or review of that contract must also apply [`EXECUTION_OBSERVATION_EVALUATION_BOUNDARY_HARDENING.md`](EXECUTION_OBSERVATION_EVALUATION_BOUNDARY_HARDENING.md), which makes the projection non-owning/rebuildable, separates operational observability from `RT-OBS-EVAL-01`, narrows `RT-REFTRACE-01` scope, and defines retention/erasure and fail-closed selective-reopen semantics.
 
 New ideas from audits or conversations must first pass the classification and mandatory-card requirements in [`IDEA_INTAKE_PROTOCOL.md`](IDEA_INTAKE_PROTOCOL.md).
