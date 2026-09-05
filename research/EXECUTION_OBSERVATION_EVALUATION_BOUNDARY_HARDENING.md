@@ -18,8 +18,9 @@ contract introduced by PR #442 after independent review. It does **not** create 
 research track, runtime subsystem, storage owner, evaluator owner, TRACE owner or
 production capability.
 
-Where wording in the parent contract is ambiguous, this clarification governs future
-implementation and review.
+Where this clarification conflicts with or narrows the parent contract, this
+clarification governs future implementation and review. Historical parent wording remains
+provenance, not a competing current interpretation.
 
 ```text
 PR #442 historical intake remains historical truth
@@ -162,7 +163,8 @@ Therefore:
 decision-trace-shaped regression
 → may extend RT-REFTRACE-01
 
-generic failure / timeout / privacy / transport / resource regression
+generic failure / timeout / privacy / erasure / transport / serialization /
+malformed-provider-response / resource-limit / operational regression
 → ordinary EvaluationCase / EvaluationPackage
 ```
 
