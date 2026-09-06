@@ -47,6 +47,34 @@ Its SHA roles remain the Continuity canary checkpoint.
 The 2026-08-16 multilingual/CSM paragraphs below remain historical implementation
 evidence at `8ed2fb60…` / `b4c6f0c1…`. They are not today's repository head.
 
+## 2026-09-06 — Issue #432 bounded-question reconciliation
+
+Docs-only. Re-reading merged `core/later_task_reopen.py` (#435) and
+`core/later_task_reopen_execution.py` (#436) against Issue #432's own six
+bounded design questions shows all six are already answered by that merged
+code (full mapping in `docs/ai/WORK_LOG.md`). Grep across `core/` and `api/`
+confirms `LaterTaskReopenPlanner` / `LaterTaskReopenExecutor` /
+`LaterTaskReopenRequest` have **zero** production call sites; only
+`tests/test_later_task_reopen.py` and `tests/test_later_task_reopen_execution.py`
+construct them.
+
+```text
+minimal later-task reopen contract   ANSWERED / IMPLEMENTED / TESTED (#435, #436)
+later-task reopen policy             STILL NOT ESTABLISHED (no real caller/workload)
+production call sites                ZERO
+```
+
+`REOPEN CAPABILITY != REOPEN POLICY` continues to hold, now because no
+justified downstream workload has supplied a real `LaterTaskReopenRequest`
+caller, not because the contract itself is undesigned. This does not close
+Issue #432; that lifecycle decision remains the repository owner's.
+
+A companion test-only F3 fixture,
+`tests/test_f3_same_stop_different_reason_default_pipeline.py`, extends the
+existing model-free-only "same outward stop, different material basis"
+invariant to the actual default `core.pipeline.run` / `generate_answer` path.
+No runtime code changed.
+
 ## State semantics
 
 ```text

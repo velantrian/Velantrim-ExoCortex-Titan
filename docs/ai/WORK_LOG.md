@@ -5,6 +5,97 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-09-06 — Issue #432 later-task reopen: bounded-question reconciliation · DOCS ONLY
+
+> **Reality status:** `DOCUMENTATION RECONCILE / NO RUNTIME CHANGE / NO AUTHORITY CHANGE / NO ISSUE CLOSURE`.
+> This entry only answers the six bounded questions Issue #432 asked before any further
+> code change. It adds one test-only F3 fixture (below); it does not touch
+> `core/later_task_reopen.py` or `core/later_task_reopen_execution.py`.
+
+Issue #432 asked for "the smallest owner-local contract needed for a later task to
+request a bounded reopen of already source-linked material" and required the first
+design/review to answer exactly six questions. Re-reading the already-merged
+`core/later_task_reopen.py` (PR #435) and `core/later_task_reopen_execution.py`
+(PR #436) against the live issue body shows all six are already answered by that
+merged code, not still open:
+
+```text
+1. Explicit T2 input allowed to request reconsideration?
+   -> LaterTaskReopenRequest.requested_claim_ids (explicit; never inferred from task_text)
+
+2. Existing signal(s) that may justify reopen?
+   -> LaterTaskReopenRequest.unsupported_source_claim_ids (the prior synthesis'
+      existing GlobalDocumentSynthesis.unsupported_source_claim_ids signal, PR #431)
+
+3. Deterministic/bounded selection rule?
+   -> LaterTaskReopenPlanner.plan(): eligible = requested_claim_ids ∩
+      unsupported_source_claim_ids; one canonical SourceSpan target per eligible
+      claim id; hard LaterTaskReopenBudget (max_spans / max_total_chars) or the
+      plan returns UNKNOWN("reopen_budget_insufficient") rather than truncating
+
+4. Exact source revision that must be reopened?
+   -> request.document_id + request.source_revision validated against every
+      SectionCard and, at execution, against the caller-supplied immutable
+      RawSource; mismatch returns REFUSED("source_revision_mismatch") at plan
+      time or "source_identity_mismatch" / "target_source_identity_mismatch" at
+      execute time, both before any Reader call
+
+5. Refusal/UNKNOWN state when the source cannot be reopened safely?
+   -> LaterTaskReopenDisposition.{READY,UNKNOWN,REFUSED} with a distinct
+      reason_code per basis (no_later_task_claim_selection,
+      no_unsupported_claim_signal, requested_claims_not_marked_unsupported,
+      eligible_claims_not_reopenable_from_cards, reopen_budget_insufficient,
+      source_revision_mismatch); execution additionally fails closed on
+      SourceSpan.verify() mismatch and on non-READY/empty-target plans
+
+6. How is trigger kept separate from evidence/semantic use/authority?
+   -> explicit contract-boundary lines carried in both merged PR bodies:
+      `REOPEN TRIGGER != EVIDENCE != SEMANTIC USE != ANSWER SUPPORT != DECISION
+      AUTHORITY`; the planner never infers relevance from task_text and the
+      executor never promotes a completed reopen into evidence or an answer
+```
+
+This reconciliation changes the disposition from Issue #432's original
+`REAL IMPLEMENTATION GAP ESTABLISHED -> MINIMAL CONTRACT DESIGN / TEST NEXT` to:
+
+```text
+MINIMAL LATER-TASK REOPEN CONTRACT = ANSWERED / IMPLEMENTED / TESTED (PR #435, #436)
+LATER-TASK REOPEN POLICY (who supplies a real T2 request, from which caller,
+  under what workload) = STILL NOT ESTABLISHED, and grep across core/ and
+  api/ confirms LaterTaskReopenPlanner/LaterTaskReopenExecutor/
+  LaterTaskReopenRequest have zero production call sites; only
+  tests/test_later_task_reopen.py and tests/test_later_task_reopen_execution.py
+  construct them
+```
+
+`REOPEN CAPABILITY != REOPEN POLICY` therefore still holds exactly as Issue #432
+required, but for a different reason than when the issue was opened: not because
+the contract is undesigned, but because no real downstream caller (Reader Core
+production evidence program, issue #120, or any other) has yet supplied a
+justified workload for constructing a live `LaterTaskReopenRequest`. Per this
+repository's own return-trigger convention, inventing that caller without such a
+workload would be exactly the kind of unjustified architecture expansion Issue
+#432's non-goals list forbids.
+
+Separately, a bounded F3 "same outward stop, different material basis" test is
+added at `tests/test_f3_same_stop_different_reason_default_pipeline.py`. The
+existing `tests/test_f3_same_stop_different_reason_model_free.py` proved this
+invariant only for the `ModelFreeCore` read-side facade; the new fixture proves
+the same property for the actual default production path
+(`core.pipeline.run` / `core.pipeline.generate_answer`): `no_local_retrieval_results`,
+`no_policy_eligible_local_evidence`, `truth_gate_rejected`, and
+`insufficient_validated_local_evidence` all produce the identical
+`"Недостаточно подтверждённых локальных данных."` / `insufficient_evidence=True`
+outward answer while keeping four mutually distinct `reason_code` values. This is
+test-only; no `core/pipeline.py` behavior changed.
+
+Neither addition here closes Issue #432, changes runtime, Canon, policy, schema,
+Continuity, Operator GO, or production-authority semantics. The live issue
+lifecycle decision (close vs. keep open pinned to the caller-wiring gap) remains
+the repository owner's, not an inference from this reconciliation.
+
+---
+
 ## 2026-09-06 — Orientation-pack lifecycle reconcile · DOCS ONLY
 
 > **Reality status:** `DOCUMENTATION RECONCILE / NO RUNTIME CHANGE / NO AUTHORITY CHANGE`.
