@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 WORKFLOW = Path(".github/workflows/codeql.yml")
-ACTION_SHA = "e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81"
+ACTION_SHA = "cdf488f595d80d6e07e03d4674febd5ab45fa938"
 
 
 def test_codeql_candidate_is_python_only_and_low_noise() -> None:
