@@ -1983,7 +1983,7 @@ async def epigenetic_state():
         return engine.stats()
     except Exception as exc:
         logger.exception("system/epigenetic failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @app.get("/metrics/eval", tags=["Titan 9.0"],
@@ -2006,7 +2006,7 @@ async def eval_metrics():
         }
     except Exception as exc:
         logger.exception("metrics/eval failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @app.get("/health", tags=["System"])
@@ -2120,7 +2120,7 @@ async def query(req: QueryRequest):
         )
     except Exception as exc:
         logger.exception("pipeline.run() упал: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Pipeline error: {exc}")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
     pipeline_facts = result.get("facts", [])
     pipeline_answer = result.get("answer")
@@ -4158,7 +4158,8 @@ async def get_notebook():
         notebook = await _sleep_worker.get_notebook()
         return notebook
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("agent/notebook failed")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @app.get("/agent/suggest", tags=["Agent"], dependencies=[Depends(require_api_key)])
@@ -4172,7 +4173,8 @@ async def suggest_next_step():
         suggestion = await _sleep_worker.suggest_next_step()
         return {"suggestion": suggestion}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("agent/suggest failed")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 @app.post("/agent/episode", tags=["Agent"], dependencies=[Depends(require_api_key)])
@@ -4190,7 +4192,8 @@ async def update_episode(episode: EpisodeRequest):
         await _sleep_worker.update_from_episode(episode.model_dump())
         return {"status": "updated"}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("agent/episode failed")
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────
@@ -4200,7 +4203,7 @@ async def generic_exception_handler(request, exc):
     logger.exception("Unhandled exception: %s", exc)
     return JSONResponse(
         status_code=500,
-        content={"error": "internal_server_error", "detail": str(exc)},
+        content={"error": "internal_server_error"},
     )
 
 
