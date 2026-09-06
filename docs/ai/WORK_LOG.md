@@ -5,10 +5,32 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
-## 2026-08-20 — Typed Evidence Reference v1 · CURRENT LIFECYCLE TRUTH
+## 2026-09-06 — Orientation-pack lifecycle reconcile · DOCS ONLY
 
-> **Reality status:** `DRAFT / CONTRACT-ONLY / LOCAL VALIDATION ONLY / UNWIRED / NOT ENABLED / NO RUNTIME AUTHORITY / NO PRODUCTION AUTHORITY`.
-> Re-query live GitHub for exact head/base and CI before acting; dated checkpoints below remain history, not evergreen state.
+> **Reality status:** `DOCUMENTATION RECONCILE / NO RUNTIME CHANGE / NO AUTHORITY CHANGE`.
+> Live checkpoint at write time: `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`. Re-query GitHub before treating that SHA as evergreen.
+
+Closed documentation false-currents that disagreed with live GitHub:
+
+- `#347` / `#349` are CLOSED / MERGED; `KNOWN_RISKS.md` and `AUDIT_AND_FUTURE_WORK.md` T-FW-001 no longer say OPEN/DRAFT.
+- Typed Evidence Reference #355 is MERGED and remains `CONTRACT-ONLY / UNWIRED`.
+- Stage 11 / Titan V1 closure PR #372 is on `main`; productization status is `TITAN_V1_DONE` and still ≠ production authorization.
+- `CURRENT_STATE.md` / `COMPONENT_MAP.md` / `FOR_AI.json` no longer claim `8ed2fb60…` or `bd1ccb4e…` as the current head.
+- `docs/state/project_state.json` Continuity canary SHA roles were **not** rewritten.
+
+Issue #432 remains OPEN. #435/#436 prove bounded later-task reopen capability, not automatic later-task policy. Open Dependabot PRs `#444`/`#415` are maintenance, not an engineering lane.
+
+GitHub PR: #446. Notion hub `Velantrim Titan 9.0` (`398ac84d-0547-81fe-8ca5-d0d2727d1961`)
+updated and read back on 2026-09-06. Synchronization: `SYNCED`.
+
+This entry does not admit Phase 3B, Evidence Admission, Operator GO, or runtime enablement.
+
+---
+
+## 2026-08-20 — Typed Evidence Reference v1 · HISTORICAL HARDENING NOTE
+
+> **Current lifecycle:** PR #355 `MERGED` · `CONTRACT-ONLY / LOCAL VALIDATION ONLY / UNWIRED / NOT ENABLED / NO RUNTIME AUTHORITY / NO PRODUCTION AUTHORITY`.
+> The `DRAFT` wording below is historical. See `docs/ai/PR355_POSTMERGE_CLOSURE.md`.
 
 This current hardening checkpoint accepts only one canonical EvidenceReference span and
 captured-at representation, rejects malformed mapping keys and reference elements through
