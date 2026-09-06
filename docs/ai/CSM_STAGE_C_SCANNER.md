@@ -4,7 +4,7 @@ Status: **IMPLEMENTED · TESTED · PROTECTED-MERGED · POST-MERGE VERIFIED · UN
 Tracking issue: **#333 · CLOSED / completed**  
 Implementation PR: **#335 · MERGED**  
 Protected squash merge: `b4c6f0c16ef9920607d95e590a75df8176d92d71`  
-Current repository head at reconciliation: `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500`  
+Historical reconciliation head (2026-08-16): `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500` — not today's repository head; re-query live GitHub  
 Predecessor: PC-01 / CSM Stage B, merged via PR #326.
 
 This page is the bounded AI hand-off for the first executable Code Structural Memory scanner slice. Stage C is now factual implementation truth in `main`; later commits, including PR #341, advanced the repository head without changing this scanner's authority or runtime posture.

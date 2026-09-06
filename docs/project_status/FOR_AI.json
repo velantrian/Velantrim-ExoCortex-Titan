@@ -10,9 +10,9 @@
     "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
   },
   "current_verification": {
-    "date": "2026-09-02",
+    "date": "2026-09-06",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "verified_main_sha": "bd1ccb4e20a1bd095e42033a4ac610fec5f5cbc2",
+    "verified_main_sha": "635d0d6c725db0c7a7df8cfb3ce059c0500a418f",
     "notion_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
     "runtime_authority": false,
     "production_authorized": false,
@@ -26,6 +26,11 @@
     "recent_lifecycle": {
       "f2_sequence": "MERGED_THROUGH_PR_436_BOUNDED_REOPEN_CAPABILITIES_WITHOUT_AUTOMATIC_POLICY_OR_U_A_PROOF",
       "f3_sequence": "MERGED_PRS_437_TO_440_OWNER_LOCAL_STOP_BASIS_EVIDENCE_WITHOUT_UNIVERSAL_STOP_ONTOLOGY",
+      "f2_hidden_exception_s_to_t": "MERGED_PR_445_TEST_BIND_ONLY",
+      "orientation_lifecycle_reconcile": "2026-09-06_DOCS_ONLY_NO_AUTHORITY_CHANGE",
+      "issue_347_349": "CLOSED_MERGED_BOUNDED_FRESH_STORE_BOOTSTRAP",
+      "issue_355": "MERGED_CONTRACT_ONLY_UNWIRED",
+      "issue_432": "OPEN_DO_NOT_INFER_CLOSURE_FROM_435_436_TITLES",
       "mcp_gateway_transport": "PRESENT_ON_VERIFIED_MAIN_AS_BOUNDED_IMPLEMENTATION",
       "open_prs": "INTENTIONALLY_EXCLUDED_VERIFY_LIVE"
     },
@@ -44,8 +49,8 @@
     "date": "2026-08-22",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
     "stage10_merged_main_sha": "f72b93cb044fc317752430e12d75217313997338",
-    "status": "TITAN_V1_CLOSURE_CANDIDATE",
-    "interpretation": "Stages 1-10 are merged and closed. Stage 11 is the only active predefined stage. If this closure record is merged to main after exact-head CI, CodeQL and aggregate success, interpret the resulting main state as TITAN_V1_DONE. Do not invent Stage 12 or reopen P2/P3 research as mandatory V1 work."
+    "status": "TITAN_V1_DONE",
+    "interpretation": "Stages 1-11 are present on main. Stage 11 closed through protected-merged PR #372 after the closure record and gates. TITAN_V1_DONE is a productization closure, not production authorization. Do not invent Stage 12 or reopen P2/P3 research as mandatory V1 work."
   },
   "status_semantics": [
     "PROPOSED != IMPLEMENTED",
@@ -85,7 +90,7 @@
     {"stage": 8, "name": "Packaging / Update / Operations", "status": "DONE"},
     {"stage": 9, "name": "End-to-End Acceptance", "status": "DONE"},
     {"stage": 10, "name": "Bounded Pilot", "status": "DONE"},
-    {"stage": 11, "name": "Titan V1 Closure", "status": "DONE_WHEN_THIS_CLOSURE_CANDIDATE_IS_PRESENT_ON_MAIN_AFTER_GREEN_GATES"}
+    {"stage": 11, "name": "Titan V1 Closure", "status": "DONE"}
   ],
   "p0_p1": {
     "p0_open": 0,
