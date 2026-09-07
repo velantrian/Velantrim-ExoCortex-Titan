@@ -1,6 +1,6 @@
 # 🗺️ Component and Authority Map
 
-**Verified repository checkpoint:** `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500`  
+**Verified repository checkpoint:** `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`  
 **Phase 3A implementation checkpoint:** `4932727c348ec967564d8babf80e25ca82bce8be`  
 **CSM Stage C merge checkpoint:** `b4c6f0c16ef9920607d95e590a75df8176d92d71`  
 **Continuity:** `12/12 = 100%`  
@@ -432,7 +432,7 @@ tests/test_phase3a_embedding_space.py          Phase 3A contract tests
 docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md   Phase 3A hand-off
 docs/adr/ADR-2026-08-15-phase3a-embedding-space-identity.md
 
-Typed Evidence Reference v1 · DRAFT contract-only increment
+Typed Evidence Reference v1 · MERGED contract-only increment (#355) · UNWIRED / NOT ENABLED / NO ADMISSION AUTHORITY
 core/evidence_reference.py                 immutable canonical source/fragment/lineage reference; no producer independence class
 core/evidence_registry.py                  in-memory local resolver/validator + deterministic local-validation receipt; no independence/admission authority
 tests/test_evidence_reference.py           strict canonical schema, structural receipt and fail-closed prototype tests

@@ -122,7 +122,8 @@ def register_export_endpoints(app, require_api_key=None):
                 os.unlink(tmp_path)
             except Exception:
                 pass
-            raise HTTPException(status_code=500, detail=result.error)
+            logger.error("export generation failed: %s", result.error)
+            raise HTTPException(status_code=500, detail="Internal server error")
 
         # MIME types
         mime_types = {

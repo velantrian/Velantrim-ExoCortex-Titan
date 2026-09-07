@@ -1,5 +1,19 @@
 # 🔱 VELANTRIM V8.7 — Action Items (по аудиту 2026-06-06)
 
+> **HISTORICAL / SUPERSEDED AUDIT.** Этот документ фиксирует состояние репозитория на дату аудита
+> (2026-06-06), а не текущий Titan backlog. Незакрытые `[ ]` ниже — это находки на тот момент времени,
+> а не автоматически открытые дефекты сегодня: часть из них с тех пор исправлена отдельными PR (например,
+> #20 — см. `PR #447 "fix(server): prevent internal exception detail disclosure"`).
+>
+> Для текущего состояния сначала проверьте:
+> 1. live GitHub (issues/PRs);
+> 2. [`CANONICAL.md`](CANONICAL.md);
+> 3. [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md);
+> 4. [`docs/project_status/FOR_AI.json`](docs/project_status/FOR_AI.json);
+> 5. [`docs/ai/README.md`](docs/ai/README.md).
+>
+> Historical finding ≠ currently open defect.
+
 > Тезисный чек-лист. Полные обоснования (file:line, последствия, верификация) — в [`AUDIT_DEEP_2026-06-06.md`](AUDIT_DEEP_2026-06-06.md).
 > Счёт находок: **Critical 1 · High 11 · Medium 17 · Low 19.**
 
