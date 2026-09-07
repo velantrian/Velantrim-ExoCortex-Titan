@@ -190,11 +190,11 @@ Synaptic profile превращает длинные источники в пр�
    → ✅ LLM Reader Adapter        (main/tested; ещё без runtime-caller — не подключён)
    → ✅ Working Memory Gate       (main/tested; подключён только внутри shadow-цепочки)
    → ✅ ContextPack               (main/tested; подключён только внутри shadow-цепочки)
-   → ✅ shadow evaluation         (main/tested; выполняется на каждом запросе как fail-open middleware-preview)
+   → ✅ shadow evaluation         (main/tested; feature-gated; только qualifying POST /query responses; без answer authority)
    → 👤 evidence-backed answer   (пока НЕ authorized: LEGACY_QUERY остаётся единственным authoritative answer path)
 ```
 
-Каждый ✅ здесь означает «реализовано и покрыто тестами в `main`», а не «включено по умолчанию» или «обладает authority над ответом» — см. легенду и `≠`-цепочку выше. `shadow evaluation` реально исполняется в реальном request path (`api/server_middleware.py`), но не рендерит ответ, не пишет в Canon/ESM и fail-open отключается при любой ошибке.
+Каждый ✅ здесь означает «реализовано и покрыто тестами в `main`», а не «включено по умолчанию» или «обладает authority над ответом» — см. легенду и `≠`-цепочку выше. Shadow middleware подключён к request path, но сама shadow processing запускается только при `ENABLE_SYNAPTIC_SHADOW=true` и только для qualifying `POST /query` responses (HTTP 200 + JSON). Она не рендерит ответ, не пишет в Canon/ESM и при ошибке fail-open не ломает legacy response.
 
 Ключевые правила:
 
