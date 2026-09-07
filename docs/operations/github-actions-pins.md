@@ -3,17 +3,22 @@
 Third-party workflow actions are pinned to full upstream commit SHAs with a
 readable version comment (`# vX`).
 
-## Currently referenced third-party actions (2026-08-08)
+## Currently referenced third-party actions (2026-09-05)
 
 Only actions that appear in `.github/workflows/**` or `.github/actions/**` are listed.
+Where one action is intentionally referenced at more than one exact upstream SHA,
+all currently observed pins are listed explicitly.
 
-| Action | SHA | Tag comment | Referenced from |
+| Action | SHA | Version comment | Referenced from |
 |---|---|---|---|
-| `actions/checkout` | `11d5960a326750d5838078e36cf38b85af677262` | v4 | CI, Continuity, ARM, Docker, Pages, merge-evidence |
-| `actions/setup-python` | `a26af69be951a213d495a4c3e4e4022e16d87065` | v5 | CI, Continuity, ARM, Pages |
-| `actions/upload-artifact` | `ea165f8d65b6e75b540449e92b4886f43607fa02` | v4 | CI coverage job |
-| `astral-sh/setup-uv` | `d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86` | v5 | `.github/actions/sync-python-deps` |
-| `JamesIves/github-pages-deploy-action` | `d92aa235d04922e8f08b40ce78cc5442fcfbfa2f` | v4 | Pages |
+| `actions/checkout` | `3d3c42e5aac5ba805825da76410c181273ba90b1` | v7.0.1 | CI, CodeQL, Pages, Stage 9, Stage 10 |
+| `actions/setup-python` | `5fda3b95a4ea91299a34e894583c3862153e4b97` | v7.0.0 | CI, Pages, Stage 9, Stage 10 |
+| `actions/upload-artifact` | `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` | as pinned in workflow | CI evidence jobs |
+| `astral-sh/setup-uv` | `ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d` | v10.0.0 | `.github/actions/sync-python-deps` |
+| `astral-sh/setup-uv` | `20cfd1bf945f4377ade1205e4dbc17946fc9a30d` | v10.0.1 | CI dependency-audit and reproducible-wheel jobs |
+| `github/codeql-action/init` | `cdf488f595d80d6e07e03d4674febd5ab45fa938` | v4.37.9 | CodeQL |
+| `github/codeql-action/analyze` | `cdf488f595d80d6e07e03d4674febd5ab45fa938` | v4.37.9 | CodeQL |
+| `JamesIves/github-pages-deploy-action` | `fa24774553152dd7873cd16ebd8d959b010c5445` | v4.9.0 | Pages |
 
 `actions/cache` is **not** listed: the frozen-uv CI path removed the previous pip cache steps.
 Repository-local composite actions under `.github/actions/**` are referenced by path.
@@ -23,10 +28,12 @@ Repository-local composite actions under `.github/actions/**` are referenced by 
 1. Identify the official upstream release tag to adopt.
 2. Resolve the tag to its commit SHA (`git rev-parse tags/<tag>^{commit}` on the
    upstream repository).
-3. Update every workflow/composite reference and keep the `# vX` comment accurate.
-4. Keep this document synchronized with actions that are actually referenced.
-5. Verify workflow syntax and run CI on an exact-head PR.
-6. Prefer weekly Dependabot grouped PRs for routine action SHA refreshes.
+3. Update every workflow/composite reference and keep the version comment accurate.
+4. Keep policy tests that intentionally assert exact action SHAs synchronized with the
+   adopted immutable pins; do not weaken them to accept arbitrary revisions.
+5. Keep this document synchronized with actions that are actually referenced.
+6. Verify workflow syntax and run CI on the resulting exact PR head.
+7. Prefer weekly Dependabot grouped PRs for routine action SHA refreshes.
 
 ## Permissions review
 
