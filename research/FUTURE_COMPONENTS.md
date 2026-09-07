@@ -63,7 +63,7 @@ Contract: [`EXECUTION_OBSERVATION_EVALUATION_CONTRACT.md`](EXECUTION_OBSERVATION
 
 The immediate prior-art trigger was `comet-ml/opik@e9adfc9f3564ca0723cc7a80a16e129aa6e59da2`, reviewed only as an architectural donor. No external code or service topology is imported. Titan-native scope is limited to a read-only execution projection, evaluation observations, and fixture/replay inputs that reuse the existing evaluation protocol.
 
-This track deliberately **does not** create a separate failure-fixture program. Failure-derived regression cases extend the existing `RT-REFTRACE-01` / [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) path after explicit classification, sanitization and fixture admission.
+This track deliberately **does not** create a separate failure-fixture program. Decision-trace-shaped regression cases may extend the existing `RT-REFTRACE-01` path after explicit classification, sanitization and **fixture approval**. Generic failures — including timeout, privacy, erasure, transport, serialization, malformed-provider-response, resource-limit or operational failures — remain ordinary `EvaluationCase` / `EvaluationPackage` inputs under [`EVALUATION_REPLAY_PROTOCOL.md`](EVALUATION_REPLAY_PROTOCOL.md) unless they are specifically decision-trace-shaped. Fixture approval is not evidence admission or Canon admission.
 
 Required invariants include:
 
@@ -74,6 +74,8 @@ OBSERVED TRANSMISSION != U
 U != A
 EVALUATION SCORE != TRUTH
 OBSERVATION != CANON
+FIXTURE_APPROVAL != EVIDENCE_ADMISSION
+FIXTURE_APPROVAL != CANON_ADMISSION
 ```
 
 A persistent trace store, OpenTelemetry/OTLP adapter, online evaluator, human annotation UI or runtime sampling path remains **not admitted** by this research card. Any such slice requires its own workload, privacy/retention/erasure review, bounded experiment and separate implementation decision.

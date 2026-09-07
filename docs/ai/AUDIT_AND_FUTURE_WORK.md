@@ -70,12 +70,13 @@ P0 / P1 / P2 / P3 != implementation authorization
 
 ## 2. Current stop boundary
 
-**Fresh audit date:** `2026-08-17`  
-**Audited base:** `main@a8668dc2e8d2e41c834f56ef1716f518b9b6ef19`  
+**Fresh audit date:** `2026-09-06`  
+**Audited base:** `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`  
 **Default branch:** `main`  
-**Open PRs observed at audit:** `#349`, `#319`, `#316`  
-**Primary active engineering PR:** `#349` — fresh-store SQLite bootstrap serialization, `OPEN / DRAFT` at audit  
-**Dependabot PRs:** `#319`, `#316` — separate dependency maintenance; not part of this ledger PR
+**Open PRs observed at audit:** `#444`, `#415` — Dependabot maintenance only; not an engineering lane  
+**Primary active engineering PR:** none selected by this ledger  
+**Historical 2026-08-17 audit base:** `main@a8668dc2e8d2e41c834f56ef1716f518b9b6ef19` (superseded as current-head claim)  
+**#349 / #316 / #319:** `#349` MERGED; `#316`/`#319` CLOSED and superseded by later Dependabot PRs
 
 Current authority boundary retained from repository state and current-state documentation:
 
@@ -97,7 +98,7 @@ The machine state is intentionally a governed checkpoint, not an evergreen GitHu
 
 This documentation/audit milestone does not authorize:
 
-- modifying or absorbing PR #349;
+- reopening #347/#349 as an active implementation lane;
 - CSM Stage D or Stage E implementation;
 - Project Cognition runtime work;
 - CapabilityRegistry runtime wiring;
@@ -142,16 +143,16 @@ open architecture issue != implementation authorization
 
 ## T-FW-001 — Fresh-store SQLite bootstrap lifecycle residual
 
-**State:** `OPEN`  
-**Priority:** `P1`  
-**Suggested audit sequence:** `1`  
+**State:** `DONE`  
+**Priority:** `P1` (historical; do not treat as an open required V1 item)  
+**Suggested audit sequence:** `n/a`  
 **Implementation authorized by this ledger:** `NO`  
-**Runtime capability change:** `NO` for the bounded defect lane; re-evaluate if scope expands  
-**Authority impact:** `NONE EXPECTED` for the bounded storage fix  
-**Known Issue / PR:** Issue `#347` / PR `#349`  
-**Last verified:** `2026-08-17`  
-**Evidence anchor:** `main@a8668dc2...`; PR `#349` was `OPEN / DRAFT` from that base at audit  
-**Revalidation trigger:** any #349 head/base/lifecycle change, merge/closure of #347, or newer `main` touching SQLite bootstrap/storage lifecycle
+**Runtime capability change:** `NO`  
+**Authority impact:** `NONE`  
+**Known Issue / PR:** Issue `#347` CLOSED · PR `#349` MERGED  
+**Last verified:** `2026-09-06`  
+**Evidence anchor:** merge `588ffe61c711f6e63ac42cc304d95642a0671b08`; live issue/PR lifecycle CLOSED/MERGED; `PROJECT_STATUS.md` already records bounded first-use closure  
+**Revalidation trigger:** newer `main` that changes SQLite bootstrap/storage lifecycle or reopens #347 semantics
 
 ### Question
 Has the independently reproduced pre-CAS fresh-store bootstrap failure been closed by a bounded fix with exact-head and post-merge evidence, without changing CAS/authority semantics?
@@ -160,16 +161,10 @@ Has the independently reproduced pre-CAS fresh-store bootstrap failure been clos
 The failure occurs before the canonical CAS race and can invalidate peer SQLite statements during concurrent first-use schema/bootstrap work. It must not be mislabeled as a CAS invariant failure.
 
 ### Current evidence
-PR #349 proposes a bounded SQLite writer-transaction serialization of the lazy bootstrap region and includes a permanent regression/ADR. At this audit it remains a draft implementation PR and is outside this docs-only task.
+Live GitHub on 2026-09-06 confirms #347 CLOSED (2026-08-18) and #349 MERGED (2026-08-17) as `588ffe61…`. The 2026-08-17 ledger text that listed `#349 OPEN / DRAFT` is historical and must not be read as current.
 
-### Alternative explanations
-A later live audit may show #349 merged, replaced, closed, or materially rescoped. This ledger must not freeze its current draft narrative as evergreen truth.
-
-### Required audit
-Read live #347/#349, exact checks, changed files, final head/base and post-merge evidence if any.
-
-### Preconditions
-None for audit; separate bounded implementation authority already lives in the #347/#349 workstream, not here.
+### Remaining limitation
+Bounded concurrent fresh-store first-use is closed. This is not an SLA, unlimited concurrency proof, or multiprocess production claim.
 
 ### Non-goals
 No broad `OperationalError` swallowing, retry policy expansion, timeout inflation, WAL/backend redesign, CAS rewrite, Canon/TruthGate/PolicyKernel change, runtime activation or Phase 3B admission.
@@ -178,7 +173,7 @@ No broad `OperationalError` swallowing, retry policy expansion, timeout inflatio
 Storage correctness evidence does not grant runtime or production authority.
 
 ### Exit criteria
-Classify as `DONE` only after protected merge, exact-main verification, current-truth reconciliation and final issue lifecycle closure are confirmed live.
+Met: protected merge, live issue closure, and orientation-pack reconciliation.
 
 ---
 
@@ -463,14 +458,14 @@ A future exact-scope Operator decision and all required runtime/production evide
 
 ## T-FW-012 — Current-state/documentation lifecycle drift
 
-**State:** `INVESTIGATE`  
+**State:** `DONE` for the 2026-09-06 orientation-pack reconcile; remaining freshness is a standing rule, not an open defect  
 **Priority:** `P2`  
 **Suggested audit sequence:** `2`  
 **Implementation authorized by this ledger:** `NO`  
 **Runtime capability change:** `NO`  
 **Authority impact:** `NONE`  
-**Last verified:** `2026-08-17`  
-**Evidence anchor:** `docs/ai/CURRENT_STATE.md` top checkpoint predates current `main`; the file correctly instructs readers to re-resolve live GitHub  
+**Last verified:** `2026-09-06`  
+**Evidence anchor:** this ledger, `CURRENT_STATE.md`, `KNOWN_RISKS.md`, `COMPONENT_MAP.md`, `FOR_AI.json` reconciled against live `main@635d0d6…`  
 **Revalidation trigger:** any future status/documentation reconciliation
 
 ### Question
@@ -479,11 +474,14 @@ Which volatile lifecycle literals should remain dated history versus be converte
 ### Why it matters
 A durable handoff must not make an old `current main`, `OPEN`, or `NEXT` literal look evergreen.
 
+### Current evidence
+The 2026-09-06 reconcile moved stale OPEN/DRAFT/#347/#349/Stage-11-candidate literals to dated history or `DONE` without rewriting `project_state.json` Continuity SHA roles.
+
 ### Non-goals
 Do not rewrite historical evidence merely to make every SHA equal to current head. Do not advance `project_state.json` unless its governed semantics actually change.
 
 ### Exit criteria
-Current-state owners remain truthful and future readers are routed to live GitHub before acting.
+Current-state owners remain truthful and future readers are routed to live GitHub before acting. Standing rule remains in force.
 
 ---
 
@@ -517,7 +515,7 @@ interesting technology != selected milestone
 
 No global repository freeze is asserted by this ledger. Individual work may still be blocked by its own prerequisites, evidence, reviews, active conflicting PRs, or authority gates.
 
-The active #347/#349 lane must be re-resolved before any future storage-dependent milestone that assumes its lifecycle result.
+The #347/#349 lane is DONE at the 2026-09-06 audit. Re-resolve live GitHub only if later storage-bootstrap work changes that result.
 
 ---
 
@@ -554,7 +552,7 @@ Read `KNOWN_RISKS.md` for the detailed owner. This ledger intentionally referenc
 
 High-value revalidation families include:
 
-- fresh-store SQLite bootstrap lifecycle (#347/#349);
+- fresh-store SQLite bootstrap lifecycle (#347/#349) — bounded first-use **DONE**; scale/SLA unproven;
 - no current Operator GO/deployed activation;
 - concrete live Continuity decision-owner adapters unselected;
 - Continuity 12/12 not equivalent to production readiness;
@@ -569,7 +567,7 @@ High-value revalidation families include:
 
 - Active governance is solo-mode; required approvals may be zero while review-thread resolution and aggregate evidence remain required.
 - `0 unresolved review threads` must never be reported as independent approval.
-- Dependabot PRs #316/#319 are independent maintenance work and are not selected by this ledger.
+- Dependabot PRs are independent maintenance work and are not selected by this ledger. Live open Dependabot PRs at the 2026-09-06 audit: `#444`, `#415`. Historical `#316`/`#319` are closed.
 - A docs/audit executor may observe active implementation PRs but must not absorb them into a documentation mission.
 
 ---
@@ -580,7 +578,7 @@ This order is for **revalidation**, not implementation authorization:
 
 ```text
 1. live main / PRs / Issues / CI
-2. #347 / #349 lifecycle + current documentation truth
+2. #347 / #349 lifecycle is DONE; re-check only if storage bootstrap code changes
 3. CSM A/B/C/D/E actual state
 4. Project Cognition actual state
 5. ModelFreeCore + CapabilityRegistry consumers
@@ -624,6 +622,8 @@ These are orientation anchors, not exhaustive history:
 - ARM-01 / ARM-02 / ARM-03 — DONE for their admitted scopes; ARM-04 remains not authorized.
 - Continuity 12/12 mechanism/evidence milestone — DONE; current activation authority remains absent.
 - #249 CAS contention characterization — engineering characterization completed; product CAS defect not confirmed. Re-resolve issue lifecycle live.
+- #347 / #349 fresh-store bootstrap serialization — DONE bounded first-use; not an SLA.
+- Titan V1 Stage 11 closure — DONE on `main` via PR #372; ≠ production authorization.
 
 ---
 

@@ -25,6 +25,7 @@ from core.llm_router import (
     compact_messages_for_deepseek,
     message_content_char_limit_for_provider,
 )
+from core.remote_egress import sanitize_remote_system_prompt
 
 
 def _fact(marker: str, claim: str) -> dict:
@@ -108,3 +109,56 @@ def test_deepseek_packing_can_drop_tail_evidence_from_real_titan_serialization()
     assert "truncated by Velantrim console" in transmitted_system
 
     # No assertion here promotes T into U or A: both remain NOT_ESTABLISHED.
+
+
+def test_f2_hidden_exception_can_be_lost_at_deepseek_transmission_boundary():
+    """F2 semantics can survive S yet lose material exception X before T."""
+    rule_marker = "F2-DOMINANT-RULE-R"
+    exception_marker = "F2-HIDDEN-EXCEPTION-X"
+    limit = message_content_char_limit_for_provider("deepseek")
+    assert limit is not None
+
+    facts = [
+        _fact(
+            rule_marker,
+            "Rule R: widgets are normally blue. "
+            + ("ordinary-rule-context " * (limit // 8)),
+        ),
+        _fact(
+            exception_marker,
+            "Exception X: widgets made on Friday are red.",
+        ),
+    ]
+
+    # R: the later-task-material exception exists in the selected facts.
+    retrieved_markers = {fact["id"] for fact in facts}
+    assert exception_marker in retrieved_markers
+
+    # S: Titan's real prompt builder serializes both the dominant rule and X.
+    serialized_system = server._build_system_prompt(facts)
+    assert rule_marker in serialized_system
+    assert "Rule R: widgets are normally blue." in serialized_system
+    assert exception_marker in serialized_system
+    assert "Exception X: widgets made on Friday are red." in serialized_system
+
+    # Mirror the current remote path: epistemic sanitization happens before
+    # provider-specific DeepSeek message packing.
+    sanitized_system = sanitize_remote_system_prompt(serialized_system)
+    assert exception_marker in sanitized_system
+
+    packed = compact_messages_for_deepseek(
+        [{"role": "system", "content": sanitized_system}]
+    )
+    transmitted_system = packed[0]["content"]
+
+    # T: the ordinary rule survives while the materially different exception X
+    # is absent after bounded provider packing. This is exactly the F2 danger:
+    # omission from the transmitted lossy view must not become absence from R/S.
+    assert len(transmitted_system) <= limit
+    assert rule_marker in transmitted_system
+    assert "Rule R: widgets are normally blue." in transmitted_system
+    assert exception_marker not in transmitted_system
+    assert "Exception X: widgets made on Friday are red." not in transmitted_system
+    assert "truncated by Velantrim console" in transmitted_system
+
+    # The fixture establishes only R/S/T loss. It does not infer U or A.

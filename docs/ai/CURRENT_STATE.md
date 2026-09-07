@@ -1,8 +1,9 @@
 # 📍 Current System State
 
-**Verified:** 2026-08-16  
-**Current repository head at this reconciliation:** `main@8ed2fb60c1edaa96d9af9955184c4abc31ef8500` · parent `b4c6f0c16ef9920607d95e590a75df8176d92d71` · signature `VERIFIED / valid`  
+**Verified:** 2026-09-06  
+**Current repository head at this reconciliation:** `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f` · parent `1bf4b12d9c8f1a33fb5650eb294b82177ef3a4b9` · PR #445  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
+**Continuity canary machine checkpoint:** `docs/state/project_state.json` remains `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` (schema v7). That SHA is the bounded Continuity observation checkpoint, not today's repository head.  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
 **Continuity:** `12/12 = 100%`  
 **Machine-readable state:** schema v7  
@@ -12,6 +13,39 @@
 > This document separates the **current repository checkpoint** from older implementation
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
+
+## 2026-09-06 — Orientation lifecycle reconciliation
+
+Docs-only revalidation against live `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`.
+No runtime, Canon, policy, Continuity, Operator GO or production-authority change.
+
+Confirmed live at this checkpoint (not inferred from older orientation text):
+
+```text
+#52                  CLOSED
+#249                 CLOSED  (harness-scope; product CAS defect not confirmed)
+#347 / #349          CLOSED / MERGED  (bounded fresh-store bootstrap serialization)
+#355                 MERGED  (typed EvidenceReference: CONTRACT-ONLY / UNWIRED)
+Stage 11 / V1        PR #372 present on main → TITAN_V1_DONE
+                     ≠ production authorization
+F2 later-task reopen #435 / #436 MERGED (bounded plan + execute; no automatic policy)
+F3 stop-basis probes #437–#440 MERGED (owner-local; no universal Stop ontology)
+#445                 MERGED  (F2 hidden-exception / S-to-T loss test bind)
+identity_layer       no production callers outside tests
+Operator GO          false
+runtime authority    false
+production authority false
+```
+
+Issue #432 remains **OPEN**. Later-task reopen *capability* is implemented through
+#435/#436; this reconciliation does **not** close #432. Residual later-task *policy*
+scope must be decided against the live issue body, not inferred from merge titles.
+
+`docs/state/project_state.json` is intentionally **not** rewritten to the current head.
+Its SHA roles remain the Continuity canary checkpoint.
+
+The 2026-08-16 multilingual/CSM paragraphs below remain historical implementation
+evidence at `8ed2fb60…` / `b4c6f0c1…`. They are not today's repository head.
 
 ## State semantics
 

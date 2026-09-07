@@ -56,10 +56,12 @@ Architecture: [`docs/research/ADAPTIVE_RETRIEVAL_MEMORY_ARCHITECTURE.md`](docs/r
 | Slice | Status | Purpose |
 |---|---|---|
 | PR-ARM-01 | ✅ merged as #91 | execute `RetrievalPlan.mode`, route metrics and benchmark |
-| PR-ARM-02 | 📋 next | rebuildable embedding projection identity, stale detection and reindex hooks |
-| PR-ARM-03 | 📋 planned | shadow-only selective memory candidate extractor |
-| PR-ARM-04 | ⛔ blocked by evaluation | candidate admission through WorkingMemoryGate and explicit Write Gate |
-| PR-ARM-05 | 📋 planned | versioned parallel context assembly and safe cache invalidation |
+| PR-ARM-02 | ✅ merged as #100 + #101 | rebuildable embedding projection identity, stale detection and reindex hooks |
+| PR-ARM-03 | ✅ merged/hardened as #200 | shadow-only selective memory candidate extractor — default-off, proposal-only, no `/query` wiring or write authority |
+| PR-ARM-04 | ⛔ not authorized | candidate admission through WorkingMemoryGate and explicit Write Gate — requires a separate ADR, privacy/consent/erasure design and explicit operator approval; not implied by ARM-03 |
+| PR-ARM-05 | 🔭 future / not committed | versioned parallel context assembly and safe cache invalidation |
+
+Merged ≠ production-authorized: ARM-01–03 are implemented and tested in `main`, but none grants Canon/write authority or runtime activation beyond what is described above. Live status: issue #92.
 
 Non-negotiable gates:
 
@@ -125,6 +127,8 @@ Relevant contracts:
 
 ### Phase A — Evidence infrastructure
 
+✅ Items 1–2 are complete: issue #92 is synced and PR-ARM-02 merged as #100 + #101.
+
 1. synchronize issue #92 with merged PR #91;
 2. define PR-ARM-02 projection identity and stale-vector behavior;
 3. create the first synthetic EvaluationPackage;
@@ -132,6 +136,8 @@ Relevant contracts:
 5. publish structural diffs and critical-gate results.
 
 ### Phase B — Selective memory shadow
+
+✅ Items 1–4 are complete via PR-ARM-03 (#200). Item 5 (Write Gate integration) remains ARM-04, not authorized.
 
 1. define immutable memory candidate schema;
 2. retain exact source spans, temporal scope and sensitivity flags;

@@ -2,7 +2,7 @@
 
 Дата: 2026-08-22
 
-Статус этого документа: **closure candidate** до merge соответствующего Stage 11 PR. Если этот документ присутствует в `main` после успешных exact-head CI / CodeQL / aggregate gates, Stage 11 считается закрытым и статус продукта становится **TITAN V1 — DONE**.
+Статус этого документа: **TITAN V1 — DONE** после merge Stage 11 PR #372 в protected `main`. Документ остаётся closure record, а не production authorization. Live GitHub остаётся источником для позднейших SHA / PR / CI.
 
 ## 🎯 Что именно считается завершённым
 
@@ -24,7 +24,7 @@
 | 8 | Packaging / Update / Operations | DONE |
 | 9 | End-to-End Acceptance | DONE |
 | 10 | Bounded Pilot | DONE |
-| 11 | Titan V1 Closure | DONE when this closure candidate is merged to `main` with all required gates green |
+| 11 | Titan V1 Closure | DONE (PR #372 on `main`; ≠ production authorization) |
 
 После Stage 11 **не существует обязательного Stage 12**. Research и P2/P3 backlog не открываются автоматически.
 
@@ -38,7 +38,7 @@
 - `P1-04` — отсутствовал current release/update lifecycle;
 - `P1-05` — duplicate evidence tokens могли раздувать legacy TruthGate cardinality.
 
-Итог closure candidate:
+Итог Stage 11 на `main`:
 
 - **P0 = 0**;
 - **P1 = 0**;

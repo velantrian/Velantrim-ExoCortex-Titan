@@ -1,6 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-08-16  
+**Snapshot:** 2026-09-06  
+**Live main at this reconciliation:** `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
 **C11 lifecycle rule:** this snapshot preserves the reconciled #52 risk record; resolve current issue/PR lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
@@ -120,19 +121,24 @@ mode, backend or schema was changed. The bounded classification is **TEST HARNES
 DEFECT / HISTORICAL RUNNER SENSITIVITY · PRODUCT CAS DEFECT NOT CONFIRMED**. This is not
 proof of unlimited SQLite concurrency or production-scale multiprocess safety.
 
-## P1 — Concurrent fresh-store bootstrap can invalidate peer SQLite statements
+## Reduced risk — Concurrent fresh-store bootstrap serialization is merged; scale remains unproven
 
-Hosted #249 diagnostics exposed a separate pre-CAS failure now tracked by Issue #347:
+Hosted #249 diagnostics exposed a separate pre-CAS failure tracked by Issue #347:
 concurrent first use of multiple fresh `SQLiteGraphStore` instances against one database
 can produce `sqlite3.OperationalError: database schema has changed` while per-instance
 lazy schema/bootstrap work is still in flight. The observed failure occurred before the
 CAS gate (25/25 workers started, 24/25 reached pre-CAS, 0/25 CAS returned), so it must not
 be relabelled as a product CAS algorithm failure.
 
-#347 remains an open storage/lifecycle characterization risk. Do not paper over it with
-broad `OperationalError` swallowing, automatic mutation retry, timeout inflation, WAL or
-backend changes. First establish the supported concurrent-first-use contract and exact
-failing DDL/read interleaving.
+Live GitHub at the 2026-09-06 reconciliation: Issue #347 is **CLOSED** and PR #349 is
+**MERGED** as `588ffe61c711f6e63ac42cc304d95642a0671b08`. The accepted fix serializes
+the lazy bootstrap region. `PROJECT_STATUS.md` already records this as a bounded
+first-use closure.
+
+This is **not** an SLA, unlimited SQLite concurrency proof, network-filesystem safety
+claim, or general multiprocess production proof. Do not paper over remaining storage
+failure modes with broad `OperationalError` swallowing, automatic mutation retry,
+timeout inflation, WAL or backend changes.
 
 ## P1 — PII claim redaction is bounded, not universal physical erasure
 
