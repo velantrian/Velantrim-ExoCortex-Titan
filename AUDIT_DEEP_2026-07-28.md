@@ -1,5 +1,19 @@
 # 🔱 VELANTRIM Titan — Глубокий аудит (2026-07-28)
 
+> **HISTORICAL / SUPERSEDED AUDIT.** Этот документ фиксирует состояние репозитория на дату аудита
+> (2026-07-28), а не текущий Titan backlog. Часть находок с тех пор была устранена или сужена отдельными PR.
+> Для **M9 / находки #20** PR #447 устранил утечку текста исключения в глобальном unexpected-500 catch-all
+> и в проверенных внутренних 500-paths; это **не** означает автоматического закрытия каждого локального
+> `HTTPException(detail=str(exc))`, поскольку ожидаемые 4xx/503 validation/error-detail paths требуют
+> отдельной проверки по их семантике. Не делайте вывод, что этот или другие пункты ниже определённо остаются
+> открытыми либо полностью закрытыми сегодня без независимой проверки live main.
+>
+> Для текущего состояния сначала проверьте: live GitHub, [`CANONICAL.md`](CANONICAL.md),
+> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md),
+> [`docs/project_status/FOR_AI.json`](docs/project_status/FOR_AI.json), [`docs/ai/README.md`](docs/ai/README.md).
+>
+> Historical finding ≠ currently open defect ≠ automatically closed defect.
+
 > **Проверенный HEAD:** `b14de0201b0009bbbd98a9111972a2413d2730f0` (main, 2026-07-28).
 > Все ссылки `file:line` ниже перепроверены против **именно этого** коммита.
 >

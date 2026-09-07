@@ -187,12 +187,14 @@ Synaptic profile превращает длинные источники в пр�
 📄 Raw evidence
    → ✅ SemanticReader
    → ✅ KnowledgeCapsule + exact SourceSpan
-   → 🚧 LLM Reader Adapter
-   → 🔬 Working Memory Gate
-   → 🔬 ContextPack
-   → 🔬 shadow evaluation
-   → 👤 evidence-backed answer
+   → ✅ LLM Reader Adapter        (main/tested; нет server `/query` answer-path caller; standalone document-reading CLI использует `scripts/read_document.py`)
+   → ✅ Working Memory Gate       (main/tested; подключён только внутри shadow-цепочки)
+   → ✅ ContextPack               (main/tested; подключён только внутри shadow-цепочки)
+   → ✅ shadow evaluation         (main/tested; feature-gated; только qualifying POST /query responses; без answer authority)
+   → 👤 evidence-backed answer   (пока НЕ authorized: LEGACY_QUERY остаётся единственным authoritative answer path)
 ```
+
+Каждый ✅ здесь означает «реализовано и покрыто тестами в `main`», а не «включено по умолчанию» или «обладает authority над ответом» — см. легенду и `≠`-цепочку выше. Shadow middleware подключён к request path, но сама shadow processing запускается только при `ENABLE_SYNAPTIC_SHADOW=true` и только для qualifying `POST /query` responses (HTTP 200 + JSON). Она не рендерит ответ, не пишет в Canon/ESM и при ошибке fail-open не ломает legacy response.
 
 Ключевые правила:
 
@@ -212,10 +214,10 @@ Working Desk сохранён в **Research Mode** как будущая task-aw
 Он не является отдельным runtime-ядром и не получает власть над Canon.
 
 ```text
-✅ foundation  → KnowledgeCapsule · SemanticReader · remote egress
-🚧 engineering → LLM Reader Adapter
-🔬 planned     → Working Memory Gate · ContextPack · shadow path
-🔬 research    → Task Registry · Completion/Stagnation · Task Archive
+✅ main/tested, вне server /query answer path → LLM Reader Adapter (standalone document-reading CLI)
+✅ main/tested, foundation                   → KnowledgeCapsule · SemanticReader · remote egress
+✅ main/tested, shadow-only                  → Working Memory Gate · ContextPack · shadow path
+🔬 research                                  → Task Registry · Completion/Stagnation · Task Archive
 ```
 
 📘 Registry:
