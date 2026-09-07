@@ -187,7 +187,7 @@ Synaptic profile превращает длинные источники в пр�
 📄 Raw evidence
    → ✅ SemanticReader
    → ✅ KnowledgeCapsule + exact SourceSpan
-   → ✅ LLM Reader Adapter        (main/tested; ещё без runtime-caller — не подключён)
+   → ✅ LLM Reader Adapter        (main/tested; нет server `/query` answer-path caller; standalone document-reading CLI использует `scripts/read_document.py`)
    → ✅ Working Memory Gate       (main/tested; подключён только внутри shadow-цепочки)
    → ✅ ContextPack               (main/tested; подключён только внутри shadow-цепочки)
    → ✅ shadow evaluation         (main/tested; feature-gated; только qualifying POST /query responses; без answer authority)
@@ -214,10 +214,10 @@ Working Desk сохранён в **Research Mode** как будущая task-aw
 Он не является отдельным runtime-ядром и не получает власть над Canon.
 
 ```text
-✅ main/tested, не подключён      → LLM Reader Adapter
-✅ main/tested, foundation        → KnowledgeCapsule · SemanticReader · remote egress
-✅ main/tested, shadow-only       → Working Memory Gate · ContextPack · shadow path
-🔬 research                       → Task Registry · Completion/Stagnation · Task Archive
+✅ main/tested, вне server /query answer path → LLM Reader Adapter (standalone document-reading CLI)
+✅ main/tested, foundation                   → KnowledgeCapsule · SemanticReader · remote egress
+✅ main/tested, shadow-only                  → Working Memory Gate · ContextPack · shadow path
+🔬 research                                  → Task Registry · Completion/Stagnation · Task Archive
 ```
 
 📘 Registry:
