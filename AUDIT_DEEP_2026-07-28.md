@@ -1,5 +1,17 @@
 # 🔱 VELANTRIM Titan — Глубокий аудит (2026-07-28)
 
+> **HISTORICAL / SUPERSEDED AUDIT.** Этот документ фиксирует состояние репозитория на дату аудита
+> (2026-07-28), а не текущий Titan backlog. Часть находок с тех пор устранена отдельными PR — например,
+> **M9 / находка #20** ("Catch-all возвращает `str(exc)` клиенту") была исправлена
+> `PR #447 "fix(server): prevent internal exception detail disclosure"`. Не делайте вывод, что этот и
+> другие пункты ниже определённо остаются открытыми сегодня без независимой проверки live main.
+>
+> Для текущего состояния сначала проверьте: live GitHub, [`CANONICAL.md`](CANONICAL.md),
+> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md),
+> [`docs/project_status/FOR_AI.json`](docs/project_status/FOR_AI.json), [`docs/ai/README.md`](docs/ai/README.md).
+>
+> Historical finding ≠ currently open defect.
+
 > **Проверенный HEAD:** `b14de0201b0009bbbd98a9111972a2413d2730f0` (main, 2026-07-28).
 > Все ссылки `file:line` ниже перепроверены против **именно этого** коммита.
 >

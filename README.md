@@ -187,12 +187,14 @@ Synaptic profile превращает длинные источники в пр�
 📄 Raw evidence
    → ✅ SemanticReader
    → ✅ KnowledgeCapsule + exact SourceSpan
-   → 🚧 LLM Reader Adapter
-   → 🔬 Working Memory Gate
-   → 🔬 ContextPack
-   → 🔬 shadow evaluation
-   → 👤 evidence-backed answer
+   → ✅ LLM Reader Adapter        (main/tested; ещё без runtime-caller — не подключён)
+   → ✅ Working Memory Gate       (main/tested; подключён только внутри shadow-цепочки)
+   → ✅ ContextPack               (main/tested; подключён только внутри shadow-цепочки)
+   → ✅ shadow evaluation         (main/tested; выполняется на каждом запросе как fail-open middleware-preview)
+   → 👤 evidence-backed answer   (пока НЕ authorized: LEGACY_QUERY остаётся единственным authoritative answer path)
 ```
+
+Каждый ✅ здесь означает «реализовано и покрыто тестами в `main`», а не «включено по умолчанию» или «обладает authority над ответом» — см. легенду и `≠`-цепочку выше. `shadow evaluation` реально исполняется в реальном request path (`api/server_middleware.py`), но не рендерит ответ, не пишет в Canon/ESM и fail-open отключается при любой ошибке.
 
 Ключевые правила:
 
@@ -212,10 +214,10 @@ Working Desk сохранён в **Research Mode** как будущая task-aw
 Он не является отдельным runtime-ядром и не получает власть над Canon.
 
 ```text
-✅ foundation  → KnowledgeCapsule · SemanticReader · remote egress
-🚧 engineering → LLM Reader Adapter
-🔬 planned     → Working Memory Gate · ContextPack · shadow path
-🔬 research    → Task Registry · Completion/Stagnation · Task Archive
+✅ main/tested, не подключён      → LLM Reader Adapter
+✅ main/tested, foundation        → KnowledgeCapsule · SemanticReader · remote egress
+✅ main/tested, shadow-only       → Working Memory Gate · ContextPack · shadow path
+🔬 research                       → Task Registry · Completion/Stagnation · Task Archive
 ```
 
 📘 Registry:
