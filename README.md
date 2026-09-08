@@ -2,9 +2,9 @@
 
 **English** · [Русский](README.ru.md)
 
-> **Local-first verifiable memory for AI agents:** evidence-gated knowledge,
-> explicit epistemic states, provenance, TRACE, controlled write boundaries,
-> and a replaceable language layer.
+> **Local-first verifiable memory for AI agents:** explicit epistemic states,
+> controlled write/admission boundaries, provenance, TRACE, retrieval, tools,
+> and a replaceable language/provider layer.
 >
 > **Maturity:** research-grade prototype moving toward production hardening.
 
@@ -16,48 +16,45 @@
 [🏛️ Truth canon](docs/TRUTH_AND_RINGZERO_CANON.en.md)
 
 > 🤖 **AI coding agent or automated reviewer:** use [`AGENTS.md`](AGENTS.md)
-> as the formal repository entry point, then follow the task routing in
+> as the formal repository entry point, then follow task routing in
 > [`docs/ai/README.md`](docs/ai/README.md). Documentation is orientation, not proof;
-> verify material claims against exact code, tests, CI, configuration, and runtime evidence.
+> verify material claims against exact code, tests, CI, selected configuration,
+> and observed runtime evidence.
 
 ---
 
 ## 👋 Titan in 60 seconds
 
-A bare LLM often mixes memory, retrieval, confidence, policy, and fluent wording into one
-opaque answer. Titan separates those responsibilities:
+A bare LLM often mixes memory, retrieval, confidence, policy, tools, and fluent wording
+into one opaque answer. Titan separates those responsibilities:
 
 ```text
-Normal LLM
-  prompt → model → fluent answer
-
-Velantrim Titan
-  query
-    → memory
-    → retrieval
-    → admitted context / evidence structures
-    → policy / TruthGate
-    → TRACE / audit artifacts
-    → replaceable LLM voice
+query / user action
+  → memory + retrieval
+  → admitted context / typed proposals
+  → policy / TruthGate / write boundaries
+  → TRACE / audit / provenance
+  → tools or replaceable LLM/provider layer
 ```
 
-The important boundary is not that Titan “knows truth.” It is that different kinds of
-claims and authority are kept separate:
+The important claim is not that Titan “knows truth.” The important property is that
+retrieval, evidence, permission, mutation, auditability, and language generation do not
+silently become the same authority.
 
 ```text
 retrieval ≠ evidence
 admission ≠ verification
 confidence ≠ authority
 model output ≠ Canon
-TRACE membership ≠ proof of semantic use
+TRACE membership ≠ semantic use ≠ answer support
 CI green ≠ production authorization
 ```
 
-Titan is a local-first memory runtime with an explicit epistemic-state machine (ESM),
-controlled promotion/write paths, hybrid retrieval orchestration, provenance and audit
-surfaces, remote-egress policy, and feature-gated research layers. An LLM may read,
-extract, rank, summarize, or render language, but it does not automatically gain the
-right to mutate Canon.
+Titan is a local-first memory and orchestration runtime with an explicit epistemic-state
+machine (ESM), controlled canonical mutation paths, hybrid retrieval capability,
+provenance/audit surfaces, remote-egress policy, authenticated API/tool surfaces, and
+feature-gated research layers. An LLM may read, extract, rank, summarize, or render
+language, but it does not automatically gain the right to mutate Canon.
 
 ---
 
@@ -82,25 +79,19 @@ right to mutate Canon.
 ┌──────────────────── HUMAN / AGENT / FILE ─────────────────────┐
 └──────────────────────────────┬──────────────────────────────────┘
                                ▼
-                    API · auth · policy · egress
+                     API · auth · policy
                                │
-                ┌──────────────┴──────────────┐
-                ▼                             ▼
-        read / retrieval                explicit write
-                │                             │
-                ▼                             ▼
-      admitted context + TRACE          ESM + evidence
-                │                             │
-                ▼                             ▼
-        Guardian / policy              TruthGate / CAS
-                │                             │
-                └──────────────┬──────────────┘
-                               ▼
-                     provenance · audit
-                               │
-                 ┌─────────────┴─────────────┐
-                 ▼                           ▼
-          derived projections          replaceable LLM
+        ┌──────────────────────┼──────────────────────┐
+        ▼                      ▼                      ▼
+    read/retrieval         explicit write          tools/MCP
+        │                      │                      │
+        ▼                      ▼                      ▼
+ admitted context          ESM + evidence        capability gate
+ + TRACE                   + CAS/policy          + auth/session
+        │                      │                      │
+        └──────────────┬───────┴──────────────┬───────┘
+                       ▼                      ▼
+              provenance · audit       replaceable LLM
 ```
 
 ### Current read-path boundary
@@ -109,15 +100,14 @@ right to mutate Canon.
 promotion, and causal-relation mutation. Standard `Validated` promotion callers route
 through the reviewed `PromotionGateway` path. Separate mutation families such as
 invalidation, erasure, archival/redaction, relation lifecycle, and compound supersession
-retain their own explicit contracts; they are not silently treated as one global
-promotion function.
+retain their own explicit contracts.
 
 ### TRACE / evidence-use boundary
 
 Titan can directly observe stages such as retrieved/selected context, serialization into
-the answer prompt, and provider-bound message packing. That does **not** prove that the
-model semantically used a specific item or that the item supported the final answer.
-Those stronger U/A claims require separate attribution evidence.
+an answer prompt, provider-specific packing/transmission, and stored trace artifacts.
+That does **not** prove that a model semantically used a particular item or that the item
+supported the final answer. Those stronger U/A claims require separate attribution evidence.
 
 ---
 
@@ -125,20 +115,16 @@ Those stronger U/A claims require separate attribution evidence.
 
 | Label | What it means |
 |---|---|
-| 🟢 **default path** | part of the baseline working path |
+| 🟢 **default path** | part of the baseline path |
 | ✅ **main / tested** | implementation and relevant tests are in `main` |
-| 🟡 **available / gated** | implementation exists but depends on profile / ENV / dependency |
+| 🟡 **available / gated** | implementation exists but profile/ENV/dependency decides use |
 | 🚧 **open PR** | proposed change, not yet part of `main` |
-| 🔬 **research / proposed** | research or design only; no runtime authority |
+| 🔬 **research / proposed** | design/research only; no runtime authority |
 | ⚠️ **known limitation** | acknowledged gap or bounded claim |
 | 📡 **runtime observed** | confirmed on a concrete running instance |
 
 ```text
-file exists
-  ≠ contract is test-proven
-  ≠ feature is wired
-  ≠ feature is enabled
-  ≠ behavior was observed in this runtime
+implemented ≠ tested ≠ wired ≠ enabled ≠ observed
 ```
 
 For a concrete installation, inspect configuration plus `/health`, `/layers/status`, and
@@ -152,27 +138,38 @@ For a concrete installation, inspect configuration plus `/health`, `/layers/stat
 |---|---|---|
 | 🧠 Memory + ESM | facts, 8 epistemic states, temporal state | `core/memory.py` |
 | ⚖️ Trust / write boundary | evidence/confidence policy and controlled admission | `core/truth_gate.py`, `core/write_gate.py`, `core/promotion_gateway.py`, `core/policy_kernel.py` |
-| 🔍 Retrieval | lexical retrieval plus optional dense/graph signals and candidate narrowing | `core/hybrid_retriever.py`, `core/ngram_index.py` |
-| 🧾 Provenance / audit | source lineage, append-only/tamper-evident records, audit artifacts | `core/provenance_chain.py`, `core/audit_chain.py` |
-| 🛡️ Integrity | health states, snapshots, executable invariants | `core/meta_supervisor.py`, `core/immutable_core_scheduler.py`, `tests/test_invariants.py` |
+| 🔍 Retrieval | lexical path plus optional dense/graph signals and candidate narrowing | `core/hybrid_retriever.py`, `core/ngram_index.py` |
+| 🧾 Provenance / audit | source lineage and auditable effects | `core/provenance_chain.py`, `core/audit_chain.py` |
 | 🔐 Remote boundary | fail-closed capability lease + epistemic prompt guard | `core/remote_egress.py` |
+| 🔌 MCP / tools | authenticated server gateway + capability-scoped JSON-RPC tools | `api/mcp_gateway.py`, `core/mcp_transport.py`, `core/tool_registry.py` |
 | 📄 Synaptic foundation | source-linked capsules and reader contracts | `core/knowledge_capsule.py`, `core/semantic_reader.py` |
 | 🌐 API + Console | FastAPI surface and browser UI | `server.py`, `api/`, `static/console/` |
 
 ### Retrieval precision
 
-Titan's hybrid retriever supports BM25/lexical retrieval, optional dense embeddings,
-optional graph signals, and RRF-style combination. These are not equivalent to saying
-every installation executes BM25 + dense + graph on every request. The base package has
-no mandatory third-party dependencies; dense and some retrieval features require optional
-extras/configuration and degrade to narrower paths when unavailable.
+Titan's hybrid retriever supports lexical/BM25-style retrieval, optional dense embeddings,
+optional graph signals, and ranking fusion. This does **not** mean every installation
+executes every signal on every request. The base package has no mandatory third-party
+dependencies; dense and some enhanced retrieval paths require optional extras/configuration
+and degrade to narrower paths when unavailable.
 
-### MCP transport
+### MCP precision
 
-`core/tool_registry.py` and `core/mcp_transport.py` contain a bounded capability-based
-JSON-RPC transport implementation with capability ceilings and bounded idempotency
-semantics. It is **not server-wired by default**, not runtime-enabled merely because the
-module exists, and carries no production authorization by itself.
+MCP is more than a dormant module on the current audited base. `server.py` imports
+`api.mcp_gateway` and registers its routes with the same `require_api_key` boundary used by
+other authenticated server surfaces. The gateway delegates to `core.mcp_transport.McpHandler`
+and applies capability/session ceilings.
+
+That establishes **implemented + server-wired/auth-gated**. It does **not** establish that
+a particular deployment is currently running, externally exposed, observed, unrestricted,
+or production-authorized:
+
+```text
+implemented + wired
+  ≠ enabled in a selected deployment
+  ≠ observed in a running instance
+  ≠ production authorization
+```
 
 ---
 
@@ -194,21 +191,21 @@ Raw evidence
   → ✅ shadow evaluation
        main/tested; feature-gated; qualifying POST /query responses only;
        no answer authority
-  → user answer
-       active Synaptic answer authority is NOT authorized;
-       LEGACY_QUERY remains the authoritative answer path
+  → active answer authority
+       NOT transferred to Synaptic; LEGACY_QUERY remains authoritative
 ```
 
 Each ✅ means implemented/tested in `main`; it does **not** mean enabled by default,
-production-authorized, or authoritative over answers. The shadow path does not write to
-Canon/ESM and is intentionally separate from active answer authority.
+production-authorized, or authoritative over answers. Shadow processing does not write to
+Canon/ESM and does not gain active answer authority merely by being wired as shadow logic.
 
-Key invariants:
+Key boundaries:
 
 - exact source spans and SHA-256 provenance;
 - `extraction_confidence` ≠ `truth_confidence`;
 - capsule/proposal ≠ Canon;
-- ordinary query/retrieval is read-only with respect to Canon/ESM mutation;
+- ordinary `core/pipeline.py::run()` is read-only with respect to canonical fact/ESM and
+  causal-relation mutation;
 - model/provider layer remains replaceable;
 - shadow evidence does not authorize active integration.
 
@@ -220,40 +217,20 @@ Plan: [`docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md`](docs/SYNAPTIC_EXO_CORT
 
 - ❌ zero hallucinations;
 - ❌ absolute truth of any source;
-- ❌ that retrieval or ranking proves evidence authority;
+- ❌ that retrieval/ranking proves evidence authority;
 - ❌ certified GDPR/compliance status;
 - ❌ an independent security audit that has not happened;
 - ❌ drop-in production-ready multi-user SaaS;
 - ❌ consciousness or subjective experience;
 - ❌ that every `core/` module is enabled by default;
 - ❌ that an open PR or research document is already runtime behavior;
-- ❌ that TRACE proves internal model use or causal answer support.
+- ❌ that TRACE proves internal model use or causal answer support;
+- ❌ that server wiring by itself proves a deployed/observed production service.
 
 Production-hardening risks and P0/P1/P2 are tracked in
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md). The separate bounded **V1
 productization** ledger may report V1 P0/P1 = 0; that does **not** mean production-
 hardening P0/P1 = 0 or production authorization.
-
----
-
-## 🖥️ Two usage modes
-
-```text
-Local server runtime
-  FastAPI + local SQLite + optional graph/LLM providers
-  full server-side API and policy boundaries
-
-Browser PWA
-  IndexedDB/browser console + optional direct provider API
-  separate browser mode; not equivalent to the full server runtime
-```
-
-| Surface | Link |
-|---|---|
-| 🌐 Portal | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/> |
-| 💬 Console PWA | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/> |
-| 🔬 Research PWA | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-app.html> |
-| 🗺️ Roadmap | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-roadmap.html> |
 
 ---
 
@@ -271,28 +248,15 @@ cp .env.prod.example .env.prod
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
 
-The hardened profile binds the API to loopback by default and pins research/autonomous
-layers off. Read
-[`docs/operations/hardened-production-profile.md`](docs/operations/hardened-production-profile.md)
-before deployment. This is application/container hardening, not a claim of host-level
-firewall, TLS, WAF, compliance, or production authorization.
+The hardened profile is an application/container hardening profile, not a claim of
+host-level firewall/TLS/WAF, compliance, or production authorization. Read
+[`docs/operations/hardened-production-profile.md`](docs/operations/hardened-production-profile.md).
 
 Check:
 
 ```text
 http://127.0.0.1:8000/health
 ```
-
-### Compatibility / research Compose
-
-```bash
-cp .env.example .env
-# Set VELANTRIM_API_KEY.
-docker compose up -d
-```
-
-`docker-compose.yml` intentionally preserves compatibility/research behavior and enables
-several research/cognitive layers. It is **not** the hardened production profile.
 
 ### Local development
 
@@ -322,15 +286,11 @@ python -m pytest tests/ -v --tb=short
 | [`AGENTS.md`](AGENTS.md) 🤖 | formal entry point and mandatory rules for coding agents |
 | [`docs/ai/README.md`](docs/ai/README.md) 🧭 | AI context routing and minimum-reading paths |
 | [`SYSTEM_OVERVIEW.en.md`](SYSTEM_OVERVIEW.en.md) 🗺️ | current English system tour |
-| [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) 🇷🇺 | Russian living system atlas |
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | maturity, known risks, production-hardening P0/P1/P2 |
-| [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | code/test map for independent review |
-| [`SECURITY.md`](SECURITY.md) 🔒 | threat model, auth, deployment boundaries |
-| [`docs/TRUTH_AND_RINGZERO_CANON.en.md`](docs/TRUTH_AND_RINGZERO_CANON.en.md) 🏛️ | Truth Engine + Ring Zero normative specification |
+| [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) 🇷🇺 | Russian system tour |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | maturity and production-hardening P0/P1/P2 |
+| [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | independent-review map |
+| [`SECURITY.md`](SECURITY.md) 🔒 | threat model and deployment boundaries |
 | [`research/`](research/) 🔬 | proposed/research work; not runtime authority |
-
-Historical V8.x material remains in [`CHANGELOG.md`](CHANGELOG.md) and
-`docs/archive/legacy/` unless explicitly re-adopted by a current contract.
 
 ---
 
@@ -342,13 +302,6 @@ The repository landing page is English by default:
 README.md       English canonical landing README
 README.ru.md    Russian companion
 README.en.md    compatibility pointer to README.md
-```
-
-The architecture tour remains available in both languages:
-
-```text
-SYSTEM_OVERVIEW.en.md   English
-SYSTEM_OVERVIEW.md      Russian
 ```
 
 ---
