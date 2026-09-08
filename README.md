@@ -1,331 +1,311 @@
 # 🔱 VELANTRIM TITAN 9.0
 
-**Русский** · [English](README.en.md)
+**English** · [Русский](README.ru.md)
 
-> **Local-first проверяемая память для AI-агентов:** evidence-gated знания,
-> явные эпистемические состояния, provenance, TRACE и заменяемый языковой слой.
+> **Local-first verifiable memory for AI agents:** evidence-gated knowledge,
+> explicit epistemic states, provenance, TRACE, controlled write boundaries,
+> and a replaceable language layer.
 >
-> **Зрелость:** research-grade prototype, движущийся к production hardening.
+> **Maturity:** research-grade prototype moving toward production hardening.
 
-[🤖 AI-агент: начните здесь](docs/ai/README.md) ·
-[🗺️ Экскурсия по системе](SYSTEM_OVERVIEW.md) ·
-[📊 Честный статус](docs/PROJECT_STATUS.md) ·
-[🔍 Для аудитора](docs/REVIEWER_README.md) ·
+[🤖 AI agents: start here](AGENTS.md) ·
+[🗺️ System tour](SYSTEM_OVERVIEW.en.md) ·
+[📊 Project status](docs/PROJECT_STATUS.md) ·
+[🔍 Reviewer map](docs/REVIEWER_README.md) ·
 [🔒 Security](SECURITY.md) ·
-[🏛️ Канон истины](docs/TRUTH_AND_RINGZERO_CANON.ru.md)
+[🏛️ Truth canon](docs/TRUTH_AND_RINGZERO_CANON.en.md)
 
-> 🤖 **AI coding agent или автоматический аудитор:** прежде чем читать весь
-> репозиторий или менять код, откройте [`docs/ai/README.md`](docs/ai/README.md) и
-> следуйте обязательному порядку чтения из [`AGENTS.md`](AGENTS.md).
+> 🤖 **AI coding agent or automated reviewer:** use [`AGENTS.md`](AGENTS.md)
+> as the formal repository entry point, then follow the task routing in
+> [`docs/ai/README.md`](docs/ai/README.md). Documentation is orientation, not proof;
+> verify material claims against exact code, tests, CI, configuration, and runtime evidence.
 
 ---
 
-## 👋 Titan за 60 секунд
+## 👋 Titan in 60 seconds
 
-Обычный LLM часто смешивает память, поиск, уверенность и красивую формулировку
-в один непрозрачный ответ. Titan разделяет эти полномочия:
+A bare LLM often mixes memory, retrieval, confidence, policy, and fluent wording into one
+opaque answer. Titan separates those responsibilities:
 
 ```text
-Обычный LLM
-  💬 prompt → 🤖 model → 🗣️ fluent answer
+Normal LLM
+  prompt → model → fluent answer
 
 Velantrim Titan
-  👤 query
-     → 🧠 memory
-     → 🔍 retrieval
-     → 📦 evidence
-     → ⚖️ policy / TruthGate
-     → 🧾 TRACE
-     → 🗣️ replaceable LLM voice
+  query
+    → memory
+    → retrieval
+    → admitted context / evidence structures
+    → policy / TruthGate
+    → TRACE / audit artifacts
+    → replaceable LLM voice
 ```
 
-### Простыми словами
-
-Titan похож на библиотеку, где:
-
-- 📚 библиотекарь находит записи;
-- 🧪 лаборант сохраняет источник и неопределённость;
-- 🛂 проверочный шлюз ограничивает доверенное повышение статуса;
-- 🧾 аудитор оставляет проверяемый след;
-- 🗣️ LLM объясняет отобранные сведения понятным языком.
-
-### Инженерным языком
-
-Titan — local-first memory runtime с ESM, гибридным retrieval, контролируемой
-write boundary, provenance/TRACE и feature-gated исследовательскими слоями.
-LLM может читать, извлекать и формулировать, но не получает автоматического
-права записать свой вывод в Canon.
-
-> 🧭 Нужна подробная схема? Откройте
-> **[Living System Atlas](SYSTEM_OVERVIEW.md)** и выберите маршрут:
-> простой, операторский, инженерный или аудиторский.
-
----
-
-## 🧭 Что открыть первым
-
-| Если вы… | Начните здесь |
-|---|---|
-| 🤖 AI coding agent или автоматический аудитор | [`docs/ai/README.md`](docs/ai/README.md), затем [`AGENTS.md`](AGENTS.md) |
-| 👤 впервые видите проект | [Atlas: объяснение за 30 секунд](SYSTEM_OVERVIEW.md#plain) |
-| 🛠️ запускаете свою установку | [Быстрый старт](#quick-start) и [Security](SECURITY.md) |
-| 🧑‍💻 собираетесь менять код | [Atlas: инженерные границы](SYSTEM_OVERVIEW.md#engineer) и [`AGENTS.md`](AGENTS.md) |
-| 🧠 изучаете долговременный контекст для Codex, Copilot и code review | [Project Cognition & Code Review](docs/use_cases/PROJECT_COGNITION_AND_CODE_REVIEW.md) |
-| 🔍 проверяете заявления | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) |
-| 💼 оцениваете зрелость или финансирование | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) |
-| 🧪 проектируете нагрузочные испытания | [Atlas: Architecture Assurance](SYSTEM_OVERVIEW.md#assurance) |
-| 🔬 изучаете будущие идеи | [`research/`](research/) и [Architecture Axes](research/ARCHITECTURE_AXES.md) |
-
----
-
-## 🗺️ Система одним взглядом
+The important boundary is not that Titan “knows truth.” It is that different kinds of
+claims and authority are kept separate:
 
 ```text
-┌────────────────────── 🌍 ЧЕЛОВЕК / АГЕНТ / ФАЙЛ ─────────────────────┐
-└────────────────────────────────┬──────────────────────────────────────┘
-                                 ▼
-                    🔐 API · auth · policy · egress
-                                 │
-                ┌────────────────┴────────────────┐
-                ▼                                 ▼
-        🔎 read / retrieval               ✍️ explicit write
-                │                                 │
-                ▼                                 ▼
-        📦 FactsPack + TRACE               🧠 ESM + evidence
-                │                                 │
-                ▼                                 ▼
-        🛡️ Guardian / policy               ⚖️ TruthGate / CAS
-                │                                 │
-                └──────────────┬──────────────────┘
+retrieval ≠ evidence
+admission ≠ verification
+confidence ≠ authority
+model output ≠ Canon
+TRACE membership ≠ proof of semantic use
+CI green ≠ production authorization
+```
+
+Titan is a local-first memory runtime with an explicit epistemic-state machine (ESM),
+controlled promotion/write paths, hybrid retrieval orchestration, provenance and audit
+surfaces, remote-egress policy, and feature-gated research layers. An LLM may read,
+extract, rank, summarize, or render language, but it does not automatically gain the
+right to mutate Canon.
+
+---
+
+## 🧭 What should I open first?
+
+| You are… | Start here |
+|---|---|
+| 🤖 AI coding agent / automated reviewer | [`AGENTS.md`](AGENTS.md) → [`docs/ai/README.md`](docs/ai/README.md) |
+| 👤 New to Titan | [System overview](SYSTEM_OVERVIEW.en.md#plain) |
+| 🛠️ Running your own instance | [Quick start](#quick-start) + [Security](SECURITY.md) |
+| 🧑‍💻 Changing code | [`AGENTS.md`](AGENTS.md) + [engineering boundaries](SYSTEM_OVERVIEW.en.md#engineer) |
+| 🔍 Auditing claims | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) |
+| 💼 Evaluating maturity | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) |
+| 🧠 Studying project cognition / code review | [`docs/use_cases/PROJECT_COGNITION_AND_CODE_REVIEW.md`](docs/use_cases/PROJECT_COGNITION_AND_CODE_REVIEW.md) |
+| 🔬 Reading future work | [`research/`](research/) + [`research/ARCHITECTURE_AXES.md`](research/ARCHITECTURE_AXES.md) |
+
+---
+
+## 🗺️ System at a glance
+
+```text
+┌──────────────────── HUMAN / AGENT / FILE ─────────────────────┐
+└──────────────────────────────┬──────────────────────────────────┘
                                ▼
-                     🧾 provenance · audit
+                    API · auth · policy · egress
                                │
-              ┌────────────────┴────────────────┐
-              ▼                                 ▼
-       ⚡ indexes / projections           🗣️ replaceable LLM
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+        read / retrieval                explicit write
+                │                             │
+                ▼                             ▼
+      admitted context + TRACE          ESM + evidence
+                │                             │
+                ▼                             ▼
+        Guardian / policy              TruthGate / CAS
+                │                             │
+                └──────────────┬──────────────┘
+                               ▼
+                     provenance · audit
+                               │
+                 ┌─────────────┴─────────────┐
+                 ▼                           ▼
+          derived projections          replaceable LLM
 ```
 
-Главная архитектурная граница:
+### Current read-path boundary
 
-```text
-LLM предлагает.
-Policy ограничивает полномочия.
-Проверяемая write boundary допускает изменение.
-TRACE и audit показывают, что произошло.
-```
+`core/pipeline.py::run()` is read-only with respect to canonical fact storage, ESM
+promotion, and causal-relation mutation. Standard `Validated` promotion callers route
+through the reviewed `PromotionGateway` path. Separate mutation families such as
+invalidation, erasure, archival/redaction, relation lifecycle, and compound supersession
+retain their own explicit contracts; they are not silently treated as one global
+promotion function.
+
+### TRACE / evidence-use boundary
+
+Titan can directly observe stages such as retrieved/selected context, serialization into
+the answer prompt, and provider-bound message packing. That does **not** prove that the
+model semantically used a specific item or that the item supported the final answer.
+Those stronger U/A claims require separate attribution evidence.
 
 ---
 
-## 🧾 Честная легенда статусов
+## 🧾 Status legend
 
-| Метка | Что можно утверждать |
+| Label | What it means |
 |---|---|
-| 🟢 **default path** | относится к базовому рабочему пути |
-| ✅ **main / tested** | код и проверяющие тесты находятся в `main` |
-| 🟡 **available / gated** | код существует, включение зависит от ENV/профиля |
-| 🚧 **open PR** | ещё не является частью `main` |
-| 🔬 **research / proposed** | идея описана, runtime authority отсутствует |
-| ⚠️ **known limitation** | ограничение признано и не скрывается |
-| 📡 **runtime observed** | подтверждено конкретным запущенным экземпляром |
+| 🟢 **default path** | part of the baseline working path |
+| ✅ **main / tested** | implementation and relevant tests are in `main` |
+| 🟡 **available / gated** | implementation exists but depends on profile / ENV / dependency |
+| 🚧 **open PR** | proposed change, not yet part of `main` |
+| 🔬 **research / proposed** | research or design only; no runtime authority |
+| ⚠️ **known limitation** | acknowledged gap or bounded claim |
+| 📡 **runtime observed** | confirmed on a concrete running instance |
 
 ```text
-📄 файл есть
-   ≠ 🧪 контракт доказан тестом
-   ≠ 🎛️ функция включена
-   ≠ 🔗 функция подключена к нужному пути
-   ≠ 📡 она наблюдалась в этом runtime
+file exists
+  ≠ contract is test-proven
+  ≠ feature is wired
+  ≠ feature is enabled
+  ≠ behavior was observed in this runtime
 ```
 
-Актуальное состояние конкретной установки проверяется через конфигурацию,
-`/health`, `/layers/status` и `/titan/status`, а не по одному README.
+For a concrete installation, inspect configuration plus `/health`, `/layers/status`, and
+`/titan/status`; do not infer live activation from this README alone.
 
 ---
 
-## ✅ Что находится в текущем инженерном основании
+## ✅ Current engineering foundation
 
-| Область | Роль | Основные файлы |
+| Area | Current role | Primary files |
 |---|---|---|
-| 🧠 Memory + ESM | факты, 8 эпистемических состояний, temporal state | `core/memory.py` |
-| ⚖️ Trust boundary | evidence/confidence policy и write admission | `core/truth_gate.py`, `core/write_gate.py`, `core/policy_kernel.py` |
-| 🔍 Retrieval | BM25, dense/graph signals и candidate narrowing | `core/hybrid_retriever.py`, `core/ngram_index.py` |
-| 🧾 Provenance | источник, append-only след, audit artifacts | `core/provenance_chain.py`, `core/audit_chain.py` |
+| 🧠 Memory + ESM | facts, 8 epistemic states, temporal state | `core/memory.py` |
+| ⚖️ Trust / write boundary | evidence/confidence policy and controlled admission | `core/truth_gate.py`, `core/write_gate.py`, `core/promotion_gateway.py`, `core/policy_kernel.py` |
+| 🔍 Retrieval | lexical retrieval plus optional dense/graph signals and candidate narrowing | `core/hybrid_retriever.py`, `core/ngram_index.py` |
+| 🧾 Provenance / audit | source lineage, append-only/tamper-evident records, audit artifacts | `core/provenance_chain.py`, `core/audit_chain.py` |
 | 🛡️ Integrity | health states, snapshots, executable invariants | `core/meta_supervisor.py`, `core/immutable_core_scheduler.py`, `tests/test_invariants.py` |
-| 🔐 Remote boundary | policy lease для удалённого провайдера | `core/remote_egress.py` |
-| 📄 Synaptic foundation | source-linked capsules и reader contract | `core/knowledge_capsule.py`, `core/semantic_reader.py` |
-| 🌐 API + Console | FastAPI surface и browser UI | `server.py`, `api/`, `static/console/` |
+| 🔐 Remote boundary | fail-closed capability lease + epistemic prompt guard | `core/remote_egress.py` |
+| 📄 Synaptic foundation | source-linked capsules and reader contracts | `core/knowledge_capsule.py`, `core/semantic_reader.py` |
+| 🌐 API + Console | FastAPI surface and browser UI | `server.py`, `api/`, `static/console/` |
 
-> ⚠️ Наличие компонента в таблице не означает, что он включён каждым профилем
-> или что все callers уже унифицированы под одной policy. Границы и открытый
-> долг перечислены в [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
+### Retrieval precision
 
-<details>
-<summary><strong>🧠 Расширенные когнитивные и операционные модули</strong></summary>
+Titan's hybrid retriever supports BM25/lexical retrieval, optional dense embeddings,
+optional graph signals, and RRF-style combination. These are not equivalent to saying
+every installation executes BM25 + dense + graph on every request. The base package has
+no mandatory third-party dependencies; dense and some retrieval features require optional
+extras/configuration and degrade to narrower paths when unavailable.
 
-Многие верхние слои существуют как feature-gated research-grade код:
+### MCP transport
 
-| Область | Примеры |
-|---|---|
-| 🧭 Attention / focus | `GoalFrame`, `AttentionRouter`, `ComputeController` |
-| 🕸️ Causal / graph | causal retrieval, graph analysis, reasoning bank |
-| 🌱 Adaptive memory | decay, reconsolidation, salience, concept emergence |
-| 🛡️ Response controls | output faithfulness, response guardian, circuit breaker |
-| 🧬 Identity / welfare | identity traceability, welfare MVP, Innenwelt/Umwelt |
-| 🧪 Research UI | separate Research Mode and browser research app |
-
-Перед эксплуатационным заявлением проверяйте `core/feature_config.py`,
-`/layers/status`, `/titan/status` и реальные метрики.
-
-</details>
+`core/tool_registry.py` and `core/mcp_transport.py` contain a bounded capability-based
+JSON-RPC transport implementation with capability ceilings and bounded idempotency
+semantics. It is **not server-wired by default**, not runtime-enabled merely because the
+module exists, and carries no production authorization by itself.
 
 ---
 
 ## 📄 Synaptic Exo-Cortex
 
-Synaptic profile превращает длинные источники в проверяемые смысловые капсулы:
+Current bounded status:
 
 ```text
-📄 Raw evidence
-   → ✅ SemanticReader
-   → ✅ KnowledgeCapsule + exact SourceSpan
-   → ✅ LLM Reader Adapter        (main/tested; нет server `/query` answer-path caller; standalone document-reading CLI использует `scripts/read_document.py`)
-   → ✅ Working Memory Gate       (main/tested; подключён только внутри shadow-цепочки)
-   → ✅ ContextPack               (main/tested; подключён только внутри shadow-цепочки)
-   → ✅ shadow evaluation         (main/tested; feature-gated; только qualifying POST /query responses; без answer authority)
-   → 👤 evidence-backed answer   (пока НЕ authorized: LEGACY_QUERY остаётся единственным authoritative answer path)
+Raw evidence
+  → ✅ SemanticReader
+  → ✅ KnowledgeCapsule + exact SourceSpan
+  → ✅ LLM Reader Adapter
+       main/tested; no server /query answer-path caller;
+       standalone document-reading CLI uses scripts/read_document.py
+  → ✅ Working Memory Gate
+       main/tested; shadow chain only
+  → ✅ ContextPack
+       main/tested; shadow chain only
+  → ✅ shadow evaluation
+       main/tested; feature-gated; qualifying POST /query responses only;
+       no answer authority
+  → user answer
+       active Synaptic answer authority is NOT authorized;
+       LEGACY_QUERY remains the authoritative answer path
 ```
 
-Каждый ✅ здесь означает «реализовано и покрыто тестами в `main`», а не «включено по умолчанию» или «обладает authority над ответом» — см. легенду и `≠`-цепочку выше. Shadow middleware подключён к request path, но сама shadow processing запускается только при `ENABLE_SYNAPTIC_SHADOW=true` и только для qualifying `POST /query` responses (HTTP 200 + JSON). Она не рендерит ответ, не пишет в Canon/ESM и при ошибке fail-open не ломает legacy response.
+Each ✅ means implemented/tested in `main`; it does **not** mean enabled by default,
+production-authorized, or authoritative over answers. The shadow path does not write to
+Canon/ESM and is intentionally separate from active answer authority.
 
-Ключевые правила:
+Key invariants:
 
-- точные source spans и SHA-256;
-- `extraction_confidence` не смешивается с `truth_confidence`;
-- capsule — proposal, не Canon;
-- обычный query path должен стать read-only относительно Canon/ESM;
-- модель остаётся provider-neutral и заменяемой;
-- active integration допускается только после shadow evaluation.
+- exact source spans and SHA-256 provenance;
+- `extraction_confidence` ≠ `truth_confidence`;
+- capsule/proposal ≠ Canon;
+- ordinary query/retrieval is read-only with respect to Canon/ESM mutation;
+- model/provider layer remains replaceable;
+- shadow evidence does not authorize active integration.
 
-📘 План:
-[`docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md`](docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md)
-
-### 🗂️ Working Desk
-
-Working Desk сохранён в **Research Mode** как будущая task-aware композиция.
-Он не является отдельным runtime-ядром и не получает власть над Canon.
-
-```text
-✅ main/tested, вне server /query answer path → LLM Reader Adapter (standalone document-reading CLI)
-✅ main/tested, foundation                   → KnowledgeCapsule · SemanticReader · remote egress
-✅ main/tested, shadow-only                  → Working Memory Gate · ContextPack · shadow path
-🔬 research                                  → Task Registry · Completion/Stagnation · Task Archive
-```
-
-📘 Registry:
-[`research/WORKING_DESK_RESEARCH_MODE.md`](research/WORKING_DESK_RESEARCH_MODE.md)
+Plan: [`docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md`](docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md)
 
 ---
 
-## 🛡️ Что проект не обещает
+## 🛡️ What Titan does not promise
 
-- ❌ нулевые галлюцинации;
-- ❌ абсолютную истинность любого источника;
-- ❌ сертифицированную GDPR/compliance-программу;
-- ❌ независимый security audit, которого ещё не было;
-- ❌ production-ready multi-user SaaS «из коробки»;
-- ❌ сознание или субъективный опыт;
-- ❌ что каждый модуль в `core/` включён по умолчанию;
-- ❌ что open PR или research-документ уже стали runtime.
+- ❌ zero hallucinations;
+- ❌ absolute truth of any source;
+- ❌ that retrieval or ranking proves evidence authority;
+- ❌ certified GDPR/compliance status;
+- ❌ an independent security audit that has not happened;
+- ❌ drop-in production-ready multi-user SaaS;
+- ❌ consciousness or subjective experience;
+- ❌ that every `core/` module is enabled by default;
+- ❌ that an open PR or research document is already runtime behavior;
+- ❌ that TRACE proves internal model use or causal answer support.
 
-Известные P0/P1/P2-риски:
-[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
+Production-hardening risks and P0/P1/P2 are tracked in
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md). The separate bounded **V1
+productization** ledger may report V1 P0/P1 = 0; that does **not** mean production-
+hardening P0/P1 = 0 or production authorization.
 
 ---
 
-## 🖥️ Два режима использования
+## 🖥️ Two usage modes
 
 ```text
-┌─ 🖥️ Локальный runtime ────────────────────────────────────────────┐
-│ FastAPI + local SQLite + optional graph/LLM providers             │
-│ Полный API, policy boundaries, server-side memory                 │
-│ http://127.0.0.1:8755/console/                                    │
-└────────────────────────────────────────────────────────────────────┘
+Local server runtime
+  FastAPI + local SQLite + optional graph/LLM providers
+  full server-side API and policy boundaries
 
-┌─ 📱 Browser PWA ───────────────────────────────────────────────────┐
-│ IndexedDB + browser console + optional direct provider API         │
-│ Отдельный browser-mode; не равен полному server runtime            │
-│ Можно установить на Android/iOS/desktop                            │
-└────────────────────────────────────────────────────────────────────┘
+Browser PWA
+  IndexedDB/browser console + optional direct provider API
+  separate browser mode; not equivalent to the full server runtime
 ```
 
-| Страница | Ссылка |
+| Surface | Link |
 |---|---|
-| 🌐 Портал | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/> |
+| 🌐 Portal | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/> |
 | 💬 Console PWA | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/> |
 | 🔬 Research PWA | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-app.html> |
 | 🗺️ Roadmap | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-roadmap.html> |
-
-> 📱 **Android:** Chrome → ⋮ → «Установить приложение».
->
-> 🍎 **iPhone/iPad:** «Поделиться» → «На экран Домой».
-
-Если GitHub Pages ещё не включён:
-[`docs/GITHUB_PAGES_ENABLE.ru.md`](docs/GITHUB_PAGES_ENABLE.ru.md).
 
 ---
 
 <a id="quick-start"></a>
 
-## 🚀 Быстрый старт
+## 🚀 Quick start
 
-### Вариант A — hardened deployment profile
+### Hardened deployment profile
 
 ```bash
 git clone https://github.com/velantrian/Velantrim-ExoCortex-Titan.git
 cd Velantrim-ExoCortex-Titan
-
 cp .env.prod.example .env.prod
-# Укажите в .env.prod безопасный VELANTRIM_API_KEY.
-
+# Set a strong VELANTRIM_API_KEY in .env.prod.
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
 
-Hardened-профиль по умолчанию публикует API только на loopback и fail-closed
-отключает research/autonomous layers. Перед эксплуатацией прочитайте
-[`docs/operations/hardened-production-profile.md`](docs/operations/hardened-production-profile.md):
-это application/container hardening, а не обещание host-level firewall/TLS/WAF.
+The hardened profile binds the API to loopback by default and pins research/autonomous
+layers off. Read
+[`docs/operations/hardened-production-profile.md`](docs/operations/hardened-production-profile.md)
+before deployment. This is application/container hardening, not a claim of host-level
+firewall, TLS, WAF, compliance, or production authorization.
 
-После запуска проверьте:
+Check:
 
 ```text
 http://127.0.0.1:8000/health
 ```
 
-### Вариант A2 — compatibility / research Compose
+### Compatibility / research Compose
 
 ```bash
 cp .env.example .env
-# Укажите VELANTRIM_API_KEY.
+# Set VELANTRIM_API_KEY.
 docker compose up -d
 ```
 
-`docker-compose.yml` сохраняет историческое research/compatibility-поведение: он
-явно включает несколько cognitive/research layers и широко публикует порт 8000.
-Поэтому это **не** hardened production profile.
+`docker-compose.yml` intentionally preserves compatibility/research behavior and enables
+several research/cognitive layers. It is **not** the hardened production profile.
 
-### Вариант B — локальная разработка
+### Local development
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate                  # Windows: .venv\Scripts\activate
-
 python -m pip install -e ".[server,dev]"
 cp .env.example .env
 # VELANTRIM_API_KEY=...
-
 uvicorn server:app --port 8000 --reload
 ```
 
-Проверка:
+Verification baseline:
 
 ```bash
 ruff check core/ --output-format=github
@@ -333,124 +313,52 @@ mypy core/ --show-error-codes
 python -m pytest tests/ -v --tb=short
 ```
 
-### Локальная web console
+---
 
-```powershell
-cd "C:\path\to\Velantrim-ExoCortex-Titan"
-.\scripts\start_console.ps1
-```
+## 📚 Documentation
 
-Откройте:
+| Document | Purpose |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) 🤖 | formal entry point and mandatory rules for coding agents |
+| [`docs/ai/README.md`](docs/ai/README.md) 🧭 | AI context routing and minimum-reading paths |
+| [`SYSTEM_OVERVIEW.en.md`](SYSTEM_OVERVIEW.en.md) 🗺️ | current English system tour |
+| [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) 🇷🇺 | Russian living system atlas |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | maturity, known risks, production-hardening P0/P1/P2 |
+| [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | code/test map for independent review |
+| [`SECURITY.md`](SECURITY.md) 🔒 | threat model, auth, deployment boundaries |
+| [`docs/TRUTH_AND_RINGZERO_CANON.en.md`](docs/TRUTH_AND_RINGZERO_CANON.en.md) 🏛️ | Truth Engine + Ring Zero normative specification |
+| [`research/`](research/) 🔬 | proposed/research work; not runtime authority |
+
+Historical V8.x material remains in [`CHANGELOG.md`](CHANGELOG.md) and
+`docs/archive/legacy/` unless explicitly re-adopted by a current contract.
+
+---
+
+## 🌐 Language strategy
+
+The repository landing page is English by default:
 
 ```text
-http://127.0.0.1:8755/console/
+README.md       English canonical landing README
+README.ru.md    Russian companion
+README.en.md    compatibility pointer to README.md
 ```
 
-Обзор:
-[`docs/CONSOLE_OVERVIEW.ru.md`](docs/CONSOLE_OVERVIEW.ru.md).
-
-### Feature flags
-
-Пример явного включения отдельных исследовательских слоёв:
-
-```env
-ENABLE_VELUM=1
-ENABLE_ETIR=1
-ENABLE_L45=1
-ENABLE_L6_WELFARE=1
-ENABLE_EVENT_BUS=1
-```
-
-Не включайте набор флагов вслепую. Сначала проверьте compute profile,
-зависимости, ограничения и ожидаемое поведение деградации.
-
----
-
-## 🧪 Как проект проверяет себя
+The architecture tour remains available in both languages:
 
 ```text
-🧹 Ruff
-   + 🧷 mypy
-   + 🧪 full pytest
-   + 🔒 executable invariants
-   + 🐳 Docker checks
-   = CI evidence, но не замена runtime-наблюдению
+SYSTEM_OVERVIEW.en.md   English
+SYSTEM_OVERVIEW.md      Russian
 ```
 
-Текущий датированный CI/release snapshot и его ограничения:
-[`docs/evidence/release-evidence-2026-08-14.md`](docs/evidence/release-evidence-2026-08-14.md).
-
-Для системной жизнеспособности нужен более широкий цикл:
-
-```text
-📐 capacity/failure model
-   → 🧬 deterministic synthetic load
-   → 💥 fault injection
-   → 🕰️ soak tests
-   → 📡 p50/p95/p99 + storage debt
-   → 🔁 correction
-```
-
-Подробно:
-[Architecture Assurance в Atlas](SYSTEM_OVERVIEW.md#assurance).
-
 ---
 
-## 📚 Документация
-
-### Начать отсюда
-
-| Документ | Назначение |
-|---|---|
-| [`docs/ai/README.md`](docs/ai/README.md) 🤖 | обязательная навигация, текущий контекст и порядок чтения для AI-агентов |
-| [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) 🗺️ | многоуровневая экскурсия: plain ↔ engineer ↔ auditor |
-| [`docs/use_cases/README.md`](docs/use_cases/README.md) 🧭 | подробные сценарии применения без перегрузки корневого README |
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | зрелость, реальные риски, P0/P1/P2 |
-| [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | карта файлов и проверок для аудитора |
-| [`SECURITY.md`](SECURITY.md) 🔒 | threat model, auth, disclosure, ограничения |
-| [`docs/evidence/release-evidence-2026-08-14.md`](docs/evidence/release-evidence-2026-08-14.md) 🧾 | датированный CI/release evidence snapshot и ограничения |
-| [`AGENTS.md`](AGENTS.md) 🤖 | обязательные правила для coding agents |
-
-### Канон и архитектура
-
-| Документ | Назначение |
-|---|---|
-| [`docs/TRUTH_AND_RINGZERO_CANON.ru.md`](docs/TRUTH_AND_RINGZERO_CANON.ru.md) 🏛️ | Truth Engine + Ring Zero |
-| [`docs/FRACTAL_MEMORY_CANON.ru.md`](docs/FRACTAL_MEMORY_CANON.ru.md) 🌳 | Fractal Memory L0–L3 |
-| [`docs/ATTENTION_NOETIC_ORCHESTRATION.ru.md`](docs/ATTENTION_NOETIC_ORCHESTRATION.ru.md) 🧭 | GoalFrame, AttentionRouter, ComputeController |
-| [`research/ARCHITECTURE_AXES.md`](research/ARCHITECTURE_AXES.md) 🧩 | четыре ортогональные оси |
-| [`docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md`](docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md) 📄 | executable Synaptic roadmap |
-
-### Эксперименты
-
-| Документ | Назначение |
-|---|---|
-| [`docs/RESEARCH_MODE.ru.md`](docs/RESEARCH_MODE.ru.md) 🔬 | отдельный experimental-контур |
-| [`research/WORKING_DESK_RESEARCH_MODE.md`](research/WORKING_DESK_RESEARCH_MODE.md) 🗂️ | Working Desk без runtime authority |
-| [`research/FUTURE_COMPONENTS.md`](research/FUTURE_COMPONENTS.md) 🔭 | будущие компоненты |
-| [`research/DEPRECATIONS.md`](research/DEPRECATIONS.md) 📋 | журнал устаревших технологий |
-
-История V8.x и прежние формулировки сохранены в
-[`CHANGELOG.md`](CHANGELOG.md) и `docs/archive/legacy/`.
-
----
-
-## 🌿 Философия без подмены инженерии
-
-- [`docs/PHILOSOPHY.md`](docs/PHILOSOPHY.md) — человеческая мотивация;
-- [`docs/PHILOSOPHY_SPEC.md`](docs/PHILOSOPHY_SPEC.md) — границы для AI-агентов.
-
-Философия объясняет, **зачем** строится система. Код, тесты, метрики и
-инварианты показывают, **что она действительно делает**.
-
----
-
-## 🧭 Версия
+## 🧭 Version
 
 **<!-- SYNC:VERSION -->v9.0.0<!-- /SYNC:VERSION --> — VELANTRIM TITAN 9.0**
 
-Единый источник версии: `pyproject.toml` / `core.__version__`.
-История: [`CHANGELOG.md`](CHANGELOG.md).
+Version source: `pyproject.toml` / `core.__version__`.
+History: [`CHANGELOG.md`](CHANGELOG.md).
 
-> **Titan понимает и предлагает. Граница доверия проверяет и допускает.
-> Kernel сохраняет инварианты. LLM остаётся заменяемым.**
+> **Titan understands and proposes. Trust boundaries verify and admit.
+> The kernel preserves invariants. The LLM remains replaceable.**

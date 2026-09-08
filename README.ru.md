@@ -1,0 +1,446 @@
+# 🔱 VELANTRIM TITAN 9.0
+
+[English](README.md) · **Русский**
+
+> **Local-first проверяемая память для AI-агентов:** evidence-gated знания,
+> явные эпистемические состояния, provenance, TRACE и заменяемый языковой слой.
+>
+> **Зрелость:** research-grade prototype, движущийся к production hardening.
+
+[🤖 AI-агент: начните с AGENTS.md](AGENTS.md) ·
+[🗺️ Экскурсия по системе](SYSTEM_OVERVIEW.md) ·
+[📊 Честный статус](docs/PROJECT_STATUS.md) ·
+[🔍 Для аудитора](docs/REVIEWER_README.md) ·
+[🔒 Security](SECURITY.md) ·
+[🏛️ Канон истины](docs/TRUTH_AND_RINGZERO_CANON.ru.md)
+
+> 🤖 **AI coding agent или автоматический аудитор:** формальная точка входа —
+> [`AGENTS.md`](AGENTS.md). Затем используйте маршрутизацию контекста из
+> [`docs/ai/README.md`](docs/ai/README.md). Документация — это карта, а не proof:
+> существенные claims проверяйте по exact code/tests/CI/config/runtime evidence.
+
+---
+
+## 👋 Titan за 60 секунд
+
+Обычный LLM часто смешивает память, поиск, уверенность и красивую формулировку
+в один непрозрачный ответ. Titan разделяет эти полномочия:
+
+```text
+Обычный LLM
+  💬 prompt → 🤖 model → 🗣️ fluent answer
+
+Velantrim Titan
+  👤 query
+     → 🧠 memory
+     → 🔍 retrieval
+     → 📦 admitted context / evidence structures
+     → ⚖️ policy / TruthGate
+     → 🧾 TRACE / audit artifacts
+     → 🗣️ replaceable LLM voice
+```
+
+### Простыми словами
+
+Titan похож на библиотеку, где:
+
+- 📚 библиотекарь находит записи;
+- 🧪 лаборант сохраняет источник и неопределённость;
+- 🛂 проверочный шлюз ограничивает доверенное повышение статуса;
+- 🧾 аудитор оставляет проверяемый след;
+- 🗣️ LLM объясняет отобранные сведения понятным языком.
+
+### Инженерным языком
+
+Titan — local-first memory runtime с ESM, гибридным retrieval, контролируемой
+write boundary, provenance/TRACE и feature-gated исследовательскими слоями.
+LLM может читать, извлекать и формулировать, но не получает автоматического
+права записать свой вывод в Canon.
+
+Ключевые границы:
+
+```text
+retrieval ≠ evidence
+admission ≠ verification
+confidence ≠ authority
+model output ≠ Canon
+TRACE membership ≠ semantic use ≠ answer support
+CI green ≠ production authorization
+```
+
+> 🧭 Нужна подробная схема? Откройте
+> **[Living System Atlas](SYSTEM_OVERVIEW.md)** и выберите маршрут:
+> простой, операторский, инженерный или аудиторский.
+
+---
+
+## 🧭 Что открыть первым
+
+| Если вы… | Начните здесь |
+|---|---|
+| 🤖 AI coding agent или автоматический аудитор | [`AGENTS.md`](AGENTS.md), затем [`docs/ai/README.md`](docs/ai/README.md) |
+| 👤 впервые видите проект | [Atlas: объяснение за 30 секунд](SYSTEM_OVERVIEW.md#plain) |
+| 🛠️ запускаете свою установку | [Быстрый старт](#quick-start) и [Security](SECURITY.md) |
+| 🧑‍💻 собираетесь менять код | [`AGENTS.md`](AGENTS.md) и [Atlas: инженерные границы](SYSTEM_OVERVIEW.md#engineer) |
+| 🧠 изучаете долговременный контекст для Codex, Copilot и code review | [Project Cognition & Code Review](docs/use_cases/PROJECT_COGNITION_AND_CODE_REVIEW.md) |
+| 🔍 проверяете заявления | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) |
+| 💼 оцениваете зрелость или финансирование | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) |
+| 🧪 проектируете нагрузочные испытания | [Atlas: Architecture Assurance](SYSTEM_OVERVIEW.md#assurance) |
+| 🔬 изучаете будущие идеи | [`research/`](research/) и [Architecture Axes](research/ARCHITECTURE_AXES.md) |
+
+---
+
+## 🗺️ Система одним взглядом
+
+```text
+┌────────────────────── 🌍 ЧЕЛОВЕК / АГЕНТ / ФАЙЛ ─────────────────────┐
+└────────────────────────────────┬──────────────────────────────────────┘
+                                 ▼
+                    🔐 API · auth · policy · egress
+                                 │
+                ┌────────────────┴────────────────┐
+                ▼                                 ▼
+        🔎 read / retrieval               ✍️ explicit write
+                │                                 │
+                ▼                                 ▼
+        📦 admitted context + TRACE        🧠 ESM + evidence
+                │                                 │
+                ▼                                 ▼
+        🛡️ Guardian / policy               ⚖️ TruthGate / CAS
+                │                                 │
+                └──────────────┬──────────────────┘
+                               ▼
+                     🧾 provenance · audit
+                               │
+              ┌────────────────┴────────────────┐
+              ▼                                 ▼
+       ⚡ indexes / projections           🗣️ replaceable LLM
+```
+
+Главная архитектурная граница:
+
+```text
+LLM предлагает.
+Policy ограничивает полномочия.
+Проверяемая write boundary допускает изменение.
+TRACE и audit показывают записываемые системой этапы и события,
+но сами по себе не доказывают внутреннее semantic use моделью или answer support.
+```
+
+---
+
+## 🧾 Честная легенда статусов
+
+| Метка | Что можно утверждать |
+|---|---|
+| 🟢 **default path** | относится к базовому рабочему пути |
+| ✅ **main / tested** | код и проверяющие тесты находятся в `main` |
+| 🟡 **available / gated** | код существует, включение зависит от ENV/профиля/зависимостей |
+| 🚧 **open PR** | ещё не является частью `main` |
+| 🔬 **research / proposed** | идея описана, runtime authority отсутствует |
+| ⚠️ **known limitation** | ограничение признано и не скрывается |
+| 📡 **runtime observed** | подтверждено конкретным запущенным экземпляром |
+
+```text
+📄 файл есть
+   ≠ 🧪 контракт доказан тестом
+   ≠ 🔗 функция подключена к нужному пути
+   ≠ 🎛️ функция включена
+   ≠ 📡 она наблюдалась в этом runtime
+```
+
+Актуальное состояние конкретной установки проверяется через конфигурацию,
+`/health`, `/layers/status` и `/titan/status`, а не по одному README.
+
+---
+
+## ✅ Что находится в текущем инженерном основании
+
+| Область | Роль | Основные файлы |
+|---|---|---|
+| 🧠 Memory + ESM | факты, 8 эпистемических состояний, temporal state | `core/memory.py` |
+| ⚖️ Trust boundary | evidence/confidence policy и write admission | `core/truth_gate.py`, `core/write_gate.py`, `core/promotion_gateway.py`, `core/policy_kernel.py` |
+| 🔍 Retrieval | lexical path + optional dense/graph signals и candidate narrowing | `core/hybrid_retriever.py`, `core/ngram_index.py` |
+| 🧾 Provenance | источник, append-only след, audit artifacts | `core/provenance_chain.py`, `core/audit_chain.py` |
+| 🛡️ Integrity | health states, snapshots, executable invariants | `core/meta_supervisor.py`, `core/immutable_core_scheduler.py`, `tests/test_invariants.py` |
+| 🔐 Remote boundary | policy lease + epistemic prompt guard для удалённого провайдера | `core/remote_egress.py` |
+| 📄 Synaptic foundation | source-linked capsules и reader contract | `core/knowledge_capsule.py`, `core/semantic_reader.py` |
+| 🌐 API + Console | FastAPI surface и browser UI | `server.py`, `api/`, `static/console/` |
+
+> ⚠️ `HybridRetriever` поддерживает BM25/lexical, dense embeddings, graph signals и
+> fusion, но это не означает, что каждая установка выполняет BM25 + dense + graph
+> на каждом запросе. Dense/часть retrieval-функций зависят от optional extras и
+> конфигурации; при недоступности система деградирует к более узким путям.
+
+<details>
+<summary><strong>🧠 Расширенные когнитивные и операционные модули</strong></summary>
+
+Многие верхние слои существуют как feature-gated research-grade код:
+
+| Область | Примеры |
+|---|---|
+| 🧭 Attention / focus | `GoalFrame`, `AttentionRouter`, `ComputeController` |
+| 🕸️ Causal / graph | causal retrieval, graph analysis, reasoning bank |
+| 🌱 Adaptive memory | decay, reconsolidation, salience, concept emergence |
+| 🛡️ Response controls | output faithfulness, response guardian, circuit breaker |
+| 🧬 Identity / welfare | identity traceability, welfare MVP, Innenwelt/Umwelt |
+| 🧪 Research UI | separate Research Mode and browser research app |
+
+Перед эксплуатационным заявлением проверяйте `core/feature_config.py`,
+`/layers/status`, `/titan/status` и реальные метрики.
+
+</details>
+
+### 🔌 MCP transport
+
+`core/tool_registry.py` и `core/mcp_transport.py` содержат bounded capability-based
+JSON-RPC transport с capability ceilings и ограниченной idempotency-семантикой.
+Это **IMPLEMENTED_BOUNDED**, но не означает server wiring, default enablement,
+runtime authority или production authorization.
+
+---
+
+## 📄 Synaptic Exo-Cortex
+
+Synaptic profile превращает длинные источники в проверяемые смысловые капсулы:
+
+```text
+📄 Raw evidence
+   → ✅ SemanticReader
+   → ✅ KnowledgeCapsule + exact SourceSpan
+   → ✅ LLM Reader Adapter        (main/tested; нет server `/query` answer-path caller; standalone document-reading CLI использует `scripts/read_document.py`)
+   → ✅ Working Memory Gate       (main/tested; подключён только внутри shadow-цепочки)
+   → ✅ ContextPack               (main/tested; подключён только внутри shadow-цепочки)
+   → ✅ shadow evaluation         (main/tested; feature-gated; только qualifying POST /query responses; без answer authority)
+   → 👤 evidence-backed answer   (пока НЕ authorized: LEGACY_QUERY остаётся единственным authoritative answer path)
+```
+
+Каждый ✅ здесь означает «реализовано и покрыто тестами в `main`», а не «включено по умолчанию» или «обладает authority над ответом». Shadow middleware подключён к request path, но сама shadow processing запускается только при `ENABLE_SYNAPTIC_SHADOW=true` и только для qualifying `POST /query` responses (HTTP 200 + JSON). Она не рендерит ответ, не пишет в Canon/ESM и при ошибке fail-open не ломает legacy response.
+
+Ключевые правила:
+
+- точные source spans и SHA-256;
+- `extraction_confidence` не смешивается с `truth_confidence`;
+- capsule — proposal, не Canon;
+- обычный `core/pipeline.py::run()` уже read-only относительно fact/ESM и causal-relation mutation;
+- модель остаётся provider-neutral и заменяемой;
+- active Synaptic integration допускается только после отдельного решения; shadow evidence не передаёт answer authority.
+
+📘 План:
+[`docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md`](docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md)
+
+### 🗂️ Working Desk
+
+Working Desk сохранён в **Research Mode** как будущая task-aware композиция.
+Он не является отдельным runtime-ядром и не получает власть над Canon.
+
+```text
+✅ main/tested, вне server /query answer path → LLM Reader Adapter (standalone document-reading CLI)
+✅ main/tested, foundation                   → KnowledgeCapsule · SemanticReader · remote egress
+✅ main/tested, shadow-only                  → Working Memory Gate · ContextPack · shadow path
+🔬 research                                  → Task Registry · Completion/Stagnation · Task Archive
+```
+
+📘 Registry:
+[`research/WORKING_DESK_RESEARCH_MODE.md`](research/WORKING_DESK_RESEARCH_MODE.md)
+
+---
+
+## 🛡️ Что проект не обещает
+
+- ❌ нулевые галлюцинации;
+- ❌ абсолютную истинность любого источника;
+- ❌ что retrieval/ranking автоматически становятся evidence authority;
+- ❌ сертифицированную GDPR/compliance-программу;
+- ❌ независимый security audit, которого ещё не было;
+- ❌ production-ready multi-user SaaS «из коробки»;
+- ❌ сознание или субъективный опыт;
+- ❌ что каждый модуль в `core/` включён по умолчанию;
+- ❌ что open PR или research-документ уже стали runtime;
+- ❌ что TRACE сам по себе доказывает внутреннее использование evidence моделью или поддержку финального ответа.
+
+Известные production-hardening P0/P1/P2-риски:
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
+
+> ⚠️ Отдельный bounded V1 productization ledger может показывать `V1 P0/P1 = 0`.
+> Это **не** означает `production-hardening P0/P1 = 0` и не является production authorization.
+
+---
+
+## 🖥️ Два режима использования
+
+```text
+┌─ 🖥️ Локальный runtime ────────────────────────────────────────────┐
+│ FastAPI + local SQLite + optional graph/LLM providers             │
+│ Полный API, policy boundaries, server-side memory                 │
+└────────────────────────────────────────────────────────────────────┘
+
+┌─ 📱 Browser PWA ───────────────────────────────────────────────────┐
+│ IndexedDB + browser console + optional direct provider API         │
+│ Отдельный browser-mode; не равен полному server runtime            │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+| Страница | Ссылка |
+|---|---|
+| 🌐 Портал | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/> |
+| 💬 Console PWA | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/> |
+| 🔬 Research PWA | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-app.html> |
+| 🗺️ Roadmap | <https://velantrian.github.io/Velantrim-ExoCortex-Titan/console/research-roadmap.html> |
+
+> 📱 **Android:** Chrome → ⋮ → «Установить приложение».
+>
+> 🍎 **iPhone/iPad:** «Поделиться» → «На экран Домой».
+
+Если GitHub Pages ещё не включён:
+[`docs/GITHUB_PAGES_ENABLE.ru.md`](docs/GITHUB_PAGES_ENABLE.ru.md).
+
+---
+
+<a id="quick-start"></a>
+
+## 🚀 Быстрый старт
+
+### Вариант A — hardened deployment profile
+
+```bash
+git clone https://github.com/velantrian/Velantrim-ExoCortex-Titan.git
+cd Velantrim-ExoCortex-Titan
+
+cp .env.prod.example .env.prod
+# Укажите в .env.prod безопасный VELANTRIM_API_KEY.
+
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+Hardened-профиль по умолчанию публикует API только на loopback и fail-closed
+отключает research/autonomous layers. Перед эксплуатацией прочитайте
+[`docs/operations/hardened-production-profile.md`](docs/operations/hardened-production-profile.md):
+это application/container hardening, а не обещание host-level firewall/TLS/WAF.
+
+После запуска проверьте:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+### Вариант A2 — compatibility / research Compose
+
+```bash
+cp .env.example .env
+# Укажите VELANTRIM_API_KEY.
+docker compose up -d
+```
+
+`docker-compose.yml` сохраняет историческое research/compatibility-поведение: он
+явно включает несколько cognitive/research layers и широко публикует порт 8000.
+Поэтому это **не** hardened production profile.
+
+### Вариант B — локальная разработка
+
+```bash
+python -m venv .venv
+source .venv/bin/activate                  # Windows: .venv\Scripts\activate
+
+python -m pip install -e ".[server,dev]"
+cp .env.example .env
+# VELANTRIM_API_KEY=...
+
+uvicorn server:app --port 8000 --reload
+```
+
+Проверка:
+
+```bash
+ruff check core/ --output-format=github
+mypy core/ --show-error-codes
+python -m pytest tests/ -v --tb=short
+```
+
+### Локальная web console
+
+```powershell
+cd "C:\path\to\Velantrim-ExoCortex-Titan"
+.\scripts\start_console.ps1
+```
+
+Откройте:
+
+```text
+http://127.0.0.1:8755/console/
+```
+
+Обзор:
+[`docs/CONSOLE_OVERVIEW.ru.md`](docs/CONSOLE_OVERVIEW.ru.md).
+
+---
+
+## 🧪 Как проект проверяет себя
+
+```text
+🧹 Ruff
+   + 🧷 mypy
+   + 🧪 full pytest
+   + 🔒 executable invariants
+   + 🐳 Docker checks
+   = CI evidence, но не замена runtime-наблюдению
+```
+
+Текущий датированный CI/release snapshot и его ограничения:
+[`docs/evidence/release-evidence-2026-08-14.md`](docs/evidence/release-evidence-2026-08-14.md).
+
+Для системной жизнеспособности нужен более широкий цикл:
+
+```text
+📐 capacity/failure model
+   → 🧬 deterministic synthetic load
+   → 💥 fault injection
+   → 🕰️ soak tests
+   → 📡 p50/p95/p99 + storage debt
+   → 🔁 correction
+```
+
+Подробно:
+[Architecture Assurance в Atlas](SYSTEM_OVERVIEW.md#assurance).
+
+---
+
+## 📚 Документация
+
+### Начать отсюда
+
+| Документ | Назначение |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) 🤖 | формальная точка входа и обязательные правила для coding agents |
+| [`docs/ai/README.md`](docs/ai/README.md) 🧭 | маршрутизация контекста и минимальный порядок чтения для AI |
+| [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) 🗺️ | многоуровневая экскурсия: plain ↔ engineer ↔ auditor |
+| [`docs/use_cases/README.md`](docs/use_cases/README.md) 🧭 | подробные сценарии применения без перегрузки корневого README |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) 📊 | зрелость, реальные production-hardening риски, P0/P1/P2 |
+| [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) 🔍 | карта файлов и проверок для аудитора |
+| [`SECURITY.md`](SECURITY.md) 🔒 | threat model, auth, disclosure, ограничения |
+| [`docs/evidence/release-evidence-2026-08-14.md`](docs/evidence/release-evidence-2026-08-14.md) 🧾 | датированный CI/release evidence snapshot и ограничения |
+
+История V8.x и прежние формулировки сохранены в
+[`CHANGELOG.md`](CHANGELOG.md) и `docs/archive/legacy/`.
+
+---
+
+## 🌿 Философия без подмены инженерии
+
+- [`docs/PHILOSOPHY.md`](docs/PHILOSOPHY.md) — человеческая мотивация;
+- [`docs/PHILOSOPHY_SPEC.md`](docs/PHILOSOPHY_SPEC.md) — границы для AI-агентов.
+
+Философия объясняет, **зачем** строится система. Код, тесты, метрики и
+инварианты показывают, **что она действительно делает**.
+
+---
+
+## 🧭 Версия
+
+**<!-- SYNC:VERSION -->v9.0.0<!-- /SYNC:VERSION --> — VELANTRIM TITAN 9.0**
+
+Единый источник версии: `pyproject.toml` / `core.__version__`.
+История: [`CHANGELOG.md`](CHANGELOG.md).
+
+> **Titan понимает и предлагает. Граница доверия проверяет и допускает.
+> Kernel сохраняет инварианты. LLM остаётся заменяемым.**

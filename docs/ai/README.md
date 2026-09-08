@@ -1,7 +1,8 @@
 # 🤖 AI Agent Context Pack
 
-This directory is the **first orientation layer** for AI coding agents, auditors,
-reviewers, and future maintainers working on Velantrim Titan.
+[`../../AGENTS.md`](../../AGENTS.md) is the **formal repository entry point** for AI coding
+agents and automated reviewers. This directory is the first **context-routing layer after
+AGENTS.md**: it tells an agent what minimum evidence to read for the task at hand.
 
 It exists to reduce blind repository-wide scanning. It is a map, not a substitute for
 inspecting current code, tests, workflows, configuration, and runtime evidence.
@@ -39,27 +40,32 @@ additional context is actually needed.
 
 ## Required reading order
 
+Do **not** recurse back into `AGENTS.md`: if you are reading this file through the normal
+agent path, the repository rules were already established there.
+
 For audits, code changes, or architecture work that need broader context, read only the
 minimum context needed, in this order:
 
-1. [`../../README.md`](../../README.md) — product purpose and public maturity claim.
-2. [`../../SYSTEM_OVERVIEW.md`](../../SYSTEM_OVERVIEW.md) — high-level architecture.
-3. [`../../AGENTS.md`](../../AGENTS.md) — mandatory rules for agents changing code.
-4. [`DOCUMENTATION_SYNC_PROTOCOL.md`](DOCUMENTATION_SYNC_PROTOCOL.md) — mandatory
+1. [`../../SYSTEM_OVERVIEW.en.md`](../../SYSTEM_OVERVIEW.en.md) — current high-level
+   architecture tour. Russian companion: [`../../SYSTEM_OVERVIEW.md`](../../SYSTEM_OVERVIEW.md).
+2. [`../../README.md`](../../README.md) — public purpose and maturity claim **only when
+   public/product framing matters**. Russian companion: [`../../README.ru.md`](../../README.ru.md).
+3. [`DOCUMENTATION_SYNC_PROTOCOL.md`](DOCUMENTATION_SYNC_PROTOCOL.md) — mandatory
    GitHub and Notion synchronization contract.
-5. [`CURRENT_STATE.md`](CURRENT_STATE.md) — verified snapshot of what is in `main`
-   and what remains only in open PRs or research documents.
-6. [`../state/project_state.json`](../state/project_state.json) — machine-readable
+4. [`CURRENT_STATE.md`](CURRENT_STATE.md) — dated verified snapshot of what was in `main`
+   and what remained only in open PRs or research documents; live GitHub overrides stale
+   remote-state fields.
+5. [`../state/project_state.json`](../state/project_state.json) — machine-readable
    SHA roles, Continuity readiness, governance state and KB preservation boundary.
-7. [`AUDIT_AND_FUTURE_WORK.md`](AUDIT_AND_FUTURE_WORK.md) — durable revalidation and
+6. [`AUDIT_AND_FUTURE_WORK.md`](AUDIT_AND_FUTURE_WORK.md) — durable revalidation and
    future-work ledger. It preserves unresolved work but **does not authorize implementation**
    or auto-select the next milestone.
-8. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
+7. [`COMPONENT_MAP.md`](COMPONENT_MAP.md) — component owners, key files, tests, and
    authority boundaries.
-9. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
-10. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
-11. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
-12. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
+8. [`KNOWN_RISKS.md`](KNOWN_RISKS.md) — unresolved engineering and governance risks.
+9. [`AUDIT_PLAYBOOK.md`](AUDIT_PLAYBOOK.md) — how to audit without exhausting context.
+10. [`WORK_LOG.md`](WORK_LOG.md) — recent significant work, decisions, and hand-offs.
+11. [`NOTION_HANDOFF.md`](NOTION_HANDOFF.md) — structured synchronization queue when
     the current actor cannot access Notion.
 
 Before selecting future work, re-resolve live GitHub and reconcile the relevant ledger
@@ -82,11 +88,29 @@ When sources disagree, use this order:
 `COLLAB_JOURNAL.md`, old audits, and `docs/archive/` are valuable history, but they are
 not automatically current truth.
 
+## Required status language
+
+For material components keep these claims separate:
+
+```text
+proposed ≠ implemented ≠ tested ≠ wired ≠ enabled ≠ observed
+```
+
+Also preserve these evidence/authority boundaries:
+
+```text
+retrieval ≠ evidence
+admission ≠ verification
+TRACE membership ≠ semantic use U ≠ answer support A
+model output ≠ Canon
+CI green ≠ production authorization
+```
+
 ## SHA role rule
 
 Do not call the latest implementation-bearing merge the current repository head when a
 later documentation-only commit exists. Use the explicit fields from
-`docs/state/project_state.json`:
+`docs/state/project_state.json` where their governed semantics matter:
 
 ```text
 repository_head_sha_at_verification
@@ -156,9 +180,10 @@ A missing connector is `HANDOFF_REQUIRED`, not a generic blocker.
 Do not load the entire repository or every historical audit by default. Prefer:
 
 ```text
-orientation pack
+AGENTS.md
+→ context router
 → affected component map
-→ current diff / callers
+→ exact code/diff/callers
 → focused tests and CI
 → wider search only when evidence demands it
 ```

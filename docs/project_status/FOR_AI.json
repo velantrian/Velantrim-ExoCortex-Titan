@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "document_role": "AI_PROJECT_STATUS_OVERVIEW",
   "audience": "AI_AGENT",
   "canonicality": {
@@ -10,14 +10,14 @@
     "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
   },
   "current_verification": {
-    "date": "2026-09-06",
+    "date": "2026-09-08",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "verified_main_sha": "635d0d6c725db0c7a7df8cfb3ce059c0500a418f",
-    "notion_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
+    "audited_base_sha": "70bc34fecdcf0bae15bc2264445e31b87b79bf08",
+    "audited_base_role": "DATED_DOCUMENTATION_RECONCILIATION_BASE_NOT_EVERGREEN_REMOTE_HEAD",
     "runtime_authority": false,
     "production_authorized": false,
     "operator_go": false,
-    "live_state_rule": "This is a dated main checkpoint; GitHub live state overrides it for later main, PR, issue, check, review, and head lifecycle. Active open PRs are intentionally not mirrored here.",
+    "live_state_rule": "Re-query GitHub for any later main, PR, issue, check, review, or head lifecycle. Active open PRs are intentionally not mirrored as evergreen state.",
     "federated_role": {
       "titan": ["orchestration", "execution", "providers_models", "tools", "retrieval", "integration_host"],
       "crystal": ["trusted_evidence", "provenance", "admission", "bounded_canon_authority"]
@@ -27,30 +27,21 @@
       "f2_sequence": "MERGED_THROUGH_PR_436_BOUNDED_REOPEN_CAPABILITIES_WITHOUT_AUTOMATIC_POLICY_OR_U_A_PROOF",
       "f3_sequence": "MERGED_PRS_437_TO_440_OWNER_LOCAL_STOP_BASIS_EVIDENCE_WITHOUT_UNIVERSAL_STOP_ONTOLOGY",
       "f2_hidden_exception_s_to_t": "MERGED_PR_445_TEST_BIND_ONLY",
-      "orientation_lifecycle_reconcile": "2026-09-06_DOCS_ONLY_NO_AUTHORITY_CHANGE",
       "issue_347_349": "CLOSED_MERGED_BOUNDED_FRESH_STORE_BOOTSTRAP",
       "issue_355": "MERGED_CONTRACT_ONLY_UNWIRED",
-      "issue_432": "OPEN_DO_NOT_INFER_CLOSURE_FROM_435_436_TITLES",
-      "mcp_gateway_transport": "PRESENT_ON_VERIFIED_MAIN_AS_BOUNDED_IMPLEMENTATION",
+      "mcp_gateway_transport": "PRESENT_AS_BOUNDED_IMPLEMENTATION_NOT_DEFAULT_SERVER_WIRED",
+      "pr_450": "MERGED_EPISTEMIC_MEMORY_PROMPT_BOUNDARY_FIX",
+      "pr_451": "MERGED_POSTMERGE_DOCUMENTATION_CLOSURE_FOR_450",
       "open_prs": "INTENTIONALLY_EXCLUDED_VERIFY_LIVE"
-    },
-    "preservation": {
-      "kb_graph.json": "KEEP_VERSIONED_KNOWLEDGE_ASSET"
     },
     "evidence_priority": [
       "verify the concrete owner-local path before proposing a new construct",
       "separate retrieval/presence from semantic use U and answer support A",
+      "separate admission from verification and ranking from evidence authority",
       "run controlled measurement on a representative bounded corpus",
       "make the smallest correction justified by measured failure",
       "repeat measurement without inferring production authorization"
     ]
-  },
-  "snapshot": {
-    "date": "2026-08-22",
-    "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "stage10_merged_main_sha": "f72b93cb044fc317752430e12d75217313997338",
-    "status": "TITAN_V1_DONE",
-    "interpretation": "Stages 1-11 are present on main. Stage 11 closed through protected-merged PR #372 after the closure record and gates. TITAN_V1_DONE is a productization closure, not production authorization. Do not invent Stage 12 or reopen P2/P3 research as mandatory V1 work."
   },
   "status_semantics": [
     "PROPOSED != IMPLEMENTED",
@@ -65,19 +56,30 @@
     "spec != implementation",
     "integration != authority transfer",
     "retrieval != evidence",
-    "validation != admission",
+    "admission != verification",
     "receipt != truth",
     "identity != authority",
     "model output != Canon",
+    "TRACE membership != semantic use U",
+    "semantic use U != answer support A",
     "CI green != production authorization",
     "merge != runtime activation",
     "pilot != production evidence"
   ],
+  "current_implementation_summary": {
+    "query_pipeline_canonical_mutation": "READ_ONLY_FOR_FACT_ESM_AND_CAUSAL_RELATION_MUTATION",
+    "standard_validated_promotion": "PROMOTION_GATEWAY_TO_CANONICAL_VALIDATE_AND_PROMOTE",
+    "retrieval": "HYBRID_CAPABLE_LEXICAL_BASELINE_OPTIONAL_DENSE_GRAPH_SIGNALS_DEPENDENCY_AND_CONFIG_SENSITIVE",
+    "synaptic": "FOUNDATION_AND_SHADOW_COMPONENTS_PRESENT_NO_ACTIVE_ANSWER_AUTHORITY_TRANSFER",
+    "mcp_transport": "IMPLEMENTED_BOUNDED_NOT_DEFAULT_SERVER_WIRED_NOT_PRODUCTION_AUTHORIZED",
+    "remote_llm_egress": "POLICY_GATED_WITH_EPISTEMIC_PROMPT_SANITIZATION",
+    "evidence_use_contract": "R_S_T_OBSERVABLE_U_A_NOT_ESTABLISHED_WITHOUT_SEPARATE_ATTRIBUTION"
+  },
   "titan_v1_execution_contract": {
     "goal": "Finish Titan as an ordinary-user product rather than indefinitely improving architecture.",
     "one_active_stage_only": true,
-    "mandatory_scope_rule": "Only a current P0/P1 may reopen required V1 work. P2/P3 and research remain backlog.",
-    "finish_condition": "P0=0, P1=0, bounded pilot passed, V1 product targets reached, Stage 11 closure merged, then TITAN V1 — DONE."
+    "mandatory_scope_rule": "Only a current V1-scope P0/P1 may reopen required V1 work. P2/P3 and research remain backlog.",
+    "finish_condition": "V1_SCOPE_P0=0, V1_SCOPE_P1=0, bounded pilot passed, V1 product targets reached, Stage 11 closure merged, then TITAN_V1_DONE."
   },
   "product_stages": [
     {"stage": 1, "name": "Current Product Reality Audit", "status": "DONE"},
@@ -92,9 +94,11 @@
     {"stage": 10, "name": "Bounded Pilot", "status": "DONE"},
     {"stage": 11, "name": "Titan V1 Closure", "status": "DONE"}
   ],
-  "p0_p1": {
-    "p0_open": 0,
-    "p1_open": 0,
+  "v1_productization_p0_p1": {
+    "scope": "FROZEN_BOUNDED_V1_PRODUCTIZATION_ONLY",
+    "v1_scope_p0_open": 0,
+    "v1_scope_p1_open": 0,
+    "warning": "V1_SCOPE_P0_P1_ZERO != PRODUCTION_HARDENING_P0_P1_ZERO != PRODUCTION_AUTHORIZATION",
     "closed_v1_p1": [
       {"id": "P1-01", "name": "Installation / first run fragmented", "status": "CLOSED", "stage": 2},
       {"id": "P1-02", "name": "Provider setup vs fail-closed egress", "status": "CLOSED", "stage": 3},
@@ -103,6 +107,14 @@
       {"id": "P1-05", "name": "Legacy TruthGate duplicate evidence-token cardinality", "status": "CLOSED", "stage": 5}
     ]
   },
+  "production_hardening_scope": {
+    "source": "docs/PROJECT_STATUS.md",
+    "independent_security_review": "OPEN_REQUIREMENT_FOR_SENSITIVE_PUBLIC_DEPLOYMENT",
+    "certified_gdpr_compliance_program": "NOT_PRESENT",
+    "general_production_multiprocess_storage_proof": "NOT_ESTABLISHED",
+    "persisted_long_term_observability": "OPEN",
+    "production_authorized": false
+  },
   "key_stage_evidence": {
     "stage_2": {"pr": 360, "merge_sha": "42b212e005420adf674794155707512c2e09edec", "result": "CROSS_PLATFORM_BOOTSTRAP_ACCEPTED"},
     "stage_3": {"pr": 364, "merge_sha": "d3a3fa04081b6399011b27b10082c146b7306e6c", "result": "BOUNDED_PROVIDER_ONBOARDING_ACCEPTED"},
@@ -110,61 +122,15 @@
     "stage_6": {"pr": 367, "merge_sha": "487e5213b942418ebdc1529b70e3288f413c4dd3", "result": "RESTART_CONTINUITY_PROVED"},
     "stage_7": {"pr": 368, "merge_sha": "10d31847838fddb9d05594381cda997a7bbc530a", "result": "FAILURE_RECOVERY_ACCEPTED"},
     "stage_8": {"pr": 369, "merge_sha": "b8349b1430298f7c3a39771f678fb90a472b2450", "result": "BOUNDED_UPDATE_LIFECYCLE_ACCEPTED"},
-    "stage_9": {
-      "pr": 370,
-      "merge_sha": "93134ecde44475c82f28b2eac4fab6eacd10b3e4",
-      "result": "REAL_CHROMIUM_E2E_PASS",
-      "flow": "Chromium -> Console composer -> /chat -> Validated memory -> DOM reply",
-      "external_llm_required": false
-    },
-    "stage_10": {
-      "pr": 371,
-      "merge_sha": "f72b93cb044fc317752430e12d75217313997338",
-      "result": "BOUNDED_PILOT_5_OF_5_PASS",
-      "production_authorized": false,
-      "remote_canon": false,
-      "external_llm_required": false,
-      "scenarios": [
-        "startup_health",
-        "validated_memory_chat",
-        "file_ingest",
-        "mcp_reader_tools",
-        "restart_continuity"
-      ]
-    }
+    "stage_9": {"pr": 370, "merge_sha": "93134ecde44475c82f28b2eac4fab6eacd10b3e4", "result": "REAL_CHROMIUM_E2E_PASS", "external_llm_required": false},
+    "stage_10": {"pr": 371, "merge_sha": "f72b93cb044fc317752430e12d75217313997338", "result": "BOUNDED_PILOT_5_OF_5_PASS", "production_authorized": false, "remote_canon": false}
   },
-  "bounded_v1_readiness_estimates": {
-    "note": "Engineering estimates relative only to the frozen bounded V1 scope; not authorization metrics.",
-    "architecture_fitness_percent": 90,
-    "core_capabilities_percent": 92,
-    "installation_percent": 95,
-    "user_e2e_percent": 93,
-    "integration_percent": 92,
-    "failure_recovery_percent": 90,
-    "ux_operations_percent": 88
-  },
-  "stable_architecture_context": {
-    "runtime_authority": false,
-    "operator_go": false,
-    "production_authorized": false,
-    "remote_canon": "FORBIDDEN"
-  },
-  "p2_p3_backlog_not_mandatory_for_v1": [
-    "full typed EvidenceReference to Evidence Admission architecture",
-    "trusted evidence registry",
-    "NLI contradiction subsystem",
-    "GraphRAG/Louvain improvements",
-    "all-provider response integrity expansion",
-    "additional providers",
-    "new telemetry frameworks",
-    "new authority router",
-    "speculative cognitive capabilities"
-  ],
-  "closure_rule": "If this file and docs/TITAN_V1_CLOSURE.ru.md are present on main as the result of a Stage 11 PR whose exact head passed full CI, CodeQL and aggregate merge evidence, then Stage 11 is DONE and the productization status is TITAN_V1_DONE.",
   "stop_conditions": [
     "do not treat this document as live proof; verify GitHub and exact SHA",
     "do not infer production authorization from CI, merge, validation, receipt, acceptance, or pilot",
-    "do not reopen architecture unless a new current P0/P1 proves it necessary",
-    "after Stage 11 closure do not invent an additional mandatory stage"
+    "do not infer answer support A from TRACE or prompt presence",
+    "do not infer every hybrid retrieval signal is active on every request",
+    "do not infer server wiring from bounded MCP transport implementation",
+    "do not reopen architecture unless a new current scoped problem proves it necessary"
   ]
 }

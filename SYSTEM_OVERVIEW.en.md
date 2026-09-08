@@ -1,688 +1,423 @@
-# 🔱 Velantrim ExoCortex — How It Works
+# 🗺️ Velantrim Titan 9.0 — Living System Atlas
 
-> ⚠️ **Translation status:** this English companion still preserves the older
-> V8.x walkthrough. For the current evidence-labeled Living System Atlas, use
-> [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md) (Russian) and
-> [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md). Do not treat legacy
-> sections below as current runtime evidence.
+> **Purpose:** architecture tour for users, engineers, operators, reviewers, and AI agents.
+>
+> **Product version:** <!-- SYNC:VERSION -->v9.0.0<!-- /SYNC:VERSION -->
+> **Audited base:** `main@70bc34fecdcf0bae15bc2264445e31b87b79bf08` on 2026-09-08.
+> This is a dated verification checkpoint, not an evergreen claim about the latest remote head.
+>
+> **Document role:** navigation and explanation only. Code at the exact SHA, tests/CI,
+> selected configuration, and observed runtime evidence override this document on conflict.
 
-**Language:** English  
-**Russian source:** [`SYSTEM_OVERVIEW.md`](SYSTEM_OVERVIEW.md)  
-**Purpose:** visual English companion overview.
-
-This document explains Velantrim in human language first, then as an engineering system.
-
----
-
-## 🧠 What Velantrim Is — One Paragraph
-
-Velantrim is a personal **ExoCortex** for AI and human thinking. It stores facts, remembers sources, checks what can be trusted, builds a trace of reasoning, and lets an LLM speak only after the system has selected evidence.
-
-In simple words:
-
-> A normal AI talks from context.  
-> Velantrim remembers, checks, connects, and then lets the AI talk.
+**English** · [Русский](SYSTEM_OVERVIEW.md) ·
+[🏠 README](README.md) ·
+[📊 Project status](docs/PROJECT_STATUS.md) ·
+[🔍 Reviewer map](docs/REVIEWER_README.md) ·
+[🏛️ Truth canon](docs/TRUTH_AND_RINGZERO_CANON.en.md)
 
 ---
 
-## 🗺️ Full Project Map
+## 🧭 Choose a route
+
+| Goal | Route | Typical depth |
+|---|---|---:|
+| 👋 Understand the idea | [30-second explanation](#plain) | L0 |
+| 🗺️ See the system | [component map](#map) | L1 |
+| 🔄 Follow query/write flows | [two main flows](#flows) | L2 |
+| 🧑‍💻 Audit contracts | [engineering boundaries](#engineer) | L3 |
+| 🧾 Verify claims | [evidence/status rules](#evidence) | L1–L3 |
+| 🧪 Test viability | [Architecture Assurance](#assurance) | L2–L3 |
+| 🤖 Explain Titan to someone else | [self-explanation protocol](#self-explain) | adaptive |
+
+---
+
+<a id="plain"></a>
+
+## 👋 L0 — Titan in 30 seconds
+
+Velantrim Titan is a **local-first verifiable memory runtime for AI agents**. It separates
+things a normal chat often collapses together:
 
 ```text
-🔱 Velantrim-ExoCortex-Titan
-│
-│  ┌─────────────────────────────────────────────────────────────────────┐
-│  │  🧠 SYSTEM CORE — what actually works right now                    │
-│  │                                                                     │
-│  │   📜 storage.py ──► contract: WHAT a storage layer must support    │
-│  │         │                                                           │
-│  │         ▼                                                           │
-│  │   🧠 memory.py ──► MEMORY: facts, ESM, cache, bi-temporal          │
-│  │         │                                                           │
-│  │         ├──────────────────────────────────────────────────────┐   │
-│  │         ▼                                                       ▼   │
-│  │   🔍 trace.py ──► TRACE: who, where, when       ⚙️ pipeline.py │   │
-│  │                                                  main entry     │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────────┐
-│  │  🧪 TESTS — verify that the core behaves correctly                 │
-│  │                                                                     │
-│  │   test_esm.py ──────────────► checks memory.py                    │
-│  │   test_pipeline.py ──────────► checks pipeline.py + trace.py      │
-│  │   test_regression_p0.py ─────► old bugs do not return             │
-│  │   test_sprint_a_wiring.py ───► 🛡️ guard: A6-A10 are not wired     │
-│  └─────────────────────────────────────────────────────────────────────┘
-│
-│  ┌─────────────────────────────────────────────────────────────────────┐
-│  │  🔧 TOOLS — manual tools, not part of runtime                     │
-│  │                                                                     │
-│  │   velantrim_migrate_v3_1.py ─► V8 markdown → JSONL converter      │
-│  │   fill_dependencies.py ──────► auto-fill depends_on               │
-│  │   audit_metadata.py ─────────► JSONL quality audit                │
-│  │   check_rfc_duplicates.py ───► duplicate RFC detector             │
-│  │   utils/rfc_parser.py ───────► shared RFC parser utility          │
-│  └─────────────────────────────────────────────────────────────────────┘
-│
-│  ┌─────────────────────────────────────────────────────────────────────┐
-│  │  📚 DOCUMENTATION — read and update                               │
-│  │                                                                     │
-│  │   README.md ─────────────────► main page                           │
-│  │   ROADMAP.md ────────────────► done / next                         │
-│  │   INVARIANTS.md ─────────────► rules that must not be broken       │
-│  │   LIMITATIONS.md ────────────► honest list of limits               │
-│  │   SYSTEM_OVERVIEW.md ────────► this file                           │
-│  │   SYSTEM_OVERVIEW.en.md ─────► English companion                   │
-│  └─────────────────────────────────────────────────────────────────────┘
-│
-└── ⚙️ CONFIGURATION: pyproject.toml · requirements.txt · LICENSE
+source → memory → retrieval → policy → answer
+```
+
+A useful analogy:
+
+```text
+librarian   finds records
+lab worker  preserves source and uncertainty
+border gate limits trusted state changes
+auditor     records what the system can observe
+translator  turns admitted context into human language
+```
+
+Titan is not an oracle. It improves traceability and authority separation; it does not
+make arbitrary text true.
+
+Engineering shorthand:
+
+```text
+Memory stores state.
+Retrieval proposes context.
+Policy limits authority.
+TruthGate evaluates admission where that contract applies.
+TRACE records observable path artifacts.
+LLM renders language.
+```
+
+Critical invariants:
+
+```text
+retrieval ≠ evidence
+admission ≠ verification
+confidence ≠ evidence
+model output ≠ Canon
+TRACE membership ≠ semantic use ≠ answer support
+CI green ≠ runtime or production authorization
 ```
 
 ---
 
-## ⚙️ How The System Works — Step By Step
+<a id="evidence"></a>
 
-When an AI agent or a user asks a question, the system should not jump straight to the LLM.
+## 🧾 How to read status claims
+
+| Label | Meaning |
+|---|---|
+| 🟢 **default path** | belongs to the baseline path |
+| ✅ **main / tested** | code and relevant tests are present in `main` |
+| 🟡 **available / gated** | implementation exists; profile/ENV/dependency decides use |
+| 🚧 **open PR** | not part of `main` yet |
+| 🔬 **research / proposed** | design/research only; no runtime authority |
+| ⚠️ **known limitation** | bounded claim, gap, or debt |
+| 📡 **runtime observed** | concrete running-instance evidence exists |
+
+Never compress these into one word:
 
 ```text
-👤 User question:
-   "Tell me about quantum entanglement"
-         │
-         ▼
-🧭 Goal / Intent detection
-   What does the user want: definition, explanation, proof, comparison?
-         │
-         ▼
-🔍 Retrieval
-   Find candidate facts in memory, graph, text index, and metadata
-         │
-         ▼
-📦 Facts Pack
-   Select 8-12 best facts with IDs, confidence, source, state
-         │
-         ▼
-⚖️ Truth Gate
-   Are these facts trusted enough to support an answer?
-         │
-         ├── no  ─► answer with uncertainty / missing evidence
-         │
-         ▼
-🛡️ Guardian / Observer
-   Check contradiction, drift, risk, Ring Zero rules
-         │
-         ▼
-🗣️ LLM / BAE
-   Convert evidence into a clear human answer
-         │
-         ▼
-🧾 TRACE
-   Show what was used, rejected, and why
+implemented ≠ tested ≠ wired ≠ enabled ≠ observed
 ```
+
+Source-of-truth order for implementation questions:
+
+1. executable code at the exact SHA;
+2. tests and current CI evidence;
+3. selected runtime configuration and observed telemetry;
+4. current-state docs and accepted ADRs;
+5. PR/work-log history;
+6. historical audits/archive.
+
+For live activation, inspect configuration plus `/health`, `/layers/status`, and
+`/titan/status`.
 
 ---
 
-## 🧠 How Memory Is Built
+<a id="map"></a>
 
-Velantrim memory is not just one database. It is a layered memory system.
+## 🗺️ L1 — Component map
 
 ```text
-L0 Raw Input
-  ↓ filtering / normalization
-L1 Working Memory
-  ↓ session digestion
-L2 Episodic Summary
-  ↓ review / Pending / Truth Gate
-L3 Canonical Graph Memory
+┌──────────────────── HUMAN / AGENT / FILE ─────────────────────┐
+└──────────────────────────────┬──────────────────────────────────┘
+                               ▼
+                    API · auth · policy · egress
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+            READ PATH                     WRITE PATH
+        query / retrieval              source / candidate
+                │                             │
+                ▼                             ▼
+      admitted context + TRACE          ESM + evidence
+                │                             │
+                ▼                             ▼
+        Guardian / policy              TruthGate / CAS
+                │                             │
+                └──────────────┬──────────────┘
+                               ▼
+                     provenance · audit
+                               │
+                 ┌─────────────┴─────────────┐
+                 ▼                           ▼
+          derived projections          replaceable LLM
 ```
 
-| Layer | Meaning | Example |
+| Area | Primary role | Main surfaces |
 |---|---|---|
-| ⚪ L0 Raw | raw files, chunks, user statements | imported PDF text |
-| 🔵 L1 Working | current session context | "today we discussed Science Core" |
-| 🟣 L2 Episodic | compressed episode / summary | "the user chose V8.6 as main" |
-| 🟢 L3 Canonical | verified long-term truth | stable project rule |
+| API | network boundary, auth, routes | `server.py`, `api/` |
+| Orchestration | read-side flow | `core/pipeline.py`, `core/app.py` |
+| Memory | fact + ESM + temporal state | `core/memory.py` |
+| Retrieval | lexical baseline, optional dense/graph signals, narrowing | `core/hybrid_retriever.py`, `core/ngram_index.py` |
+| Trust/write | policy, write admission, standard promotion | `core/truth_gate.py`, `core/write_gate.py`, `core/promotion_gateway.py`, `core/policy_kernel.py` |
+| Provenance/audit | source lineage and auditable effects | `core/provenance_chain.py`, `core/audit_chain.py` |
+| Remote egress | fail-closed remote capability boundary | `core/remote_egress.py` |
+| Synaptic | source-linked document reading/shadow evaluation | `core/semantic_reader.py`, `core/knowledge_capsule.py` |
+| Research | proposed/feature-gated compositions | `research/`, shadow paths, feature flags |
 
-Important:
-
-> Nothing should enter L3 just because it was said once.  
-> Canonical memory needs evidence, state, and review.
+Derived indexes/graphs accelerate retrieval and analysis. They do not become a hidden
+second Canon merely because they are faster or semantically richer.
 
 ---
 
-## 🧬 ESM — Epistemic State Machine
+<a id="flows"></a>
 
-ESM answers one question:
+## 🔄 L2 — Two main flows
 
-> What kind of knowledge is this?
-
-| State | Emoji | Meaning |
-|---|---:|---|
-| Observed | ⚪ | seen, captured, not verified |
-| Hypothesized | 💭 | possible, needs confirmation |
-| Supported | 🟡 | partly supported |
-| Validated | ✅ | verified enough |
-| ImmutableCore | 🔒 | protected canonical core |
-| Contradicted | ❌ | conflicts with stronger knowledge |
-| Deprecated | 🗑️ | outdated / no longer active |
-| Retracted | ⛔ | withdrawn as wrong |
-
-This prevents one of the biggest memory failures:
+### 🔎 Flow A: query / answer
 
 ```text
-note -> assumption -> fake fact -> future wrong answer
+query
+  → API boundary
+  → QueryPipeline
+  → candidate narrowing / hybrid retrieval
+       lexical baseline
+       optional dense / graph signals when available
+  → FactsPackBuilder / Guardian / truth policy
+  → structured TRACE / result
+  → optional LLM rendering
 ```
 
----
+**Current implementation boundary:** `core/pipeline.py::run()` is read-only with respect
+to canonical fact storage, ESM promotion, and causal-relation mutation. The old statement
+that legacy `POST /query` performs promotion is historical and no longer current.
 
-## ⏳ Bi-Temporal Memory
+The current server answer path still uses the legacy query answer authority. Synaptic
+shadow evaluation is separate and does not acquire answer authority merely by being wired
+as shadow processing.
 
-Velantrim can track two different times:
-
-```python
-# When the fact became true in the world:
-valid_from = "2024-01-01"
-
-# When the system learned it:
-recorded_at = "2026-05-30"
-```
-
-This enables time-travel questions:
+### ✍️ Flow B: admitted mutation
 
 ```text
-What did I know on February 1?
-What was true in the world at that time?
-When did the system learn it?
+source / candidate
+  → provenance / metadata
+  → legal ESM transition and applicable write checks
+  → reviewed mutation owner
+  → CAS / transactional evidence where required
+  → Canon/local durable state
+  → projections / audit updates
 ```
 
----
-
-## 🔒 Ring Zero — Immutable Core
-
-Ring Zero is the protected center of the system.
-
-It contains rules and identity-level constraints that should not be casually overwritten.
-
-Examples:
-
-- do not erase core facts without explicit review,
-- do not promote hypotheses to truth,
-- do not let LLM output override graph truth,
-- do not silently rewrite memory.
+Standard `Validated` promotion callers converge on `PromotionGateway` and the canonical
+`SQLiteGraphStore.validate_and_promote()` path. This does **not** mean every mutation in
+Titan has one global owner: ordinary non-Validated transitions, invalidation, relation
+lifecycle, erasure, archival/redaction, and compound supersession keep their own explicit
+contracts.
 
 ---
 
-## 📜 GraphStore ABC
+## 🔍 Retrieval: what “hybrid” currently means
 
-`storage.py` defines what a storage backend must support.
-
-This matters because the architecture should be able to use different storage engines without changing the entire system.
+`HybridRetriever` supports lexical/BM25-style retrieval, dense embeddings, optional graph
+signals, and ranking fusion. Availability is dependency/configuration sensitive.
 
 ```text
-GraphStore ABC
-  ├── store fact
-  ├── read fact
-  ├── search facts
-  ├── store relations
-  ├── query graph paths
-  └── return provenance
+hybrid capability exists
+  ≠ every dependency is installed
+  ≠ every signal runs on every query
+  ≠ ranking score is truth/evidence authority
 ```
 
+The base Python package has no mandatory third-party dependencies. Dense retrieval and
+some enhanced paths require optional extras and degrade to narrower retrieval when those
+components are unavailable.
+
 ---
 
-## 🔍 What `trace.py` Does
+## 📄 Synaptic Exo-Cortex
 
-`trace.py` records the answer path.
-
-It should make the system able to say:
+Current bounded status at the audited base:
 
 ```text
-I used these facts.
-I ignored these facts.
-I trusted this source.
-I rejected this claim.
-I passed or failed the Truth Gate.
+Raw evidence
+  → ✅ SemanticReader
+  → ✅ KnowledgeCapsule + exact SourceSpan
+  → ✅ LLM Reader Adapter
+       main/tested; no server /query answer-path caller;
+       standalone CLI uses scripts/read_document.py
+  → ✅ Working Memory Gate
+       main/tested; shadow-chain only
+  → ✅ ContextPack
+       main/tested; shadow-chain only
+  → ✅ shadow evaluation
+       main/tested; feature-gated; qualifying POST /query responses only;
+       no answer authority
+  → active answer authority
+       NOT transferred to Synaptic; LEGACY_QUERY remains authoritative
 ```
 
-That is the difference between a fluent chatbot and an inspectable reasoning system.
+Shadow processing does not write Canon/ESM and does not become active answer authority
+without a separate decision. `KnowledgeCapsule` remains a proposal/evidence structure,
+not Canon.
 
 ---
 
-## 🧪 Tests — What They Protect
+## 🔌 MCP transport
 
-| Test Area | Protects |
-|---|---|
-| ESM tests | state transitions do not break |
-| pipeline tests | query route stays wired |
-| regression tests | old P0 bugs do not return |
-| integration tests | API and memory still work together |
-| adversarial tests | bad IDs, NaN confidence, forbidden transitions |
+`core/tool_registry.py` and `core/mcp_transport.py` contain a bounded capability-based
+JSON-RPC transport implementation, including capability ceilings and bounded process-local
+idempotency behavior.
 
-Tests are part of the architecture because Velantrim is a memory system. A memory system without tests slowly becomes unreliable.
-
----
-
-## 📚 Documents — What To Read
-
-| Document | Meaning |
-|---|---|
-| `README.md` | Russian main README |
-| `README.en.md` | English companion README |
-| `SYSTEM_OVERVIEW.md` | Russian overview |
-| `SYSTEM_OVERVIEW.en.md` | English overview |
-| `docs/VELANTRIM_ARCHITECTURE.md` | Russian architecture |
-| `docs/VELANTRIM_ARCHITECTURE.en.md` | English architecture |
-| `docs/RESEARCH_MODE.ru.md` | experimental memory mode |
-| `docs/ATTENTION_NOETIC_ORCHESTRATION.ru.md` | attention / noetic contracts |
-| `docs/WORLD_KNOWLEDGE_CORE_v1_0.ru.md` | future knowledge core |
-
----
-
-## ⏳ What Works Now vs What Is Research
+Reality status:
 
 ```text
-WORKS NOW
-  🧠 memory.py       ESM, L0/L1 storage, facts
-  🔍 retrieval       BM25 / hybrid search
-  ⚖️ Truth Gate      fact validation
-  🧾 TRACE           provenance and answer trace
-  🖥️ console         browser test surface
-
-RESEARCH / FUTURE
-  🌌 Fractal Router
-  🧬 Essence Layer
-  🧠 Noetic Core
-  📚 World Knowledge Core
-  🔮 Predictive Reasoner
-  🛡️ Adversarial / meta reasoning
+implemented: yes (bounded)
+module tests/evidence: present
+server-wired by default: no
+enabled merely by file presence: no
+runtime authority: no
+production authorization: no
 ```
 
+“Registry exists, no transport” is stale. “Transport exists, therefore MCP is deployed”
+is also false.
+
 ---
 
-## 🔑 Three Main Principles
+<a id="engineer"></a>
 
-### 1. 🧠 Memory Must Be Honest
+## 🧑‍💻 L3 — Engineering boundaries
 
-The system must distinguish:
+### 1. Read and write are different authorities
 
 ```text
-I saw it
-I believe it
-I verified it
-I derived it
-I predict it
-I do not know
+READ
+  returns facts / context / evidence / proposals
+  must not silently mutate Canon
+
+WRITE
+  uses an explicit owning service
+  checks the required policy / ESM / provenance contract
+  records the required durable/audit effect
 ```
 
-### 2. ⚖️ Truth Must Not Belong To The LLM
-
-The LLM is useful, but it is not the source of truth.
-
-Truth belongs to:
+### 2. Canon and projections are different authority levels
 
 ```text
-Graph + Evidence + State + Source + Trace
+canonical state
+  > rebuildable indexes / vectors / graph views / caches
+  > model/provider output
 ```
 
-### 3. 🧾 Every Important Answer Needs A Trace
+A projection failure should cause rebuild/degradation, not a hidden truth change.
 
-Without trace, the system is only persuasive.  
-With trace, it becomes inspectable.
+### 3. LLM is a replaceable executor
 
----
+An LLM may extract, summarize, rank, compress with qualifiers, or render a response. It
+cannot by itself grant Canon admission, bypass PolicyKernel/TruthGate/write boundaries,
+or turn model self-report into runtime evidence.
 
-## 🧭 Simple Explanation
+### 4. TRACE is accountability, not proof of internal cognition
 
-If a normal AI is like a person talking from memory, Velantrim is more like:
+Titan can observe retrieval/selection, serialization, provider packing, structured trace
+artifacts, and answer output. The bounded evidence-use tests explicitly separate:
 
 ```text
-library + notebook + fact checker + map + assistant
+R = retrieved / selected
+S = serialized
+T = transmitted after provider packing
+U = demonstrably used by model          NOT established by R/S/T alone
+A = demonstrably supports final answer  NOT established by R/S/T alone
 ```
 
-It does not just answer. It tries to remember what matters, check what is true, connect ideas, and show the path.
+Do not relabel R/S/T as U/A without separate attribution evidence.
+
+### 5. Remote providers remain behind policy
+
+Remote server calls pass through `core/remote_egress.py` and PolicyKernel. Metadata-only
+`data_mode="none"` is limited to a closed capability set; user prompts, memory, and audio
+must not silently opt out of remote-data policy.
 
 ---
 
-## 🧩 Full Detail Mirror From Russian Source
+<a id="self-explain"></a>
 
-This section keeps the English overview closer to the Russian original. It is intentionally detailed, because the Russian document is not only a summary — it is also a visual operational map.
+## 🎓 Self-explanation protocol
 
----
-
-## ⚙️ Full Pipeline — Runtime View
+Titan's documentation should explain the same reality at different depths without
+changing truth status:
 
 ```text
-👤 User question:
-   "Tell me about quantum entanglement"
-         │
-         ▼
-┌─────────────────────────────────────────────────────────┐
-│  ⚙️ pipeline.py — Main pipeline                         │
-│                                                         │
-│  Step 1 🔎 RETRIEVE                                     │
-│  └─► Find relevant facts                                │
-│      Current MVP: BM25 over mock / local DB             │
-│      Result: [{fact about quantum entanglement, ...}]   │
-│                                                         │
-│  Step 2 📦 BUILD FACTS PACK                             │
-│  └─► Save each candidate fact through memory.py         │
-│      Initial state = Observed                           │
-│                                                         │
-│  Step 3 🔍 BUILD TRACE                                  │
-│  └─► trace.py builds the provenance chain               │
-│      fact_id + source + epistemic_state + score         │
-│                                                         │
-│  Step 4 🛡️ GUARDIAN                                     │
-│  ├─► Does every fact have fact_id?                      │
-│  ├─► Does every fact have claim and source?             │
-│  ├─► Is every fact covered by trace?                    │
-│  └─► If not: BLOCK, no answer                           │
-│                                                         │
-│  Step 5 🔐 TRUTH GATE                                   │
-│  ├─► confidence >= floor?                               │
-│  ├─► source is not empty?                               │
-│  ├─► evidence is sufficient?                            │
-│  └─► If not: BLOCK or answer with uncertainty           │
-│                                                         │
-│  Step 6 🔄 ESM TRANSITION                               │
-│  └─► Facts move only through transition_esm()           │
-│      Direct state mutation is forbidden                 │
-│                                                         │
-│  Step 7 💬 GENERATE ANSWER                              │
-│  └─► Use only allowed facts                             │
-│      Current: simple composition                        │
-│      Future: LLM / BAE + Essence + NoeticCore           │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-         │
-         ▼
-👤 Answer:
-   "Quantum entanglement links particle states..."
-   + trace: [f2 | source=physics | state=Validated | bm25=1.23]
+“What depth do you want?”
+  → plain
+  → operator
+  → engineer
+  → reviewer
 ```
-
----
-
-## 🌱 Fact Lifecycle — ESM In Detail
-
-```text
-                    🌱 LIFE OF A FACT
-                    ────────────────
-
-  Observed ──────► Hypothesized ──► Supported ──► Validated ──► ImmutableCore
-     │                  │               │               │        Ring Zero only
-     │                  │               │               │
-     └──────────────────┴───────────────┴──► Contradicted ──► Deprecated ──► Collapsed
-                                                conflict        obsolete       inactive
 
 Rules:
-✅ transitions only through allowed directions
-✅ Collapsed and ImmutableCore are terminal
-✅ state changes only through transition_esm()
-❌ forbidden: UPDATE facts SET epistemic_state = 'Validated'
-❌ forbidden: fact["epistemic_state"] = "Validated" in code
-```
+
+1. Start shallow; deepen on demand.
+2. Preserve status (`proposed/implemented/tested/wired/enabled/observed`).
+3. Give evidence pointers for material claims.
+4. Say `UNKNOWN` when current state cannot be established.
+5. Never present an architecture explanation as hidden chain-of-thought.
+6. Never treat multiple model opinions over shared context as independent evidence.
 
 ---
 
-## 🗄️ Storage Layers — Original Detail
+<a id="assurance"></a>
+
+## 🧪 Architecture Assurance
+
+Architecture Assurance is an engineering loop, not another authority-owning cognitive
+organ:
 
 ```text
-  ┌──────────────────────────────────────────────────┐
-  │  L0 — Workbench                                  │
-  │  128 freshest facts · OrderedDict LRU             │
-  │  Fastest access — no disk read                    │
-  └──────────────────────┬───────────────────────────┘
-                         │ cache miss
-                         ▼
-  ┌──────────────────────────────────────────────────┐
-  │  L1 — Archive                                    │
-  │  SQLite on disk · all facts · transition history │
-  │  + bi-temporal: when learned / when true         │
-  └──────────────────────┬───────────────────────────┘
-                         │ future / graph layer
-                         ▼
-  ┌──────────────────────────────────────────────────┐
-  │  L3 — Knowledge Graph                            │
-  │  Relations between facts · semantic retrieval    │
-  │  GraphStore ABC is ready for implementation      │
-  └──────────────────────────────────────────────────┘
+model
+  → bounded implementation
+  → deterministic load / fault injection
+  → metrics and retained evidence
+  → correction
 ```
+
+Inside runtime, use invariants, fail-closed policy, limits, CAS/idempotency, and audit
+hooks. Outside runtime, use load/spike/soak tests, fault injection, recovery drills,
+property tests, replay, and capacity characterization.
+
+A useful queueing intuition is:
+
+\[
+\rho = \frac{\lambda E[S]}{c}
+\]
+
+but average utilization alone is not a production guarantee. Tail latency, service-time
+variance, storage amplification, common-cause failures, and recovery behavior must be
+measured. Existing SQLite concurrency evidence is bounded characterization, not unlimited
+multiprocess or network-filesystem proof.
 
 ---
 
-## 🔍 Trace Record — Detailed Shape
+## 🚫 What this Atlas does not claim
 
-```json
-{
-  "fact_id": "f2",
-  "source": "physics",
-  "origin": "retrieval",
-  "epistemic_state": "Validated",
-  "retrieval_score": 1.23,
-  "source_confidence": 0.85,
-  "retrieved_at": "2026-05-11T...",
-  "promoted_at": "2026-05-11T...",
-  "promoted_by": "pipeline.run"
-}
-```
+- zero hallucinations;
+- absolute truth of sources;
+- certified GDPR/compliance;
+- a third-party security audit that has not occurred;
+- drop-in production-ready multi-user SaaS;
+- consciousness or subjective experience;
+- that every `core/` module is enabled;
+- that a research file or open PR is runtime behavior;
+- that green CI is Operator GO or production authorization;
+- that TRACE proves internal model use or answer support.
 
-Difference:
-
-| Field | Meaning |
-|---|---|
-| `retrieval_score` | query-dependent relevance score |
-| `source_confidence` | stable trust in the source |
-
-This distinction is important: a fact can be very relevant to a query but come from a weak source.
+For production-hardening risks, use [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
+The bounded V1 productization ledger can be `DONE` while production-hardening work still
+exists; those are different scopes.
 
 ---
 
-## 🔧 Migration Tools — Why They Exist
+## 🔄 Keeping the Atlas current
+
+When architecture-facing behavior changes, a review should answer:
 
 ```text
-V8 Crystal Specification (markdown, 18 784 lines)
-       │
-       │  velantrim_migrate_v3_1.py
-       │  ├── splits into chunks
-       │  ├── Cyrillic → ASCII IDs
-       │  ├── extracts RFC mentions
-       │  ├── assigns layer L0/L1/L2/L3...
-       │  └── backup + rollback + dry-run
-       ▼
-Velantrim_V8_Crystal_Sprint1.jsonl
-       │
-       │  fill_dependencies.py
-       │  └── finds RFC links → fills depends_on
-       ▼
-Knowledge base with dependencies
-       │
-       │  audit_metadata.py / check_rfc_duplicates.py
-       └── quality checks: duplicates, null fields, mega-blobs
-
-utils/rfc_parser.py:
-  extract_rfc("...RFC0067 v2.0...")       → "RFC0067 v2.0"
-  extract_rfc_mentions("RFC0036–0051")    → [RFC0036, ..., RFC0051]
+1. What changed for a user?
+2. Which contract changed for an engineer?
+3. What status is now true?
+4. Where is code/test/CI/runtime evidence?
+5. What happens on failure?
 ```
 
-These tools are not runtime memory. They are migration and quality-control tools.
-
----
-
-## 🧪 Tests — Detailed Responsibility Map
-
-```text
-tests/
-│
-├── test_esm.py
-│   ✅ exactly 8 ESM states
-│   ✅ transitions only through allowed paths
-│   ✅ Ring Zero immutable
-│   ✅ new facts start as Observed
-│   ✅ drift protection
-│   ✅ bi-temporal fields on creation
-│   ✅ invalidate_edge never deletes, only closes validity
-│   ✅ LRU cache: 128 slots, old entries evicted
-│   ✅ transition history records caller
-│   ✅ deepcopy prevents external corruption of L0
-│
-├── test_pipeline.py
-│   ✅ happy path: question → Validated facts → answer
-│   ✅ no matches → blocked, not crashed
-│   ✅ repeated query is idempotent
-│   ✅ tokenization handles dashes correctly
-│   ✅ retrieval_score != source_confidence
-│   ✅ Guardian blocks uncovered facts
-│   ✅ TruthGate blocks low confidence
-│   ✅ promote_trace records promoted_by
-│
-├── test_regression_p0.py
-│   ✅ old P0 bugs do not return
-│   ✅ repeated store_fact does not reset Validated to Observed
-│   ✅ separate SQLiteGraphStore instances stay isolated
-│   ✅ Collapsed sets t_ingestion_end
-│   ✅ invalidate_edge does not delete fact
-│
-└── test_sprint_a_wiring.py
-    🛡️ sentinel test
-    It checks that A6-A10 are NOT wired too early:
-    event_bus, lock_manager, circuit_breaker,
-    rate_limiter, health_check.
-```
-
----
-
-## 📚 Documentation Maintenance Rules
-
-```text
-READ DURING ONBOARDING
-  1. README.md
-  2. SYSTEM_OVERVIEW.md
-  3. ROADMAP.md
-  4. INVARIANTS.md
-  5. LIMITATIONS.md
-
-UPDATE EACH SPRINT
-  README.md        version, file table, fixes
-  ROADMAP.md       planned → done
-  INVARIANTS.md    new invariants
-  LIMITATIONS.md   remove closed limitations
-  WORK_SUMMARY.md  sprint journal
-
-DO NOT TOUCH AS CURRENT DOCS
-  AUDIT_DIFF_REPORT.md
-  METADATA_FIX_REPORT.md
-  audit_issues.json
-  validate_dangling.json
-  velantrim_migration.log
-  SANDBOX_CLONE.md
-
-UPDATE WHEN A6-A10 ARE CONNECTED
-  SPRINT_A_NOTES.md
-  test_sprint_a_wiring.py
-```
-
----
-
-## ✅ What Works Now vs What Comes Next — Detailed
-
-```text
-✅ WORKS NOW
-──────────────────────────────────────
-🧠 memory.py
-  ESM states
-  L0 LRU
-  L1 SQLite
-  bi-temporal fields
-  Ring Zero immutability
-  trusted source whitelist
-  drift protection
-  audit trail
-
-🔍 trace.py
-  provenance chain
-  atomic promote
-  retrieval_score / source_confidence split
-
-📜 storage.py
-  GraphStore ABC
-  bi-temporal contract methods
-
-⚙️ pipeline.py
-  BM25 Okapi retrieval
-  Guardian + TruthGate placeholders / wiring
-  idempotent run()
-
-🔐 truth_gate.py
-  real Truth Gate
-  mode-aware: PRECISION / BALANCED / EXPLORATION / CREATIVE
-  source + confidence + evidence + contradiction checks
-
-🔎 hybrid_retriever.py
-  BM25 + dense embeddings + RRF
-  graceful degradation if dependencies are missing
-
-📊 mhi.py
-  Memory Health Index
-  HEALTHY / DEGRADED / SAFE_MODE
-
-📚 ngram_index.py
-  FTS5 trigram pre-filter
-
-💤 sleep_time_worker.py
-  background consolidation
-  idle think() cycle
-
-🗂️ embedding_registry.py
-  embedding model registry
-
-🧪 tests/
-  broad test coverage for memory, pipeline, retrieval, safety
-
-🚧 NEXT
-──────────────────────────────────────
-S2a  HybridRetriever fully wired
-S2b  SQLite FTS5 replacing mock database path
-S2c  async/await + aiosqlite
-S2c  A6-A10 wiring when ready
-S2c  Neo4jGraphStore implementation
-
-📋 SPRINT 3+
-──────────────────────────────────────
-RFC0066 ConceptEmergence
-RFC0065 Memory Volition
-RFC0067 Analogy Graph
-RFC0063 Knowledge Ingestion Pipeline
-RFC0068 NeuroCore / plastic memory
-```
-
----
-
-## 🔑 Three Main Principles — Full Form
-
-```text
-1. Graph = Truth
-   Neo4j / graph memory is the intended truth store.
-   LLM can speak beautifully, but it does not decide what is true.
-   A fact enters the graph only after Truth Gate.
-   No Truth Gate → no canonical write.
-
-2. Memory = Physiology
-   Memory behaves like a living system:
-   L0 = working memory
-   L1 = episodic / archival memory
-   L3 = long-term structured memory
-   Facts can age, decay, consolidate, or be deprecated.
-
-3. Dual-Process
-   Fast Path: milliseconds, user waits, must stay light.
-   Slow Path: background, async, consolidation, learning, GC.
-   Heavy work belongs to Slow Path.
-```
-
-Final source formula:
-
-```text
-Graph = Truth
-LLM = Language
-Memory = Physiology
-Volition = Agency
-```
+Do not embed an undated “current SHA” as an evergreen truth. Use dated audited checkpoints
+and re-query GitHub whenever live state matters.
