@@ -134,7 +134,7 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 - **Documentation impact:** `GITHUB_AND_NOTION`
 - **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · Draft PR #450
 - **Base SHA:** `119c225a6cbb4a929c7f0d7a3e12db174420db06`
-- **Head SHA:** `b49f99aca5966a9997f162aacbeb2ab7e01db343` (pre-test revision; PR body records live HEAD after this docs/test follow-up)
+- **Head SHA:** `7bd4119bfa1d4e8a1ff2be446892484943276faa`
 - **Intended Notion record:** `Titan epistemic memory prompt boundaries — FactsPack / ReasoningTrace wording · 2026-09-08` (child of `Velantrim Titan 9.0`)
 - **Notion access for originating actor:** `AVAILABLE`
 
