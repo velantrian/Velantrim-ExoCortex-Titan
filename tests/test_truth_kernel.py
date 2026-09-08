@@ -758,14 +758,14 @@ class TestFactsPack:
         pack, prompt = self._build_pack("BALANCED", [
             {
                 "fact_id": "f_val_mix",
-                "claim": "Validated mix claim about widgets",
+                "claim": "The alloy melting point is 180 degrees Celsius.",
                 "epistemic_state": "Validated",
                 "confidence": 0.90,
                 "source": "s_val",
             },
             {
                 "fact_id": "f_sup_mix",
-                "claim": "Supported mix claim about widgets",
+                "claim": "Warehouse inventory in Oslo includes spare relays.",
                 "epistemic_state": "Supported",
                 "confidence": 0.80,
                 "source": "s_sup",
@@ -789,14 +789,14 @@ class TestFactsPack:
         _pack, prompt = self._build_pack("BALANCED", [
             {
                 "fact_id": "f_val_egr",
-                "claim": "Validated egress claim about widgets",
+                "claim": "The alloy melting point is 180 degrees Celsius.",
                 "epistemic_state": "Validated",
                 "confidence": 0.90,
                 "source": "s_val",
             },
             {
                 "fact_id": "f_sup_egr",
-                "claim": "Supported egress claim about widgets",
+                "claim": "Warehouse inventory in Oslo includes spare relays.",
                 "epistemic_state": "Supported",
                 "confidence": 0.80,
                 "source": "s_sup",

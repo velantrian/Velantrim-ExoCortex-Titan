@@ -20,7 +20,9 @@ Does **not** change TruthGate thresholds, evidence scoring, CognitiveMode member
 
 Base: `119c225a6cbb4a929c7f0d7a3e12db174420db06` (`main` HEAD at handoff). Stale branch `fix/epistemic-memory-boundaries` was behind main with no unique fix commits and was not reused.
 
-GitHub PR: pending draft (this entry is completed with the PR number after open). Notion: `HANDOFF_REQUIRED`.
+Local focused evidence: `python3 -m pytest tests/test_truth_kernel.py` → 82 passed; FactsPack A–G plus remote-egress sanitizer consistency passed; `ruff`/`mypy` clean on the Python files this change owns.
+
+GitHub PR: #450 (DRAFT). Notion record: `Titan epistemic memory prompt boundaries — FactsPack / ReasoningTrace wording · 2026-09-08`. Synchronization: `SYNCED` (read-back 2026-09-08). Merge is **not** authorized.
 
 ---
 
