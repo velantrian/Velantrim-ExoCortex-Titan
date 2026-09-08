@@ -6,7 +6,9 @@ fact store without changing the semantics of L0/L1 memory:
 
 - SourceRegistry: explicit source identities and trust hints.
 - FactInbox: pending claims before promotion into the canonical facts table.
-- ReasoningTrace: compact traces explaining which facts supported an answer.
+- ReasoningTrace: compact traces recording which facts were present in the
+  answer path. Trace membership alone does not prove semantic use or answer
+  support.
 - MemoryDiff: a read model for "what changed since ...".
 """
 

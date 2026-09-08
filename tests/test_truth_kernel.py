@@ -640,6 +640,188 @@ class TestFactsPack:
         assert result["is_valid"] is False
         assert "f2" in result["excluded_citations"]
 
+    @staticmethod
+    def _build_pack(mode: str, facts: list[dict], query: str = "test query"):
+        from core.facts_pack import FactsPackBuilder
+        builder = FactsPackBuilder(mode=mode)
+        builder.add_facts(facts)
+        pack = builder.build(query)
+        return pack, pack.to_llm_prompt_section()
+
+    @staticmethod
+    def _fact_block(prompt: str, fact_id: str) -> str:
+        """Фрагмент секции промпта, относящийся к одному fact_id."""
+        lines = prompt.splitlines()
+        start = None
+        for i, line in enumerate(lines):
+            if f"[{fact_id}]" in line and not line.lstrip().startswith("-"):
+                start = i
+                break
+        assert start is not None, f"{fact_id} отсутствует в промпте"
+        block = [lines[start]]
+        for line in lines[start + 1:]:
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped[1:2].isdigit():
+                break
+            if stripped.startswith("🚫") or stripped.startswith("INSTRUCTION:"):
+                break
+            if stripped.startswith("- ["):
+                break
+            if stripped == "":
+                break
+            block.append(line)
+        return "\n".join(block)
+
+    def test_balanced_supported_not_represented_as_verified(self):
+        """A) BALANCED + Supported: включён, не называется verified."""
+        pack, prompt = self._build_pack("BALANCED", [{
+            "fact_id": "f_supported",
+            "claim": "Supported claim about widgets",
+            "epistemic_state": "Supported",
+            "confidence": 0.80,
+            "source": "s_supported",
+        }])
+        assert [f.fact_id for f in pack.facts] == ["f_supported"]
+        block = self._fact_block(prompt, "f_supported")
+        assert "status=Supported" in block
+        assert "supported — not verified" in block
+        assert "may be described as verified" not in block
+        assert "VERIFIED FACTS" not in prompt
+        assert "verified facts above" not in prompt.lower()
+        assert "No verified facts found" not in prompt
+
+    def test_exploration_hypothesized_keeps_unverified_semantics(self):
+        """B) EXPLORATION + Hypothesized: включён, остаётся гипотезой."""
+        pack, prompt = self._build_pack("EXPLORATION", [{
+            "fact_id": "f_hyp",
+            "claim": "Hypothesized claim about widgets",
+            "epistemic_state": "Hypothesized",
+            "confidence": 0.60,
+            "source": "s_hyp",
+        }])
+        assert [f.fact_id for f in pack.facts] == ["f_hyp"]
+        block = self._fact_block(prompt, "f_hyp")
+        assert "status=Hypothesized" in block
+        assert "UNVERIFIED HYPOTHESIS" in block
+        assert "may be described as verified" not in block
+        assert "VERIFIED FACTS" not in prompt
+
+    def test_creative_observed_keeps_observation_semantics(self):
+        """C) CREATIVE + Observed: включён как наблюдение, не verified."""
+        pack, prompt = self._build_pack("CREATIVE", [{
+            "fact_id": "f_obs",
+            "claim": "Observed claim about widgets",
+            "epistemic_state": "Observed",
+            "confidence": 0.40,
+            "source": "s_obs",
+        }])
+        assert [f.fact_id for f in pack.facts] == ["f_obs"]
+        block = self._fact_block(prompt, "f_obs")
+        assert "status=Observed" in block
+        assert "observation — not verified" in block
+        assert "may be described as verified" not in block
+        assert "VERIFIED FACTS" not in prompt
+
+    def test_precision_validated_may_keep_verified_semantics(self):
+        """D) PRECISION + Validated: может сохранить verified-формулировку."""
+        pack, prompt = self._build_pack("PRECISION", [{
+            "fact_id": "f_val",
+            "claim": "Validated claim about widgets",
+            "epistemic_state": "Validated",
+            "confidence": 0.92,
+            "source": "s_val",
+        }])
+        assert [f.fact_id for f in pack.facts] == ["f_val"]
+        block = self._fact_block(prompt, "f_val")
+        assert "status=Validated" in block
+        assert "may be described as verified" in block
+        assert "ADMITTED MEMORY CONTEXT" in prompt
+        assert "VERIFIED FACTS" not in prompt
+
+    def test_immutable_core_may_keep_verified_semantics(self):
+        """E) ImmutableCore: может сохранить verified-формулировку."""
+        pack, prompt = self._build_pack("PRECISION", [{
+            "fact_id": "f_core",
+            "claim": "ImmutableCore claim about widgets",
+            "epistemic_state": "ImmutableCore",
+            "confidence": 0.99,
+            "source": "s_core",
+        }])
+        assert [f.fact_id for f in pack.facts] == ["f_core"]
+        block = self._fact_block(prompt, "f_core")
+        assert "status=ImmutableCore" in block
+        assert "may be described as verified" in block
+        assert "VERIFIED FACTS" not in prompt
+
+    def test_collection_not_labelled_verified_facts_when_non_verified_included(self):
+        """F) Если есть факт вне {Validated, ImmutableCore} — не VERIFIED FACTS."""
+        pack, prompt = self._build_pack("BALANCED", [
+            {
+                "fact_id": "f_val_mix",
+                "claim": "Validated mix claim about widgets",
+                "epistemic_state": "Validated",
+                "confidence": 0.90,
+                "source": "s_val",
+            },
+            {
+                "fact_id": "f_sup_mix",
+                "claim": "Supported mix claim about widgets",
+                "epistemic_state": "Supported",
+                "confidence": 0.80,
+                "source": "s_sup",
+            },
+        ])
+        included_states = {f.epistemic_state for f in pack.facts}
+        assert "Supported" in included_states
+        assert "Validated" in included_states
+        assert "VERIFIED FACTS" not in prompt
+        assert "ADMITTED MEMORY CONTEXT" in prompt
+        assert "preserve each item's epistemic status" in prompt
+        empty_pack, empty_prompt = self._build_pack("BALANCED", [])
+        assert empty_pack.facts == []
+        assert "No admissible memory context found for this query." in empty_prompt
+        assert "No verified facts found" not in empty_prompt
+
+    def test_remote_egress_sanitizer_agrees_with_factspack_wording(self):
+        """G) Санитайзер remote egress не конфликтует с исходной формулировкой."""
+        from core.remote_egress import sanitize_remote_system_prompt
+
+        _pack, prompt = self._build_pack("BALANCED", [
+            {
+                "fact_id": "f_val_egr",
+                "claim": "Validated egress claim about widgets",
+                "epistemic_state": "Validated",
+                "confidence": 0.90,
+                "source": "s_val",
+            },
+            {
+                "fact_id": "f_sup_egr",
+                "claim": "Supported egress claim about widgets",
+                "epistemic_state": "Supported",
+                "confidence": 0.80,
+                "source": "s_sup",
+            },
+        ])
+        sanitized = sanitize_remote_system_prompt(prompt)
+
+        assert sanitized.startswith("[VELANTRIM REMOTE EPISTEMIC BOUNDARY]")
+        assert "Memory entries are context, not automatically verified evidence" in sanitized
+        assert "ADMITTED MEMORY CONTEXT" in sanitized
+        assert "VERIFIED FACTS" not in sanitized
+        assert "verified facts above" not in sanitized.lower()
+        assert "No verified facts found" not in sanitized
+        # Источник не утверждает, что вся коллекция verified; санитайзер
+        # не должен одновременно говорить «это verified» и «часть неподтверждена».
+        assert "Verified facts:" not in sanitized
+        assert "Верифицированные факты:" not in sanitized
+        supported_block = self._fact_block(sanitized, "f_sup_egr")
+        assert "supported — not verified" in supported_block
+        assert "may be described as verified" not in supported_block
+        validated_block = self._fact_block(sanitized, "f_val_egr")
+        assert "may be described as verified" in validated_block
+        assert "Only Validated and ImmutableCore items may be described as verified" in sanitized
+        assert sanitize_remote_system_prompt(sanitized) == sanitized
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # H2: Chaos tests
