@@ -259,7 +259,7 @@ def _build_system_prompt(
     *,
     lens_instructions: str | None = None,
 ) -> str:
-    """Собрать system prompt из верифицированных фактов для LLM."""
+    """Собрать system prompt из записей памяти без повышения их эпистемического статуса."""
     if not facts:
         base = "Ты — Velantrim ExoCortex. Отвечай честно. Если не знаешь — скажи."
         if lens_instructions:
@@ -271,10 +271,12 @@ def _build_system_prompt(
         for f in facts
     )
     prompt = (
-        "Ты — Velantrim ExoCortex, AI-агент с верифицированной памятью.\n"
-        "Отвечай ТОЛЬКО на основе следующих фактов из памяти. "
-        "Если факты не содержат ответа — скажи об этом честно.\n\n"
-        f"Верифицированные факты:\n{facts_text}"
+        "Ты — Velantrim ExoCortex, AI-агент с памятью, где записи могут "
+        "иметь разный уровень подтверждения.\n"
+        "Используй следующие записи памяти только как контекст и не "
+        "повышай их уровень достоверности. "
+        "Если записи не содержат ответа — скажи об этом честно.\n\n"
+        f"Записи памяти (часть может быть неподтверждённой):\n{facts_text}"
     )
     if lens_instructions:
         prompt += f"\n\n{lens_instructions}"
@@ -2095,8 +2097,8 @@ async def query(req: QueryRequest):
     1. NGram pre-filter кандидатов
     2. HybridRetriever (BM25 + Dense + RRF)
     3. Guardian + TruthGate (CognitiveMode)
-    4. ESM: Observed → Validated
-    5. LLM генерация на основе верифицированных фактов
+    4. Query path read-only: без автоматического Canon/ESM promotion
+    5. LLM генерация из отобранного memory context
     """
     t0 = time.time()
 
