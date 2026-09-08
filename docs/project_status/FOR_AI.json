@@ -7,50 +7,36 @@
     "is_runtime_authority": false,
     "is_merge_authority": false,
     "is_production_authorization": false,
-    "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; LIVE_GITHUB_AND_EXACT_SHA_OVERRIDE_ON_CONFLICT"
+    "freshness_rule": "READ_THIS_ORIENTATION_FIRST_THEN_LIVE_VERIFY_CHANGING_FACTS; EXACT_CODE_TESTS_CI_CONFIG_RUNTIME_OVERRIDE_ON_CONFLICT"
   },
   "current_verification": {
-    "date": "2026-09-06",
+    "date": "2026-09-08",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "verified_main_sha": "635d0d6c725db0c7a7df8cfb3ce059c0500a418f",
-    "notion_page_id": "398ac84d-0547-81fe-8ca5-d0d2727d1961",
+    "verified_main_sha": "70bc34fecdcf0bae15bc2264445e31b87b79bf08",
+    "verification_role": "DATED_DOCUMENTATION_RECONCILIATION_BASE_NOT_EVERGREEN_REMOTE_HEAD",
     "runtime_authority": false,
     "production_authorized": false,
     "operator_go": false,
-    "live_state_rule": "This is a dated main checkpoint; GitHub live state overrides it for later main, PR, issue, check, review, and head lifecycle. Active open PRs are intentionally not mirrored here.",
+    "live_state_rule": "Re-query GitHub and runtime/configuration for mutable state. Active PRs and deployment observation are not evergreen fields here.",
+    "current_contracts": {
+      "query_pipeline": "CORE_PIPELINE_RUN_READ_ONLY_WRT_CANONICAL_FACT_ESM_AND_CAUSAL_MUTATION",
+      "mcp_gateway": "IMPLEMENTED_AND_SERVER_WIRED_WITH_REQUIRE_API_KEY; DEPLOYMENT_ENABLEMENT_AND_OBSERVATION_MUST_BE_VERIFIED_SEPARATELY",
+      "hybrid_retrieval": "LEXICAL_BASELINE_WITH_OPTIONAL_DENSE_GRAPH_SIGNALS_DEPENDENCY_AND_CONFIG_SENSITIVE",
+      "synaptic_answer_authority": "NOT_TRANSFERRED_SHADOW_RESEARCH_BOUNDARY_PRESERVED"
+    },
     "federated_role": {
       "titan": ["orchestration", "execution", "providers_models", "tools", "retrieval", "integration_host"],
       "crystal": ["trusted_evidence", "provenance", "admission", "bounded_canon_authority"]
     },
-    "boundary": "Titan-local memory/ESM/TruthGate/provenance mechanisms do not transfer ecosystem-wide evidence sovereignty; integration != authority transfer",
+    "boundary": "Titan-local mechanisms do not transfer ecosystem-wide evidence sovereignty; integration != authority transfer",
     "recent_lifecycle": {
-      "f2_sequence": "MERGED_THROUGH_PR_436_BOUNDED_REOPEN_CAPABILITIES_WITHOUT_AUTOMATIC_POLICY_OR_U_A_PROOF",
-      "f3_sequence": "MERGED_PRS_437_TO_440_OWNER_LOCAL_STOP_BASIS_EVIDENCE_WITHOUT_UNIVERSAL_STOP_ONTOLOGY",
-      "f2_hidden_exception_s_to_t": "MERGED_PR_445_TEST_BIND_ONLY",
-      "orientation_lifecycle_reconcile": "2026-09-06_DOCS_ONLY_NO_AUTHORITY_CHANGE",
+      "pr_450": "MERGED_EPISTEMIC_MEMORY_PROMPT_BOUNDARY",
+      "pr_451": "MERGED_POSTMERGE_CLOSURE_RECORD",
       "issue_347_349": "CLOSED_MERGED_BOUNDED_FRESH_STORE_BOOTSTRAP",
-      "issue_355": "MERGED_CONTRACT_ONLY_UNWIRED",
-      "issue_432": "OPEN_DO_NOT_INFER_CLOSURE_FROM_435_436_TITLES",
-      "mcp_gateway_transport": "PRESENT_ON_VERIFIED_MAIN_AS_BOUNDED_IMPLEMENTATION",
+      "issue_355": "MERGED_CONTRACT_ONLY_UNWIRED_AT_ITS_MILESTONE",
+      "issue_432": "VERIFY_LIVE_DO_NOT_INFER_CLOSURE_FROM_RELATED_MERGES",
       "open_prs": "INTENTIONALLY_EXCLUDED_VERIFY_LIVE"
-    },
-    "preservation": {
-      "kb_graph.json": "KEEP_VERSIONED_KNOWLEDGE_ASSET"
-    },
-    "evidence_priority": [
-      "verify the concrete owner-local path before proposing a new construct",
-      "separate retrieval/presence from semantic use U and answer support A",
-      "run controlled measurement on a representative bounded corpus",
-      "make the smallest correction justified by measured failure",
-      "repeat measurement without inferring production authorization"
-    ]
-  },
-  "snapshot": {
-    "date": "2026-08-22",
-    "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "stage10_merged_main_sha": "f72b93cb044fc317752430e12d75217313997338",
-    "status": "TITAN_V1_DONE",
-    "interpretation": "Stages 1-11 are present on main. Stage 11 closed through protected-merged PR #372 after the closure record and gates. TITAN_V1_DONE is a productization closure, not production authorization. Do not invent Stage 12 or reopen P2/P3 research as mandatory V1 work."
+    }
   },
   "status_semantics": [
     "PROPOSED != IMPLEMENTED",
@@ -60,6 +46,14 @@
     "ENABLED != OBSERVED",
     "OBSERVED != PRODUCTION_AUTHORIZED"
   ],
+  "evidence_use_semantics": [
+    "R_RETRIEVED_SELECTED != S_SERIALIZED",
+    "S_SERIALIZED != T_PROVIDER_TRANSMITTED",
+    "T_PROVIDER_TRANSMITTED != U_MODEL_SEMANTIC_USE",
+    "U_MODEL_SEMANTIC_USE != A_FINAL_ANSWER_SUPPORT",
+    "TRACE_MEMBERSHIP != U_MODEL_SEMANTIC_USE",
+    "TRACE_MEMBERSHIP != A_FINAL_ANSWER_SUPPORT"
+  ],
   "core_invariants": [
     "research != runtime",
     "spec != implementation",
@@ -68,103 +62,59 @@
     "validation != admission",
     "receipt != truth",
     "identity != authority",
+    "capability != permission",
     "model output != Canon",
     "CI green != production authorization",
     "merge != runtime activation",
     "pilot != production evidence"
   ],
   "titan_v1_execution_contract": {
-    "goal": "Finish Titan as an ordinary-user product rather than indefinitely improving architecture.",
-    "one_active_stage_only": true,
-    "mandatory_scope_rule": "Only a current P0/P1 may reopen required V1 work. P2/P3 and research remain backlog.",
-    "finish_condition": "P0=0, P1=0, bounded pilot passed, V1 product targets reached, Stage 11 closure merged, then TITAN V1 — DONE."
+    "status": "TITAN_V1_DONE",
+    "scope": "BOUNDED_V1_PRODUCTIZATION",
+    "production_authorization": false,
+    "note": "V1 closure is a productization milestone, not production-hardening completion or production authority."
   },
-  "product_stages": [
-    {"stage": 1, "name": "Current Product Reality Audit", "status": "DONE"},
-    {"stage": 2, "name": "Installation + First Run", "status": "DONE"},
-    {"stage": 3, "name": "Model / Provider Setup", "status": "DONE"},
-    {"stage": 4, "name": "Core User Experience", "status": "DONE"},
-    {"stage": 5, "name": "Files / Data / Tools E2E", "status": "DONE"},
-    {"stage": 6, "name": "Continuity / State / Restart", "status": "DONE"},
-    {"stage": 7, "name": "Failure / Recovery", "status": "DONE"},
-    {"stage": 8, "name": "Packaging / Update / Operations", "status": "DONE"},
-    {"stage": 9, "name": "End-to-End Acceptance", "status": "DONE"},
-    {"stage": 10, "name": "Bounded Pilot", "status": "DONE"},
-    {"stage": 11, "name": "Titan V1 Closure", "status": "DONE"}
-  ],
   "p0_p1": {
+    "scope": "BOUNDED_V1_PRODUCTIZATION_ONLY",
     "p0_open": 0,
     "p1_open": 0,
-    "closed_v1_p1": [
-      {"id": "P1-01", "name": "Installation / first run fragmented", "status": "CLOSED", "stage": 2},
-      {"id": "P1-02", "name": "Provider setup vs fail-closed egress", "status": "CLOSED", "stage": 3},
-      {"id": "P1-03", "name": "Files user E2E wiring", "status": "CLOSED", "stage": 5},
-      {"id": "P1-04", "name": "Release / update lifecycle", "status": "CLOSED", "stage": 8},
-      {"id": "P1-05", "name": "Legacy TruthGate duplicate evidence-token cardinality", "status": "CLOSED", "stage": 5}
+    "not_equivalent_to": "PRODUCTION_HARDENING_P0_P1_IN_DOCS_PROJECT_STATUS",
+    "production_authorization_inference_forbidden": true
+  },
+  "production_hardening": {
+    "source": "docs/PROJECT_STATUS.md",
+    "separate_from_v1": true,
+    "high_level_open_classes": [
+      "independent_security_review",
+      "certified_compliance_program",
+      "broader_realistic_storage_concurrency_recovery_proof",
+      "persisted_operational_observability",
+      "bounded_U_A_attribution_if_stronger_claims_are_needed"
     ]
   },
-  "key_stage_evidence": {
-    "stage_2": {"pr": 360, "merge_sha": "42b212e005420adf674794155707512c2e09edec", "result": "CROSS_PLATFORM_BOOTSTRAP_ACCEPTED"},
-    "stage_3": {"pr": 364, "merge_sha": "d3a3fa04081b6399011b27b10082c146b7306e6c", "result": "BOUNDED_PROVIDER_ONBOARDING_ACCEPTED"},
-    "stage_5": {"pr": 366, "merge_sha": "7126a96fe061f9590f42bc7ddc916e2c1529132d", "result": "FILES_TOOLS_E2E_AND_D1_CLOSED"},
-    "stage_6": {"pr": 367, "merge_sha": "487e5213b942418ebdc1529b70e3288f413c4dd3", "result": "RESTART_CONTINUITY_PROVED"},
-    "stage_7": {"pr": 368, "merge_sha": "10d31847838fddb9d05594381cda997a7bbc530a", "result": "FAILURE_RECOVERY_ACCEPTED"},
-    "stage_8": {"pr": 369, "merge_sha": "b8349b1430298f7c3a39771f678fb90a472b2450", "result": "BOUNDED_UPDATE_LIFECYCLE_ACCEPTED"},
-    "stage_9": {
-      "pr": 370,
-      "merge_sha": "93134ecde44475c82f28b2eac4fab6eacd10b3e4",
-      "result": "REAL_CHROMIUM_E2E_PASS",
-      "flow": "Chromium -> Console composer -> /chat -> Validated memory -> DOM reply",
-      "external_llm_required": false
-    },
-    "stage_10": {
-      "pr": 371,
-      "merge_sha": "f72b93cb044fc317752430e12d75217313997338",
-      "result": "BOUNDED_PILOT_5_OF_5_PASS",
-      "production_authorized": false,
-      "remote_canon": false,
-      "external_llm_required": false,
-      "scenarios": [
-        "startup_health",
-        "validated_memory_chat",
-        "file_ingest",
-        "mcp_reader_tools",
-        "restart_continuity"
-      ]
-    }
+  "mcp_status": {
+    "transport_implemented": true,
+    "http_gateway_implemented": true,
+    "server_registration_present": true,
+    "server_auth_gate": "require_api_key",
+    "capability_session_boundary": true,
+    "deployment_enabled": "VERIFY_SELECTED_CONFIGURATION_AND_RUNNING_INSTANCE",
+    "runtime_observed": "VERIFY_RUNTIME_EVIDENCE",
+    "production_authorized": false
   },
-  "bounded_v1_readiness_estimates": {
-    "note": "Engineering estimates relative only to the frozen bounded V1 scope; not authorization metrics.",
-    "architecture_fitness_percent": 90,
-    "core_capabilities_percent": 92,
-    "installation_percent": 95,
-    "user_e2e_percent": 93,
-    "integration_percent": 92,
-    "failure_recovery_percent": 90,
-    "ux_operations_percent": 88
+  "retrieval_status": {
+    "hybrid_capability": true,
+    "lexical_baseline": true,
+    "dense_optional": true,
+    "graph_signals_optional": true,
+    "all_signals_every_request_claim": false,
+    "ranking_is_evidence_authority": false
   },
-  "stable_architecture_context": {
-    "runtime_authority": false,
-    "operator_go": false,
-    "production_authorized": false,
-    "remote_canon": "FORBIDDEN"
-  },
-  "p2_p3_backlog_not_mandatory_for_v1": [
-    "full typed EvidenceReference to Evidence Admission architecture",
-    "trusted evidence registry",
-    "NLI contradiction subsystem",
-    "GraphRAG/Louvain improvements",
-    "all-provider response integrity expansion",
-    "additional providers",
-    "new telemetry frameworks",
-    "new authority router",
-    "speculative cognitive capabilities"
-  ],
-  "closure_rule": "If this file and docs/TITAN_V1_CLOSURE.ru.md are present on main as the result of a Stage 11 PR whose exact head passed full CI, CodeQL and aggregate merge evidence, then Stage 11 is DONE and the productization status is TITAN_V1_DONE.",
   "stop_conditions": [
     "do not treat this document as live proof; verify GitHub and exact SHA",
-    "do not infer production authorization from CI, merge, validation, receipt, acceptance, or pilot",
-    "do not reopen architecture unless a new current P0/P1 proves it necessary",
-    "after Stage 11 closure do not invent an additional mandatory stage"
+    "do not infer production authorization from CI, merge, wiring, validation, receipt, acceptance, or pilot",
+    "do not equate bounded V1 P0/P1 counters with production-hardening P0/P1",
+    "do not infer U or A from retrieval, serialization, transmission, TRACE membership, or model self-report",
+    "do not infer deployment observation merely from server route registration"
   ]
 }
