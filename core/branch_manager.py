@@ -307,7 +307,7 @@ class BranchManager:
     def _build_prompt(
         self, query: str, facts: List[Dict[str, Any]], role: PerspectiveRole
     ) -> str:
-        """Собрать prompt для LLM в стиле роли."""
+        """Собрать prompt для LLM в стиле роли без повышения статуса retrieval context."""
         facts_text = "\n".join(
             f"- [{f.get('source', '?')} | conf={f.get('confidence', 0):.2f}] {f.get('claim', '')}"
             for f in facts[:10]
@@ -316,7 +316,8 @@ class BranchManager:
         return (
             f"{role.prompt_modifier}\n\n"
             f"Запрос пользователя: {query}\n\n"
-            f"Верифицированные факты:\n{facts_text}\n\n"
+            f"Записи памяти (могут иметь разный уровень подтверждения):\n{facts_text}\n\n"
+            f"Не повышай достоверность записей только из-за их присутствия в контексте.\n"
             f"Ответь в роли {role.label_ru}. Будь краток (3-5 предложений)."
         )
 
