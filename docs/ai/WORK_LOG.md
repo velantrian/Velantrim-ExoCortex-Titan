@@ -5,6 +5,27 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-09-08 — Epistemic wording boundaries in FactsPack / ReasoningTrace · DRAFT
+
+> **Reality status:** `IMPLEMENTED ON DRAFT BRANCH / FOCUSED-TESTED / UNWIRED FACTSPACK REMAINS DORMANT / NO RUNTIME WIRING / NO POLICY CHANGE / NO MERGE AUTHORITY / NO PRODUCTION AUTHORITY`.
+> Re-resolve the live PR and exact head before treating this draft record as merged reality.
+
+Bounded P2 wording fix. Dormant `FactsPack.to_llm_prompt_section()` labelled every admitted collection as `VERIFIED FACTS` and instructed the model to base answers only on "verified facts". CognitiveMode admission is not verification: Supported / Hypothesized / Observed must keep their epistemic status. Collection title is now admitted memory context; only Validated and ImmutableCore items may be described as verified.
+
+ReasoningTrace / `server.py` Field descriptions no longer say traces show which facts "supported an answer". Wording now records presence in the answer path and states that trace membership alone does not prove semantic use or answer support. No field rename, schema, storage, or runtime behavior change.
+
+Invariants preserved: RETRIEVAL ≠ EVIDENCE; MEMORY ADMISSION ≠ VERIFICATION; SUPPORTED ≠ VALIDATED; OBSERVED ≠ VERIFIED; HYPOTHESIZED ≠ VERIFIED; TRACE MEMBERSHIP ≠ SEMANTIC USE; SEMANTIC USE ≠ ANSWER SUPPORT.
+
+Does **not** change TruthGate thresholds, evidence scoring, CognitiveMode membership, retrieval/RRF, Canon admission, write gate, ESM, Reader authority, or remote-egress leases. Does **not** wire FactsPack into runtime.
+
+Base: `119c225a6cbb4a929c7f0d7a3e12db174420db06` (`main` HEAD at handoff). Stale branch `fix/epistemic-memory-boundaries` was behind main with no unique fix commits and was not reused.
+
+Local focused evidence: `python3 -m pytest tests/test_truth_kernel.py` → 82 passed; FactsPack A–G plus remote-egress sanitizer consistency passed; `ruff`/`mypy` clean on the Python files this change owns.
+
+GitHub PR: #450 (DRAFT). Notion record: `Titan epistemic memory prompt boundaries — FactsPack / ReasoningTrace wording · 2026-09-08`. Synchronization: `SYNCED` (read-back 2026-09-08). Merge is **not** authorized.
+
+---
+
 ## 2026-09-06 — Orientation-pack lifecycle reconcile · DOCS ONLY
 
 > **Reality status:** `DOCUMENTATION RECONCILE / NO RUNTIME CHANGE / NO AUTHORITY CHANGE`.

@@ -56,6 +56,22 @@ COGNITIVE_MODE_POLICIES: dict[str, dict] = {
 # Состояния которые НИКОГДА не попадают к LLM независимо от режима
 ALWAYS_EXCLUDED_STATES = frozenset({"Contradicted", "Collapsed", "Deprecated"})
 
+# Допуск в pack ≠ верификация. Только эти состояния могут называться verified.
+_VERIFICATION_ELIGIBLE_STATES = frozenset({"Validated", "ImmutableCore"})
+
+
+def _epistemic_prompt_note(state: str) -> str | None:
+    """Пояснение к статусу: Supported/Hypothesized/Observed не называть verified."""
+    if state in _VERIFICATION_ELIGIBLE_STATES:
+        return "may be described as verified"
+    if state == "Supported":
+        return "supported — not verified"
+    if state == "Hypothesized":
+        return "⚠️ UNVERIFIED HYPOTHESIS — mark as such in answer"
+    if state == "Observed":
+        return "observation — not verified"
+    return None
+
 # A first-ranked RRF contribution is 1 / (60 + 1). With Titan's two-list
 # hybrid retriever, an unrelated candidate can receive one contribution from
 # dense ranking plus another from BM25 matching only stopwords. The pipeline
@@ -163,6 +179,8 @@ class FactsPack:
     2. Hypothesized факты помечены как "не верифицировано"
     3. Каждый claim связан с fact_id для цитирования
     4. retrieval_score явно отделён от confidence
+    5. Заголовок коллекции — admitted memory context, не VERIFIED FACTS;
+       admission ≠ verification
     """
     query:          str
     mode:           str
@@ -196,7 +214,10 @@ class FactsPack:
     def to_llm_prompt_section(self) -> str:
         """
         Формирует текстовую секцию для промпта LLM.
-        Явно разделяет подтверждённые и исключённые факты.
+        Явно разделяет допущенный (admitted) контекст памяти и исключённые факты.
+        Допуск по CognitiveMode не равен верификации: коллекция не называется
+        «VERIFIED FACTS». Только Validated и ImmutableCore могут описываться
+        как verified.
         """
         lines = [
             f"=== VELANTRIM FACTS PACK (mode: {self.mode}) ===",
@@ -204,9 +225,12 @@ class FactsPack:
         ]
 
         if not self.facts:
-            lines.append("⚠️ No verified facts found for this query.")
+            lines.append("⚠️ No admissible memory context found for this query.")
         else:
-            lines.append("📋 VERIFIED FACTS (use these in your answer):")
+            lines.append(
+                "📋 ADMITTED MEMORY CONTEXT "
+                "(preserve each item's epistemic status):"
+            )
             for i, fact in enumerate(self.facts, 1):
                 state_marker = {
                     "ImmutableCore": "🔒",
@@ -223,10 +247,9 @@ class FactsPack:
                     f"status={fact.epistemic_state} | "
                     f"source={fact.source}"
                 )
-                if fact.epistemic_state == "Hypothesized":
-                    lines.append(
-                        "       ⚠️ UNVERIFIED HYPOTHESIS — mark as such in answer"
-                    )
+                status_note = _epistemic_prompt_note(fact.epistemic_state)
+                if status_note:
+                    lines.append(f"       {status_note}")
 
         if self.excluded_facts:
             lines.append("")
@@ -239,7 +262,9 @@ class FactsPack:
 
         lines.append("")
         lines.append(
-            "INSTRUCTION: Base your answer ONLY on the verified facts above. "
+            "INSTRUCTION: Use only the admitted memory context above. "
+            "Preserve each item's epistemic status. "
+            "Only Validated and ImmutableCore items may be described as verified. "
             "Do not use excluded facts. "
             "Cite facts by their fact_id in brackets, e.g., [f_quantum_001]."
         )

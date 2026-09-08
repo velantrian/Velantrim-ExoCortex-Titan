@@ -705,7 +705,12 @@ class QueryResponse(BaseModel):
         None, description="Провайдер/модель LLM для отладки консоли"
     )
     reasoning_trace_id: str | None = Field(
-        None, description="ID trace-записи: какие факты поддержали ответ"
+        None,
+        description=(
+            "ID trace-записи: какие факты присутствовали в пути ответа; "
+            "членство в trace само по себе не доказывает семантическое "
+            "использование или поддержку ответа"
+        ),
     )
     truth: dict[str, Any] | None = Field(
         None,

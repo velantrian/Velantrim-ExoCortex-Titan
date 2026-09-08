@@ -126,7 +126,68 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
+## handoff-pr-450
+
+### 2026-09-08 — Epistemic memory prompt boundaries (FactsPack / ReasoningTrace wording)
+
+- **Status:** `SYNCED`
+- **Documentation impact:** `GITHUB_AND_NOTION`
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · Draft PR #450
+- **Base SHA:** `119c225a6cbb4a929c7f0d7a3e12db174420db06`
+- **Head SHA:** `7bd4119bfa1d4e8a1ff2be446892484943276faa`
+- **Intended Notion record:** `Titan epistemic memory prompt boundaries — FactsPack / ReasoningTrace wording · 2026-09-08` (child of `Velantrim Titan 9.0`)
+- **Notion access for originating actor:** `AVAILABLE`
+
+### Problem / opportunity
+
+Dormant `FactsPack.to_llm_prompt_section()` labelled every CognitiveMode-admitted collection as `VERIFIED FACTS`. Admission is not verification. ReasoningTrace descriptions implied traces show which facts supported an answer.
+
+### Material findings
+
+No active P0/P1 Canon bypass. Two P2 semantic debts: collection-level verified labelling in dormant FactsPack, and unearned support wording on ReasoningTrace. Stale branch `fix/epistemic-memory-boundaries` was behind main with no unique fix commits.
+
+### Decision and rationale
+
+Fix wording at source. Collection title is admitted memory context. Supported / Hypothesized / Observed keep exact status. Only Validated and ImmutableCore may be described as verified. Trace membership records presence in the answer path, not semantic use or answer support. Do not wire FactsPack. Do not change policy/Canon/schemas.
+
+### Rejected or deferred alternatives
+
+Reuse of the stale branch; runtime wiring of FactsPack; CognitiveMode membership / TruthGate / retrieval changes; API field renames; broad terminology cleanup.
+
+### Authority, safety, privacy, and Canon boundaries
+
+No Canon write path. No policy threshold change. FactsPack remains dormant/unwired. Merge is not authorized. Draft only. No production authority.
+
+### GitHub files updated
+
+`core/facts_pack.py`, `core/memory_ops.py`, `server.py`, `tests/test_truth_kernel.py`, `docs/ai/WORK_LOG.md`, `docs/ai/NOTION_HANDOFF.md`
+
+### Evidence
+
+- Draft PR #450
+- Local: `python3 -m pytest tests/test_truth_kernel.py` — 82 passed
+- Local: FactsPack A–G plus remote-egress sanitizer consistency passed
+- `ruff check` clean on `core/facts_pack.py`, `core/memory_ops.py`, `tests/test_truth_kernel.py`
+- `mypy core/facts_pack.py core/memory_ops.py` — no issues
+- Notion page created under Titan 9.0 hub and read back on 2026-09-08
+
+### Known limitations
+
+FactsPack still unwired. CognitiveMode policy `description` strings and remote-egress sanitizer replacement patterns intentionally unchanged. Merge not authorized.
+
+### Next actions
+
+Keep PR draft. Reviewer verifies CI. Do not merge, do not mark production-ready, do not wire FactsPack.
+
+### Synchronization result
+
+- Connected actor: originating cloud agent with GitHub + Notion access
+- Notion record: `Titan epistemic memory prompt boundaries — FactsPack / ReasoningTrace wording · 2026-09-08`
+- Status: `SYNCED` (read-back verified 2026-09-08)
+- Final PR / merge SHA / CI: PR #450 remains DRAFT and unmerged
+
 ## handoff-pr-355
+
 
 ### 2026-08-19 — Typed Evidence Reference v1 Contract
 
