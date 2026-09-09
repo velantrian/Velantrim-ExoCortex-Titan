@@ -5,6 +5,36 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-09-09 — PH-2A R455 remediations on draft #455
+
+> **Reality status:** `IMPLEMENTED ON READY BRANCH / FOCUSED-TESTED / DOCKER NAMED-VOLUME OBSERVED ON ACTIONS (run 34339429696) / ORIGINAL_STATE_ISOLATED=PASS / MERGE AUTHORIZED BY OPERATOR / NO PRODUCTION AUTHORITY`.
+> Re-resolve the live PR head after any new push before treating this as evergreen.
+
+Bounded remediations only on #455: `verify_archive` now fails without root `velantrim.db`; tar members are root-bounded before local and Docker extract; snapshots compare `PRAGMA user_version`; `docker-drill` is the production-profile named-volume proof. TestClient data-dir drill is unchanged and still required.
+
+Does **not** enable TruthPolicy, Doctor, Security Audit, Upgrade, Sandbox, or production authorization.
+
+CI follow-up on `81576ce`: restore override now resets `driver: local` (`driver: !reset null`) before `external`+`name`; synthetic drill `.env` no longer stores `VELANTRIM_API_KEY` (process env / compose interpolation only).
+
+R455-05: after restore-boot `/health`, `docker-drill` inspects the named volume at `/app/data` and fails unless it is the requested restore volume and not the original (`ORIGINAL_STATE_ISOLATED`).
+
+---
+
+## 2026-09-09 — PH-2A hardened local backup / fresh-restore proof · DRAFT
+
+> **Reality status:** `IMPLEMENTED ON DRAFT BRANCH / FOCUSED-TESTED / NO DOCKER VOLUME OBSERVATION IN THIS ENVIRONMENT / NO MERGE AUTHORITY / NO PRODUCTION AUTHORITY`.
+> Re-resolve the live PR and exact head before treating this draft record as merged reality.
+
+PH-2A only. The documented cold volume tar (`tar czf` of `velantrim_prod_data` after compose stop) had no restore-to-fresh recipe and no automated fail-loud parity proof. Underlying contract is the data directory tar, not a new recovery subsystem.
+
+Change: complete §9 restore-to-fresh in `docs/operations/hardened-production-profile.md`; add `scripts/prod_volume_backup_restore.py` (same tar verify/restore, refuses non-empty target); add self-cleaning `tests/test_prod_volume_backup_restore.py` that seeds diverse Canon via `/facts` + notes + ingest, tars, restores into a new empty dir, boots, and compares facts / fact_versions / L0 provenance / AuditChain `memory_events`. `provenance_chains` was absent on this API path and is not claimed. Response audit remains unclaimed (`ENABLE_RESPONSE_AUDIT=0`). Docker CLI was unavailable in the implementing environment; compose volume wrapping is documented, not observed here.
+
+Does **not** enable TruthPolicy, Doctor, Security Audit, Upgrade Preflight, Sandbox, or production authorization. Does **not** invent RTO/RPO.
+
+Base: `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (`main` HEAD / #454). Open PRs at kickoff: none. Draft PR: #455. MERGE NOT AUTHORIZED.
+
+---
+
 ## 2026-09-08 — Epistemic wording boundaries in FactsPack / ReasoningTrace · DRAFT
 
 > **Reality status:** `IMPLEMENTED ON DRAFT BRANCH / FOCUSED-TESTED / UNWIRED FACTSPACK REMAINS DORMANT / NO RUNTIME WIRING / NO POLICY CHANGE / NO MERGE AUTHORITY / NO PRODUCTION AUTHORITY`.

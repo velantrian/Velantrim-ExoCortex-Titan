@@ -37,6 +37,8 @@ on:
       - "scripts/validate_production_profile.py"
       - "tests/test_production_profile.py"
       - "docs/operations/hardened-production-profile.md"
+      - "scripts/prod_volume_backup_restore.py"
+      - "tests/test_prod_volume_backup_restore.py"
       - ".github/workflows/docker.yml"
   pull_request:
     branches: ["**"]
@@ -74,12 +76,14 @@ on:
       - "scripts/validate_production_profile.py"
       - "tests/test_production_profile.py"
       - "docs/operations/hardened-production-profile.md"
+      - "scripts/prod_volume_backup_restore.py"
+      - "tests/test_prod_volume_backup_restore.py"
       - ".github/workflows/docker.yml"
 
 jobs:
   docker-build-and-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -455,3 +459,26 @@ jobs:
       - name: Clean up local secret fixtures
         if: always()
         run: rm -f .env config/leaked.env image.tar image_filelist.txt /tmp/health.json
+
+      - name: PH-2A production-profile named-volume backup/restore proof
+        env:
+          VELANTRIM_API_KEY: ph2a-synthetic-backup-key-not-a-secret
+        run: |
+          set -euo pipefail
+          docker tag velantrim-titan:ci velantrim-titan:prod
+          python scripts/prod_volume_backup_restore.py docker-drill \
+            --compose-file docker-compose.prod.yml \
+            --project "ph2a455${GITHUB_RUN_ID}" \
+            --port 18082 \
+            --image velantrim-titan:prod \
+            --api-key "ph2a-synthetic-backup-key-not-a-secret"
+
+      - name: PH-2A drill leftover cleanup
+        if: always()
+        run: |
+          docker rm -f velantrim-titan-prod || true
+          docker compose -p "ph2a455${GITHUB_RUN_ID}" -f docker-compose.prod.yml down -v --remove-orphans || true
+          volumes="$(docker volume ls -q --filter "name=ph2a455${GITHUB_RUN_ID}" || true)"
+          if [ -n "${volumes}" ]; then
+            echo "${volumes}" | xargs docker volume rm -f || true
+          fi

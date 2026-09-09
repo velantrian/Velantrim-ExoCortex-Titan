@@ -14,6 +14,12 @@
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
 
+## 2026-09-09 — PH-2A local backup/restore proof (Ready #455, not yet on main)
+
+Ready PR #455 (pre-merge). Kickoff `main` was `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (#454). This paragraph is **not** verified-`main` truth until merge lands.
+
+PH-2A adds restore-to-fresh for the hardened production data directory, a self-cleaning TestClient tar-parity drill, and remediations R455-01..05: Actions named-volume `docker-drill`, fail-loud verify without `velantrim.db`, root-bounded tar extract, `PRAGMA user_version` equality, and post-restore `/app/data` mount identity (`ORIGINAL_STATE_ISOLATED`). Named-volume recovery is **OBSERVED** on Actions `docker-build-and-verify` run `34339429696`. **MERGE AUTHORIZED BY OPERATOR. PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.** Does not enable TruthPolicy or claim live/hot DR / RTO/RPO.
+
 ## 2026-09-06 — Orientation lifecycle reconciliation
 
 Docs-only revalidation against live `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`.

@@ -394,7 +394,15 @@ Still not proved:
 - multi-process write contention under production load;
 - large-graph full-reset latency/audit volume under production load;
 - disk-full/filesystem-permission behavior at production scale;
-- live backup/restore and disaster-recovery orchestration;
+- live/hot backup, production-scale restore, and disaster-recovery orchestration
+  (PH-2A, Ready #455 pre-merge: local cold tar of the hardened production data
+  directory → verify → restore-to-fresh-empty-target is implemented and
+  focused-tested; verify fails without Class-A `velantrim.db`; tar extract is
+  root-bounded; `PRAGMA user_version` is compared. Docker named-volume wrapping
+  is the same tar contract plus `docker-drill` in `docker.yml`; treat named-volume
+  recovery as OBSERVED only at a green `docker-build-and-verify` on the draft
+  head, otherwise `BLOCKED_BY_ENVIRONMENT` / `PASS_WITH_LIMITATIONS`. Not
+  production-authorized; not an RTO/RPO claim);
 - external audit service/SLO/alerting coverage;
 - independent security review or penetration test;
 - complete production evidence for Reader Core (#120);
