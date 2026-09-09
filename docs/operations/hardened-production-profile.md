@@ -334,6 +334,25 @@ python scripts/prod_volume_backup_restore.py verify \
 
 This lists the tar, extracts into a throwaway directory, and runs
 `PRAGMA integrity_check` on live SQLite files (not the copies under `backups/`).
+It also records `PRAGMA user_version` for those files. Recovery evidence requires
+`BASELINE_USER_VERSION = BACKUP_VERIFIED_USER_VERSION = RESTORED_USER_VERSION`
+for the canonical `velantrim.db`.
+
+`verify` **fails** if the mandatory Class-A database `velantrim.db` is absent
+from the volume root. A non-empty tar that contains zero required Titan SQLite
+DBs is not a successful backup. `velantrim_notes.db` is not required (a deploy
+may have no console notes).
+
+Before any extract (system `tar`, Python `tarfile`, or Docker volume restore),
+the helper inspects members and **REFUSE**s at least:
+
+- absolute paths;
+- `..` traversal that would escape the restore root;
+- symlink or hardlink targets that escape the restore root;
+- special entries (fifo/chr/blk and similar) that are not part of the Titan
+  backup contract.
+
+This is not a generic filesystem framework. It is the volume-tar contract.
 
 ### 9.3 Restore only into a new empty volume
 
@@ -356,7 +375,7 @@ docker run --rm \
   -v "$PWD:/backup" \
   busybox tar xzf /backup/velantrim-prod-TIMESTAMP.tar.gz -C /data
 
-# equivalent helper (refuses a non-empty volume):
+# equivalent helper (refuses a non-empty volume; validates tar members first):
 # python scripts/prod_volume_backup_restore.py docker-restore-fresh \
 #   --archive velantrim-prod-TIMESTAMP.tar.gz \
 #   --new-volume "$RESTORE_VOLUME"
@@ -393,7 +412,14 @@ hardened-profile API paths used in the proof do not require it to exist.
 Response-audit (`SQLITE_AUDIT_PATH`) is **not** durable in this profile
 (`ENABLE_RESPONSE_AUDIT=0`) and must not be claimed.
 
-Focused proof: `pytest tests/test_prod_volume_backup_restore.py -q`.
+Focused proof (data-dir / TestClient, no Docker daemon required):
+`pytest tests/test_prod_volume_backup_restore.py -q`.
+
+Named-volume proof (actual `docker-compose.prod.yml` volume, when Docker is
+available): `python scripts/prod_volume_backup_restore.py docker-drill`.
+GitHub Actions `docker.yml` runs that drill against `velantrim-titan:ci` tagged
+as `velantrim-titan:prod`. If Docker is unavailable, PH-2A is
+`BLOCKED_BY_ENVIRONMENT` / `PASS_WITH_LIMITATIONS` — not complete.
 
 ## 10. Shutdown, upgrade, rollback
 

@@ -450,8 +450,8 @@ core/pipeline.py                              existing runtime/query route owner
 Hardened production local backup/restore (PH-2A) · DRAFT UNTIL MERGE · NOT PRODUCTION AUTHORIZED
 docker-compose.prod.yml                       named volume velantrim_prod_data
 docs/operations/hardened-production-profile.md §9–§10
-scripts/prod_volume_backup_restore.py         cold tar / verify / restore-to-fresh-only
-tests/test_prod_volume_backup_restore.py      self-cleaning Canon parity drill
+scripts/prod_volume_backup_restore.py         cold tar / verify / restore-to-fresh-only / docker-drill
+tests/test_prod_volume_backup_restore.py      self-cleaning Canon parity drill + negative tar/verify cases
 ```
 
 ## 15. Explicitly unauthorized at current checkpoint

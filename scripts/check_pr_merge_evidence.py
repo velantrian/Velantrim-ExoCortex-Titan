@@ -75,6 +75,8 @@ DOCKER_PATHS = (
     "scripts/validate_production_profile.py",
     "tests/test_production_profile.py",
     "docs/operations/hardened-production-profile.md",
+    "scripts/prod_volume_backup_restore.py",
+    "tests/test_prod_volume_backup_restore.py",
     "scripts/validate_container_sbom.py",
     "tests/test_container_sbom.py",
     "docs/operations/container-sbom.md",

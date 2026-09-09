@@ -10,8 +10,10 @@ Docker-демон не требуется: именованный том — э�
 from __future__ import annotations
 
 import importlib.util
+import io
 import sqlite3
 import sys
+import tarfile
 import time
 from pathlib import Path
 
@@ -328,6 +330,15 @@ def _run_drill(tmp_path: Path, monkeypatch, nonce: str) -> dict[str, object]:
             "NO_SILENT_PARTIAL_RECOVERY: API state mismatch after restore"
         )
 
+    base_uv = baseline["sqlite_user_versions"]["velantrim.db"]
+    verify_uv = verify_meta["sqlite_user_versions"]["velantrim.db"]
+    restored_uv = after["sqlite_user_versions"]["velantrim.db"]
+    if not (base_uv == verify_uv == restored_uv):
+        raise helper.StateMismatchError(
+            "NO_SILENT_PARTIAL_RECOVERY: user_version "
+            f"baseline={base_uv} backup={verify_uv} restored={restored_uv}"
+        )
+
     duration_s = round(time.monotonic() - started, 3)
     return {
         "backup_meta": backup_meta,
@@ -335,6 +346,7 @@ def _run_drill(tmp_path: Path, monkeypatch, nonce: str) -> dict[str, object]:
             "sha256": verify_meta["sha256"],
             "size_bytes": verify_meta["size_bytes"],
             "sqlite_integrity": verify_meta["sqlite_integrity"],
+            "sqlite_user_versions": verify_meta["sqlite_user_versions"],
             "member_count": len(verify_meta["members"]),
         },
         "baseline_tables": baseline["tables"],
@@ -347,6 +359,11 @@ def _run_drill(tmp_path: Path, monkeypatch, nonce: str) -> dict[str, object]:
         ),
         "api_facts_total": api_restored["facts_total"],
         "validated_state": api_restored["validated_state"],
+        "sqlite_user_versions": {
+            "BASELINE_USER_VERSION": base_uv,
+            "BACKUP_VERIFIED_USER_VERSION": verify_uv,
+            "RESTORED_USER_VERSION": restored_uv,
+        },
         "observed_recovery_duration_s": duration_s,
         "seed": seed,
     }
@@ -372,6 +389,9 @@ def test_ops_doc_documents_fresh_target_restore():
     assert "new empty" in text.lower() or "fresh" in text.lower()
     assert "scripts/prod_volume_backup_restore.py" in text
     assert "down -v" in text
+    assert "velantrim.db" in text
+    assert "user_version" in text
+    assert "REFUSE" in text
 
 
 def test_restore_to_non_empty_target_fails_loud(tmp_path: Path):
@@ -431,3 +451,87 @@ def test_cold_tar_restore_to_fresh_recovers_canonical_state(tmp_path: Path, monk
     assert first["observed_recovery_duration_s"] >= 0
     assert second["observed_recovery_duration_s"] >= 0
     assert first.get("provenance_l0_durable") is True
+    assert first["sqlite_user_versions"]["BASELINE_USER_VERSION"] == (
+        first["sqlite_user_versions"]["BACKUP_VERIFIED_USER_VERSION"]
+    )
+    assert first["sqlite_user_versions"]["BACKUP_VERIFIED_USER_VERSION"] == (
+        first["sqlite_user_versions"]["RESTORED_USER_VERSION"]
+    )
+    assert second["sqlite_user_versions"]["BASELINE_USER_VERSION"] == (
+        second["sqlite_user_versions"]["RESTORED_USER_VERSION"]
+    )
+
+
+def _write_member_archive(path: Path, name: str, payload: bytes, *, tar_type: bytes | None = None, linkname: str | None = None) -> None:
+    with tarfile.open(path, "w:gz") as tf:
+        info = tarfile.TarInfo(name=name)
+        if tar_type is not None:
+            info.type = tar_type
+        if linkname is not None:
+            info.linkname = linkname
+            info.size = 0
+            tf.addfile(info)
+            return
+        info.size = len(payload)
+        tf.addfile(info, io.BytesIO(payload))
+
+
+def test_archive_without_required_canonical_db_fails_loud(tmp_path: Path):
+    src = tmp_path / "src"
+    src.mkdir()
+    extra = sqlite3.connect(str(src / "ngram.db"))
+    extra.execute("CREATE TABLE t (x INTEGER)")
+    extra.execute("INSERT INTO t VALUES (1)")
+    extra.commit()
+    extra.close()
+    (src / "readme.txt").write_text("not canon", encoding="utf-8")
+    archive = tmp_path / "archive_without_required_canonical_db.tar.gz"
+    helper.create_cold_tar(src, archive)
+    with pytest.raises(helper.BackupVerificationError, match="velantrim.db"):
+        helper.verify_archive(archive)
+    rc = helper.main(["verify", "--archive", str(archive)])
+    assert rc != 0
+
+
+def test_tar_member_parent_escape_is_refused(tmp_path: Path):
+    archive = tmp_path / "escape.tar.gz"
+    _write_member_archive(archive, "../escape.txt", b"nope")
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    with pytest.raises(helper.UnsafeArchiveMemberError, match="REFUSE"):
+        helper.restore_to_fresh_dir(archive, dest)
+    assert list(dest.iterdir()) == []
+
+
+def test_tar_member_absolute_path_is_refused(tmp_path: Path):
+    archive = tmp_path / "absolute.tar.gz"
+    _write_member_archive(archive, "/tmp/ph2a-absolute.txt", b"nope")
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    with pytest.raises(helper.UnsafeArchiveMemberError, match="REFUSE"):
+        helper.restore_to_fresh_dir(archive, dest)
+    assert list(dest.iterdir()) == []
+
+
+def test_tar_symlink_escape_is_refused(tmp_path: Path):
+    archive = tmp_path / "symlink.tar.gz"
+    _write_member_archive(
+        archive,
+        "escape_link",
+        b"",
+        tar_type=tarfile.SYMTYPE,
+        linkname="../outside",
+    )
+    dest = tmp_path / "dest"
+    dest.mkdir()
+    with pytest.raises(helper.UnsafeArchiveMemberError, match="REFUSE"):
+        helper.restore_to_fresh_dir(archive, dest)
+    assert list(dest.iterdir()) == []
+
+
+def test_docker_drill_command_is_registered():
+    parser = helper.build_parser()
+    args = parser.parse_args(
+        ["docker-drill", "--compose-file", "docker-compose.prod.yml"]
+    )
+    assert args.command == "docker-drill"

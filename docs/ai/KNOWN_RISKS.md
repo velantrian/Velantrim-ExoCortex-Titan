@@ -397,9 +397,12 @@ Still not proved:
 - live/hot backup, production-scale restore, and disaster-recovery orchestration
   (PH-2A, draft until merge: local cold tar of the hardened production data
   directory → verify → restore-to-fresh-empty-target is implemented and
-  focused-tested; Docker named-volume wrapping follows the same tar contract
-  but was not observed in the PH-2A agent environment; not production-authorized;
-  not an RTO/RPO claim);
+  focused-tested; verify fails without Class-A `velantrim.db`; tar extract is
+  root-bounded; `PRAGMA user_version` is compared. Docker named-volume wrapping
+  is the same tar contract plus `docker-drill` in `docker.yml`; treat named-volume
+  recovery as OBSERVED only at a green `docker-build-and-verify` on the draft
+  head, otherwise `BLOCKED_BY_ENVIRONMENT` / `PASS_WITH_LIMITATIONS`. Not
+  production-authorized; not an RTO/RPO claim);
 - external audit service/SLO/alerting coverage;
 - independent security review or penetration test;
 - complete production evidence for Reader Core (#120);

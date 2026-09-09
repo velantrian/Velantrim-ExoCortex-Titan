@@ -565,6 +565,8 @@ def test_validator_passes_in_both_resolution_modes():
     "scripts/validate_production_profile.py",
     "tests/test_production_profile.py",
     "docs/operations/hardened-production-profile.md",
+    "scripts/prod_volume_backup_restore.py",
+    "tests/test_prod_volume_backup_restore.py",
 ])
 def test_docker_workflow_watches_production_profile_paths(path: str):
     """The Docker workflow must run when the production profile changes."""
