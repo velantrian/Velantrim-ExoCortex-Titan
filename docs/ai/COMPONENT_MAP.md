@@ -446,6 +446,12 @@ core/embedding_projection.py                  projection freshness/fallback
 core/code_structural_memory/                  CSM contracts + Stage C scanner lifecycle
 core/multilingual_router.py                   existing multilingual patch + lifecycle ownership
 core/pipeline.py                              existing runtime/query route owner
+
+Hardened production local backup/restore (PH-2A) · DRAFT UNTIL MERGE · NOT PRODUCTION AUTHORIZED
+docker-compose.prod.yml                       named volume velantrim_prod_data
+docs/operations/hardened-production-profile.md §9–§10
+scripts/prod_volume_backup_restore.py         cold tar / verify / restore-to-fresh-only
+tests/test_prod_volume_backup_restore.py      self-cleaning Canon parity drill
 ```
 
 ## 15. Explicitly unauthorized at current checkpoint

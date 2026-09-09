@@ -14,6 +14,12 @@
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
 
+## 2026-09-09 — PH-2A local backup/restore proof (draft, not on main)
+
+Draft-only. Live `main` at PH-2A kickoff was `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (#454); open PRs were empty. This paragraph is **not** a verified-`main` status change until the PH-2A PR merges.
+
+PH-2A adds a restore-to-fresh recipe and a self-cleaning tar-parity test for the hardened production data directory. It does not authorize production, enable TruthPolicy, or prove live/hot DR orchestration.
+
 ## 2026-09-06 — Orientation lifecycle reconciliation
 
 Docs-only revalidation against live `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`.

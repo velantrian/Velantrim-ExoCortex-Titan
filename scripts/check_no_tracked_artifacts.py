@@ -19,6 +19,7 @@ FORBIDDEN_PATTERNS = [
     r"^\.mypy_cache(/|$)",
     r"^data/metrics\.jsonl$",
     r"^data/backups(/|$)",
+    r"\.tar\.gz$",
 ]
 
 

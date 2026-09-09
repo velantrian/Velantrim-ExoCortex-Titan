@@ -283,20 +283,117 @@ against `VELANTRIM_DB_PATH`, `VELANTRIM_NGRAM_DB`, `SQLITE_GRAPH_PATH`,
 `VELANTRIM_NOTES_DB`, `VELANTRIM_ARCHIVE_PATH`, and the sleep worker's
 `CORE_BLOCKS_DB_PATH` / `NOTEBOOK_DB_PATH`.
 
-## 9. Backup
+## 9. Backup and restore-to-fresh
 
 State lives entirely in the `velantrim_prod_data` volume. `scripts/apply_migrations.py`
-also takes an automatic pre-migration backup into `/app/data/backups`.
+also takes an automatic pre-migration backup of `velantrim.db` into `/app/data/backups`
+(SQLite `.backup` API, single-file). That path is **not** a substitute for a volume
+tar: a production restore must reconstruct the whole data directory.
+
+The operator contract is **cold tar of the volume after a clean stop**, then restore
+**only into a new empty target**. Do not extract over a live volume. Do not invent
+RTO/RPO from a successful drill.
+
+Same tar contract without wrapping Docker (CI / local proof):
 
 ```bash
-# cold backup (stop first for a consistent SQLite snapshot)
+python scripts/prod_volume_backup_restore.py backup --data-dir DIR --archive FILE.tar.gz
+python scripts/prod_volume_backup_restore.py verify --archive FILE.tar.gz
+python scripts/prod_volume_backup_restore.py restore --archive FILE.tar.gz --target FRESH_EMPTY_DIR
+```
+
+`restore` refuses a non-empty target (fail-loud, no silent merge).
+
+### 9.1 Cold backup
+
+```bash
+# stop first for a consistent SQLite snapshot
 docker compose -f docker-compose.prod.yml --env-file .env.prod stop
+# verify the volume name for your project prefix: docker volume ls
 docker run --rm -v velantrim-exocortex-titan_velantrim_prod_data:/data:ro \
   -v "$PWD:/backup" busybox tar czf /backup/velantrim-prod-$(date -u +%Y%m%dT%H%M%SZ).tar.gz -C /data .
 docker compose -f docker-compose.prod.yml --env-file .env.prod start
 ```
 
-Verify the volume name for your project prefix with `docker volume ls`.
+Equivalent helper (same busybox tar):
+
+```bash
+python scripts/prod_volume_backup_restore.py docker-backup \
+  --volume velantrim-exocortex-titan_velantrim_prod_data \
+  --archive "$PWD/velantrim-prod-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
+```
+
+Never commit the archive, `*.db`, or `.env.prod`.
+
+### 9.2 Verify the archive
+
+```bash
+python scripts/prod_volume_backup_restore.py verify \
+  --archive velantrim-prod-TIMESTAMP.tar.gz
+```
+
+This lists the tar, extracts into a throwaway directory, and runs
+`PRAGMA integrity_check` on live SQLite files (not the copies under `backups/`).
+
+### 9.3 Restore only into a new empty volume
+
+Isolate the original live volume. Create a **new empty** volume, extract into
+that volume only, then boot against it. Extracting into a non-empty target is a
+failed restore, not a merge.
+
+```bash
+# 1. Stop. Do not use `down -v` — that destroys the live volume.
+docker compose -f docker-compose.prod.yml --env-file .env.prod down
+
+# 2. Create a NEW empty volume. Do not reuse the live volume name until
+#    the restored copy has been proven and the operator chooses to swap.
+RESTORE_VOLUME="velantrim_prod_restore_$(date -u +%Y%m%dT%H%M%SZ)"
+docker volume create "$RESTORE_VOLUME"
+
+# 3. Extract ONLY into that empty volume (busybox tar, same as backup).
+docker run --rm \
+  -v "${RESTORE_VOLUME}:/data" \
+  -v "$PWD:/backup" \
+  busybox tar xzf /backup/velantrim-prod-TIMESTAMP.tar.gz -C /data
+
+# equivalent helper (refuses a non-empty volume):
+# python scripts/prod_volume_backup_restore.py docker-restore-fresh \
+#   --archive velantrim-prod-TIMESTAMP.tar.gz \
+#   --new-volume "$RESTORE_VOLUME"
+```
+
+Boot the restored volume with a **never-committed** local override, for example
+`docker-compose.restore.yml`:
+
+```yaml
+services:
+  velantrim:
+    volumes:
+      - restore_data:/app/data
+volumes:
+  restore_data:
+    external: true
+    name: velantrim_prod_restore_TIMESTAMP
+```
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.restore.yml \
+  --env-file .env.prod up -d
+```
+
+After health is acceptable, query facts/notes and compare against the baseline
+taken before backup. A missing table, missing fact, or hash mismatch is a failed
+recovery — not a partial success.
+
+NGram indexes and `data/backups/` copies are rebuildable or ancillary. Canon
+parity is `facts` / `fact_versions` / L0 provenance (`l0_raw_memory`,
+`l0_fact_provenance`) / AuditChain `memory_events` plus console notes.
+The separate `provenance_chains` table is compared when present; the
+hardened-profile API paths used in the proof do not require it to exist.
+Response-audit (`SQLITE_AUDIT_PATH`) is **not** durable in this profile
+(`ENABLE_RESPONSE_AUDIT=0`) and must not be claimed.
+
+Focused proof: `pytest tests/test_prod_volume_backup_restore.py -q`.
 
 ## 10. Shutdown, upgrade, rollback
 
@@ -316,7 +413,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
 
 Migrations are forward-only and idempotent via `PRAGMA user_version`. A rollback
 to an image expecting an older schema is **not** covered by an automatic down
-migration — restore the backup taken before the upgrade instead.
+migration — restore the backup taken before the upgrade instead, using the
+restore-to-fresh procedure in §9.3. Do not extract a backup over the live volume.
 
 `down` without `-v` preserves the data volume. **`down -v` destroys it.**
 
