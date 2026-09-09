@@ -16,7 +16,7 @@ Change: complete §9 restore-to-fresh in `docs/operations/hardened-production-pr
 
 Does **not** enable TruthPolicy, Doctor, Security Audit, Upgrade Preflight, Sandbox, or production authorization. Does **not** invent RTO/RPO.
 
-Base: `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (`main` HEAD / #454). Open PRs at kickoff: none.
+Base: `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (`main` HEAD / #454). Open PRs at kickoff: none. Draft PR: #455. MERGE NOT AUTHORIZED.
 
 ---
 
