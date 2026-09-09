@@ -392,6 +392,7 @@ def test_ops_doc_documents_fresh_target_restore():
     assert "velantrim.db" in text
     assert "user_version" in text
     assert "REFUSE" in text
+    assert "driver: !reset" in text
 
 
 def test_restore_to_non_empty_target_fails_loud(tmp_path: Path):
@@ -535,3 +536,21 @@ def test_docker_drill_command_is_registered():
         ["docker-drill", "--compose-file", "docker-compose.prod.yml"]
     )
     assert args.command == "docker-drill"
+
+
+def test_synthetic_prod_env_does_not_persist_api_key(tmp_path: Path):
+    path = tmp_path / "ph2a.env"
+    helper._write_synthetic_prod_env(path, 18082)
+    text = path.read_text(encoding="utf-8")
+    assert "VELANTRIM_API_KEY" not in text
+    assert "VELANTRIM_PUBLIC_PORT=18082" in text
+
+
+def test_restore_override_resets_volume_driver(tmp_path: Path):
+    path = tmp_path / "docker-compose.restore.yml"
+    helper._write_restore_override(path, "ph2a_restore_vol")
+    text = path.read_text(encoding="utf-8")
+    assert "driver: !reset null" in text
+    assert "external: true" in text
+    assert "name: ph2a_restore_vol" in text
+    assert "driver: local" not in text

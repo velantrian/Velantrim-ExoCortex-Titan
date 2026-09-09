@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -716,6 +717,7 @@ def _compose_run(
         check=False,
         capture_output=True,
         text=True,
+        env=os.environ.copy(),
     )
     if check and proc.returncode != 0:
         raise RuntimeError(
@@ -899,11 +901,11 @@ def _docker_drill_selected_state(
     }
 
 
-def _write_synthetic_prod_env(path: Path, api_key: str, port: int) -> None:
+def _write_synthetic_prod_env(path: Path, port: int) -> None:
+    """Синтетический .env без секретов: порт/bind/provider. Ключ — только в env процесса."""
     path.write_text(
         "\n".join(
             [
-                f"VELANTRIM_API_KEY={api_key}",
                 f"VELANTRIM_PUBLIC_PORT={port}",
                 "VELANTRIM_BIND_ADDR=127.0.0.1",
                 "LLM_PROVIDER=none",
@@ -916,11 +918,13 @@ def _write_synthetic_prod_env(path: Path, api_key: str, port: int) -> None:
 
 
 def _write_restore_override(path: Path, restore_volume: str) -> None:
+    """Сбросить driver: local из prod-файла, затем указать external-том restore."""
     path.write_text(
         "\n".join(
             [
                 "volumes:",
                 "  velantrim_prod_data:",
+                "    driver: !reset null",
                 "    external: true",
                 f"    name: {restore_volume}",
                 "",
@@ -1002,7 +1006,8 @@ def run_docker_production_drill(
     base_url = f"http://127.0.0.1:{port}"
     subprocess.run(["docker", "rm", "-f", "velantrim-titan-prod"], capture_output=True)
     try:
-        _write_synthetic_prod_env(env_file, api_key, port)
+        os.environ["VELANTRIM_API_KEY"] = api_key
+        _write_synthetic_prod_env(env_file, port)
         _compose_run(
             compose_file, env_file, project,
             ["up", "-d", "--no-build"],

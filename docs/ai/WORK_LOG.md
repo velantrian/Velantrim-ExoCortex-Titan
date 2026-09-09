@@ -14,6 +14,8 @@ Bounded remediations only on #455: `verify_archive` now fails without root `vela
 
 Does **not** enable TruthPolicy, Doctor, Security Audit, Upgrade, Sandbox, or production authorization.
 
+CI follow-up on `81576ce`: restore override now resets `driver: local` (`driver: !reset null`) before `external`+`name`; synthetic drill `.env` no longer stores `VELANTRIM_API_KEY` (process env / compose interpolation only).
+
 ---
 
 ## 2026-09-09 — PH-2A hardened local backup / fresh-restore proof · DRAFT

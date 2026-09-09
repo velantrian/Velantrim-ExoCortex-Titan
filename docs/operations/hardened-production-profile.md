@@ -382,15 +382,15 @@ docker run --rm \
 ```
 
 Boot the restored volume with a **never-committed** local override, for example
-`docker-compose.restore.yml`:
+`docker-compose.restore.yml`. The production file already sets
+`volumes.velantrim_prod_data.driver: local`; a merge that only adds
+`external: true` conflicts. Reset the driver, then point the **same** volume
+key at the new empty restore volume (do not add a second service mount):
 
 ```yaml
-services:
-  velantrim:
-    volumes:
-      - restore_data:/app/data
 volumes:
-  restore_data:
+  velantrim_prod_data:
+    driver: !reset null
     external: true
     name: velantrim_prod_restore_TIMESTAMP
 ```
@@ -418,7 +418,9 @@ Focused proof (data-dir / TestClient, no Docker daemon required):
 Named-volume proof (actual `docker-compose.prod.yml` volume, when Docker is
 available): `python scripts/prod_volume_backup_restore.py docker-drill`.
 GitHub Actions `docker.yml` runs that drill against `velantrim-titan:ci` tagged
-as `velantrim-titan:prod`. If Docker is unavailable, PH-2A is
+as `velantrim-titan:prod`. The drill interpolates `VELANTRIM_API_KEY` from the
+process environment (the GHA step env or `--api-key`); it does not write the
+key into the synthetic `.env`. If Docker is unavailable, PH-2A is
 `BLOCKED_BY_ENVIRONMENT` / `PASS_WITH_LIMITATIONS` — not complete.
 
 ## 10. Shutdown, upgrade, rollback
