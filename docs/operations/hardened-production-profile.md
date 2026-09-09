@@ -418,7 +418,10 @@ Focused proof (data-dir / TestClient, no Docker daemon required):
 Named-volume proof (actual `docker-compose.prod.yml` volume, when Docker is
 available): `python scripts/prod_volume_backup_restore.py docker-drill`.
 GitHub Actions `docker.yml` runs that drill against `velantrim-titan:ci` tagged
-as `velantrim-titan:prod`. The drill interpolates `VELANTRIM_API_KEY` from the
+as `velantrim-titan:prod`. After restore-boot and `/health`, the drill inspects
+the named volume actually mounted at `/app/data` and fails unless it equals the
+requested restore volume and is not the original volume
+(`ORIGINAL_STATE_ISOLATED`). The drill interpolates `VELANTRIM_API_KEY` from the
 process environment (the GHA step env or `--api-key`); it does not write the
 key into the synthetic `.env`. If Docker is unavailable, PH-2A is
 `BLOCKED_BY_ENVIRONMENT` / `PASS_WITH_LIMITATIONS` — not complete.

@@ -16,6 +16,8 @@ Does **not** enable TruthPolicy, Doctor, Security Audit, Upgrade, Sandbox, or pr
 
 CI follow-up on `81576ce`: restore override now resets `driver: local` (`driver: !reset null`) before `external`+`name`; synthetic drill `.env` no longer stores `VELANTRIM_API_KEY` (process env / compose interpolation only).
 
+R455-05: after restore-boot `/health`, `docker-drill` inspects the named volume at `/app/data` and fails unless it is the requested restore volume and not the original (`ORIGINAL_STATE_ISOLATED`).
+
 ---
 
 ## 2026-09-09 — PH-2A hardened local backup / fresh-restore proof · DRAFT

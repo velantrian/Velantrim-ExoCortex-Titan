@@ -393,6 +393,7 @@ def test_ops_doc_documents_fresh_target_restore():
     assert "user_version" in text
     assert "REFUSE" in text
     assert "driver: !reset" in text
+    assert "ORIGINAL_STATE_ISOLATED" in text
 
 
 def test_restore_to_non_empty_target_fails_loud(tmp_path: Path):
@@ -554,3 +555,11 @@ def test_restore_override_resets_volume_driver(tmp_path: Path):
     assert "external: true" in text
     assert "name: ph2a_restore_vol" in text
     assert "driver: local" not in text
+
+
+def test_post_restore_mount_identity_is_fail_loud():
+    helper._assert_post_restore_mount_identity("orig_vol", "restore_vol", "restore_vol")
+    with pytest.raises(helper.StateMismatchError, match="ORIGINAL_STATE_ISOLATED"):
+        helper._assert_post_restore_mount_identity("orig_vol", "restore_vol", "orig_vol")
+    with pytest.raises(helper.StateMismatchError, match="ORIGINAL_STATE_ISOLATED"):
+        helper._assert_post_restore_mount_identity("orig_vol", "restore_vol", "other_vol")

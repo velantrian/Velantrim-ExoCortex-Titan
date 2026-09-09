@@ -785,6 +785,24 @@ def _container_named_volume(container: str, dest: str = "/app/data") -> str:
     return name
 
 
+def _assert_post_restore_mount_identity(
+    original_volume: str,
+    requested_restore_volume: str,
+    mounted_restore_volume: str,
+) -> None:
+    """ORIGINAL_STATE_ISOLATED только если /app/data — запрошенный restore-том."""
+    if mounted_restore_volume == original_volume:
+        raise StateMismatchError(
+            "ORIGINAL_STATE_ISOLATED FAIL: после restore-boot /app/data "
+            f"смонтирован с original_volume {original_volume}"
+        )
+    if mounted_restore_volume != requested_restore_volume:
+        raise StateMismatchError(
+            "ORIGINAL_STATE_ISOLATED FAIL: mounted "
+            f"{mounted_restore_volume} != requested {requested_restore_volume}"
+        )
+
+
 def _docker_exec_user_version(container: str = "velantrim-titan-prod") -> int:
     proc = subprocess.run(
         [
@@ -1033,6 +1051,10 @@ def run_docker_production_drill(
             extra_files=extra_files,
         )
         health_after = _wait_health(base_url)
+        mounted_restore_volume = _container_named_volume("velantrim-titan-prod")
+        _assert_post_restore_mount_identity(
+            original_volume, restore_volume, mounted_restore_volume
+        )
         selected_after = _docker_drill_selected_state(base_url, api_key, seed)
         restored_user_version = _docker_exec_user_version()
         if selected_before != selected_after:
@@ -1055,6 +1077,10 @@ def run_docker_production_drill(
             "project": project,
             "original_volume": original_volume,
             "restore_volume": restore_volume,
+            "requested_restore_volume": restore_volume,
+            "mounted_restore_volume": mounted_restore_volume,
+            "original_state_isolated": True,
+            "ORIGINAL_STATE_ISOLATED": "PASS",
             "archive_sha256": verify_meta["sha256"],
             "health_before": health,
             "health_after": health_after,
