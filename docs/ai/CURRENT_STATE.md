@@ -14,11 +14,11 @@
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
 
-## 2026-09-09 — PH-2A local backup/restore proof (draft, not on main)
+## 2026-09-09 — PH-2A local backup/restore proof (Ready #455, not yet on main)
 
-Draft-only. Live `main` at PH-2A kickoff was `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (#454); open PRs were empty. This paragraph is **not** a verified-`main` status change until the PH-2A PR merges.
+Ready PR #455 (pre-merge). Kickoff `main` was `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (#454). This paragraph is **not** verified-`main` truth until merge lands.
 
-PH-2A adds a restore-to-fresh recipe and a self-cleaning tar-parity test for the hardened production data directory. Draft #455 remediations R455-01..04 add a GitHub Actions named-volume `docker-drill`, fail-loud verify without `velantrim.db`, root-bounded tar extract, and `PRAGMA user_version` equality. It does not authorize production, enable TruthPolicy, or prove live/hot DR orchestration. Named-volume recovery is OBSERVED only when `docker.yml` `docker-drill` is green at the draft head; the implementing agent environment has no Docker daemon.
+PH-2A adds restore-to-fresh for the hardened production data directory, a self-cleaning TestClient tar-parity drill, and remediations R455-01..05: Actions named-volume `docker-drill`, fail-loud verify without `velantrim.db`, root-bounded tar extract, `PRAGMA user_version` equality, and post-restore `/app/data` mount identity (`ORIGINAL_STATE_ISOLATED`). Named-volume recovery is **OBSERVED** on Actions `docker-build-and-verify` run `34339429696`. **MERGE AUTHORIZED BY OPERATOR. PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.** Does not enable TruthPolicy or claim live/hot DR / RTO/RPO.
 
 ## 2026-09-06 — Orientation lifecycle reconciliation
 

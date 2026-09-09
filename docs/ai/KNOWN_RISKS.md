@@ -395,7 +395,7 @@ Still not proved:
 - large-graph full-reset latency/audit volume under production load;
 - disk-full/filesystem-permission behavior at production scale;
 - live/hot backup, production-scale restore, and disaster-recovery orchestration
-  (PH-2A, draft until merge: local cold tar of the hardened production data
+  (PH-2A, Ready #455 pre-merge: local cold tar of the hardened production data
   directory → verify → restore-to-fresh-empty-target is implemented and
   focused-tested; verify fails without Class-A `velantrim.db`; tar extract is
   root-bounded; `PRAGMA user_version` is compared. Docker named-volume wrapping

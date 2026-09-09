@@ -7,8 +7,8 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ## 2026-09-09 — PH-2A R455 remediations on draft #455
 
-> **Reality status:** `IMPLEMENTED ON DRAFT BRANCH / FOCUSED-TESTED / DOCKER NAMED-VOLUME PROOF WIRED IN docker.yml / LOCAL AGENT DOCKER UNAVAILABLE / NO MERGE AUTHORITY / NO PRODUCTION AUTHORITY`.
-> Re-resolve the live PR head and `docker-build-and-verify` before treating named-volume recovery as OBSERVED.
+> **Reality status:** `IMPLEMENTED ON READY BRANCH / FOCUSED-TESTED / DOCKER NAMED-VOLUME OBSERVED ON ACTIONS (run 34339429696) / ORIGINAL_STATE_ISOLATED=PASS / MERGE AUTHORIZED BY OPERATOR / NO PRODUCTION AUTHORITY`.
+> Re-resolve the live PR head after any new push before treating this as evergreen.
 
 Bounded remediations only on #455: `verify_archive` now fails without root `velantrim.db`; tar members are root-bounded before local and Docker extract; snapshots compare `PRAGMA user_version`; `docker-drill` is the production-profile named-volume proof. TestClient data-dir drill is unchanged and still required.
 
