@@ -14,11 +14,13 @@
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
 
-## 2026-09-09 — PH-2A local backup/restore proof (Ready #455, not yet on main)
+## 2026-09-09 — PH-2A local backup/restore proof (MERGED #455 · main@c7a34cce)
 
-Ready PR #455 (pre-merge). Kickoff `main` was `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (#454). This paragraph is **not** verified-`main` truth until merge lands.
+PH-2A is **MERGED / IMPLEMENTED / EVIDENCE-BACKED** as squash-merge `c7a34cce4c33425b9e9423b5f8fdbfcb3e3aba1d` (#455). Kickoff `main` was `4d6527ae5d25a7e70a5f88ed76f3ab3fe89ae09f` (#454).
 
-PH-2A adds restore-to-fresh for the hardened production data directory, a self-cleaning TestClient tar-parity drill, and remediations R455-01..05: Actions named-volume `docker-drill`, fail-loud verify without `velantrim.db`, root-bounded tar extract, `PRAGMA user_version` equality, and post-restore `/app/data` mount identity (`ORIGINAL_STATE_ISOLATED`). Named-volume recovery is **OBSERVED** on Actions `docker-build-and-verify` run `34339429696`. **MERGE AUTHORIZED BY OPERATOR. PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.** Does not enable TruthPolicy or claim live/hot DR / RTO/RPO.
+PH-2A adds restore-to-fresh for the hardened production data directory, a self-cleaning TestClient tar-parity drill, and remediations R455-01..05: Actions named-volume `docker-drill`, fail-loud verify without `velantrim.db`, root-bounded tar extract, `PRAGMA user_version` equality, and post-restore `/app/data` mount identity (`ORIGINAL_STATE_ISOLATED`). Named-volume recovery is **OBSERVED** (`ORIGINAL_STATE_ISOLATED=PASS`; Actions `docker-build-and-verify` run `34339429696` plus post-merge Docker SUCCESS on `c7a34cce…`). **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.** Does not enable TruthPolicy or claim live/hot DR / RTO/RPO.
+
+Historical note: final pre-merge aggregate at `77ccbfc6…` was cancelled; post-merge aggregate at `c7a34cce…` = SUCCESS.
 
 ## 2026-09-06 — Orientation lifecycle reconciliation
 
