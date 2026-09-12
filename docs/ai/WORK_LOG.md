@@ -5,6 +5,18 @@ Older detail remains traceable in Git history, merged PRs, issues, ADRs and date
 
 ---
 
+## 2026-09-12 — PH-2A post-merge truth closure
+
+> **Reality status:** `MERGED / IMPLEMENTED / EVIDENCE-BACKED ON main@c7a34cce4c33 (#455) / DOCKER NAMED-VOLUME OBSERVED / ORIGINAL_STATE_ISOLATED=PASS / PRODUCTION NOT AUTHORIZED / OPERATOR GO NOT ESTABLISHED`.
+
+Docs-only. #455 squash-merged as `c7a34cce4c33425b9e9423b5f8fdbfcb3e3aba1d`. This entry does **not** rewrite earlier draft/Ready journal records.
+
+Historical note: final pre-merge aggregate at `77ccbfc6…` was cancelled; post-merge Full CI / Docker / CodeQL / aggregate at `c7a34cce…` = SUCCESS.
+
+Does **not** authorize production or Operator GO. Does not start Doctor / Security Audit / Upgrade / TruthPolicy / Sandbox.
+
+---
+
 ## 2026-09-09 — PH-2A R455 remediations on draft #455
 
 > **Reality status:** `IMPLEMENTED ON READY BRANCH / FOCUSED-TESTED / DOCKER NAMED-VOLUME OBSERVED ON ACTIONS (run 34339429696) / ORIGINAL_STATE_ISOLATED=PASS / MERGE AUTHORIZED BY OPERATOR / NO PRODUCTION AUTHORITY`.
