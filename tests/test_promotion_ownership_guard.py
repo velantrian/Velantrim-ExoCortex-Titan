@@ -116,6 +116,11 @@ def test_direct_single_fact_authority_callers_match_reviewed_inventory() -> None
         ),
         CallSite(
             "core/memory.py",
+            "SQLiteGraphStore.promote_esm_to",
+            "validate_and_promote",
+        ),
+        CallSite(
+            "core/memory.py",
             "promote_to_validated",
             "promote_to_validated",
         ),
@@ -127,9 +132,10 @@ def test_direct_single_fact_authority_callers_match_reviewed_inventory() -> None
 def test_literal_plain_validated_steps_match_reviewed_primitives() -> None:
     _, literal_validated_steps = _scan()
 
-    # One reviewed low-level compatibility primitive implements its operation
-    # through the generic ladder. No business/runtime caller may add another
-    # literal Validated step without an ADR and inventory update.
+    # Compatibility primitive still names Validated as its ladder target, but
+    # promote_esm_to intercepts that target and routes through validate_and_promote
+    # rather than transition_esm(..., Validated). No business caller may add
+    # another literal Validated step without an ADR and inventory update.
     expected = {
         CallSite(
             "core/memory.py",
