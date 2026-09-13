@@ -130,10 +130,12 @@ classification is:
 - World Skills C9: literal target `Supported` is reachable only after provenance/domain
   gates and a read-only TruthGate precheck; final `Validated` remains PromotionGateway-owned;
 - relation store: a different relation-state implementation;
-- memory module wrapper: compatibility primitive, not a business caller.
+- memory module wrapper / `promote_to_validated`: compatibility primitive — R1 intercepts
+  target `Validated`, ladders only to `Supported`, then calls `validate_and_promote()`;
+- `transition_esm(..., "Validated")` is rejected (protected admission required).
 
-No reviewed production caller passes a literal `Validated` target to the generic fact
-ladder. The ownership guard makes a future literal bypass a blocking test failure.
+No reviewed production business caller passes a literal `Validated` target to the generic
+fact ladder. The ownership guard makes a future literal bypass a blocking test failure.
 
 ## Pipeline status
 

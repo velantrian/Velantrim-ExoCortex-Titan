@@ -3103,6 +3103,14 @@ class SQLiteGraphStore(GraphStore):
             raise ImmutableStateError(
                 "transition_esm: переход в 'ImmutableCore' только для Ring Zero"
             )
+        # R1: Validated is never minted by the generic ESM path. Supported →
+        # Validated requires TruthGate + validate_and_promote / PromotionGateway
+        # + CAS (_promote_to_validated_cas). Plain update_state() must not run.
+        if new_state == "Validated":
+            raise ValueError(
+                "transition_esm: Validated requires protected admission "
+                "(validate_and_promote / PromotionGateway)"
+            )
         self._release_stray_locks()
         fact = self.get_fact(fact_id)
         if not fact:
@@ -3127,15 +3135,10 @@ class SQLiteGraphStore(GraphStore):
     def promote_esm_to(self, fact_id: str, target: str, by: str = "promote_esm") -> bool:
         """Пошагово повышает факт до target по канонической лестнице ESM.
 
-        P0-D scope note: this generic ladder-walker is used by call sites
-        outside graduated-promotion/consolidation (world_skills_ingest,
-        CognitiveStore.transition, test fixtures) purely as an ESM-legality
-        helper, so it intentionally still ends its walk with a plain
-        transition_esm() into 'Validated' — NOT validate_and_promote().
-        Routing every one of those callers through TruthGate is out of
-        scope here (that would be variant B's global lockdown); only
-        core/promotion_policy.py and core/consolidation_engine.py were
-        named for this fix and are handled at their own call sites instead.
+        R1: targets below Validated still walk via transition_esm(). A request
+        for Validated advances at most to Supported on the generic ladder,
+        then requests protected admission through validate_and_promote()
+        (TruthGate + CAS). Never calls transition_esm(..., "Validated").
         """
         if target not in ESM_STATES:
             raise ValueError(f"promote_esm_to: недопустимое состояние '{target}'")
@@ -3145,6 +3148,33 @@ class SQLiteGraphStore(GraphStore):
         current = fact.get("epistemic_state", "Observed")
         if current == target:
             return True
+
+        if target == "Validated":
+            # Ladder only as far as Supported; final hop is protected.
+            if current in self._ESM_LADDER:
+                cur_i = self._ESM_LADDER.index(current)
+                supported_i = self._ESM_LADDER.index("Supported")
+                if cur_i < supported_i:
+                    for state in self._ESM_LADDER[cur_i + 1 : supported_i + 1]:
+                        if not self.transition_esm(fact_id, state, by=by):
+                            return False
+                fact = self.get_fact(fact_id)
+                if not fact:
+                    return False
+                current = fact.get("epistemic_state", "Observed")
+                if current == "Validated":
+                    return True
+                if current != "Supported":
+                    return False
+            elif current != "Supported":
+                # Off-ladder sources cannot mint Validated via this helper.
+                raise ValueError(
+                    "promote_esm_to: Validated requires protected admission "
+                    "from Supported (validate_and_promote / PromotionGateway)"
+                )
+            verdict = self.validate_and_promote(fact_id, by=by)
+            return bool(getattr(verdict, "passed", False))
+
         if target in self._ESM_LADDER and current in self._ESM_LADDER:
             cur_i = self._ESM_LADDER.index(current)
             tgt_i = self._ESM_LADDER.index(target)
@@ -3157,7 +3187,11 @@ class SQLiteGraphStore(GraphStore):
         return self.transition_esm(fact_id, target, by=by)
 
     def promote_to_validated(self, fact_id: str, by: str = "promote_to_validated") -> bool:
-        """Каноническая цепочка Observed → Hypothesized → Supported → Validated."""
+        """Observed → … → Supported, then protected admission to Validated.
+
+        Returns True only when TruthGate + CAS actually commit Validated.
+        Weak facts stay at Supported and yield False (bool compatibility API).
+        """
         return self.promote_esm_to(fact_id, "Validated", by=by)
 
     def _promote_to_validated_cas(
@@ -3743,10 +3777,9 @@ class SQLiteGraphStore(GraphStore):
         """
         SECURITY (I68): единственная канонical-функция для перевода факта в
         'Validated' по запросу внешнего/недоверенного вызывающего (например,
-        PATCH /facts/{fact_id}/transition). В отличие от promote_to_validated()/
-        promote_esm_to()/transition_esm() — которые используются внутренними
-        путями (pipeline.run(), ConsolidationEngine, graduated promotion),
-        уже применяющими СОБСТВЕННУЮ pre-vetting policy до вызова — эта функция
+        PATCH /facts/{fact_id}/transition). R1: promote_to_validated()/
+        promote_esm_to(..., Validated) route here for the final hop;
+        transition_esm(..., Validated) is rejected. This function
         сама прогоняет факт через TruthGate.evaluate() и мутирует состояние
         ТОЛЬКО если вердикт passed И последующий CAS-write реально закоммитился.
 
