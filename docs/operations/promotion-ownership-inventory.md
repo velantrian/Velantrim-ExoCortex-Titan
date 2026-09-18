@@ -54,7 +54,10 @@ ownership guard.
 
 Any new production call to `validate_and_promote()` or `promote_to_validated()` fails CI
 until this inventory and an ADR are deliberately updated. CI also rejects literal plain
-`transition_esm(..., "Validated")` and `promote_esm_to(..., "Validated")` caller paths.
+`transition_esm(..., "Validated")`, `promote_esm_to(..., "Validated")`, and
+`update_state(..., "Validated")` / `update_state(..., new_state="Validated")`
+production call sites. The `update_state` implementation itself fail-closes
+`new_state == "Validated"` and is not a production caller.
 
 ## Curated World Skills admission — C9 convergence
 
@@ -132,7 +135,9 @@ classification is:
 - relation store: a different relation-state implementation;
 - memory module wrapper / `promote_to_validated`: compatibility primitive — R1 intercepts
   target `Validated`, ladders only to `Supported`, then calls `validate_and_promote()`;
-- `transition_esm(..., "Validated")` is rejected (protected admission required).
+- `transition_esm(..., "Validated")` is rejected (protected admission required);
+- `update_state(..., "Validated")` is rejected fail-closed before mutation
+  (protected admission required; async wrapper inherits the sync rejection).
 
 No reviewed production business caller passes a literal `Validated` target to the generic
 fact ladder. The ownership guard makes a future literal bypass a blocking test failure.
