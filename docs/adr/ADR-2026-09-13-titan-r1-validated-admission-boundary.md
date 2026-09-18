@@ -15,7 +15,13 @@ TruthGate evaluation, `validate_and_promote()`, and the CAS writer
 A local enforcement gap remained: `transition_esm(..., "Validated")` and the
 generic ladder helpers `promote_esm_to(..., "Validated")` /
 `promote_to_validated()` could still call plain `update_state` and mint
-`Validated` without TruthGate + CAS. That path matched existing
+`Validated` without TruthGate + CAS. Independent exact-head review of
+`1639516bfe61b3da744380d0cbcf275f3b452a9f` then confirmed a remaining
+lower-level hole: `SQLiteGraphStore.update_state(..., "Validated")` itself
+still persisted ordinary facts as `Validated` without
+`TruthGate.evaluate` → `validate_and_promote` → `_promote_to_validated_cas`.
+The async wrapper inherits that writer, so the same hole was visible through
+`AsyncSQLiteStore.update_state(...)`. That path matched existing
 `AUTHORITY_PATTERNS` in the architecture-freeze guard when the R1 diff added
 calls to `transition_esm(` / `validate_and_promote(` in `core/memory.py`.
 
@@ -28,11 +34,15 @@ Close the gap inside `core/memory.py` only:
 
 1. `transition_esm(..., new_state="Validated")` raises `ValueError` before any
    `update_state` call. Generic ESM must not mint Validated.
-2. `promote_esm_to(..., "Validated")` advances the ladder at most to
+2. `update_state(..., new_state="Validated")` raises `ValueError` before any
+   durable mutation (facts row, history, metadata, `updated_at`,
+   `fact_version`, VersionStore, AuditChain, projection/outbox, L0).
+   The writer does **not** call `validate_and_promote()` internally.
+3. `promote_esm_to(..., "Validated")` advances the ladder at most to
    `Supported`, then requests protected admission via
    `self.validate_and_promote(fact_id, by=by)` and returns
    `bool(verdict.passed)`.
-3. `promote_to_validated()` remains a bool compatibility wrapper over
+4. `promote_to_validated()` remains a bool compatibility wrapper over
    `promote_esm_to(..., "Validated")`.
 
 Validated admission remains exactly:
@@ -52,7 +62,8 @@ R1 does **not**:
 - introduce a new service, engine, ledger, worker, scheduler, or feature flag;
 - change TruthGate thresholds, evidence policy, or CAS semantics;
 - replace PromotionGateway or invent a second promotion owner;
-- authorize `update_state(..., "Validated")` as a public admission path;
+- authorize `update_state(..., "Validated")` as a public admission path
+  (`update_state` now fail-closes that target);
 - redesign compound supersede, World Skills curated admission, or Ring Zero seed.
 
 ## Authority boundary
@@ -61,7 +72,8 @@ R1 does **not**:
 |---|---|
 | Mint Validated | Existing `validate_and_promote` / PromotionGateway + TruthGate + CAS |
 | Generic ESM ladder (non-Validated) | Existing `transition_esm` / `promote_esm_to` |
-| Reject ungated Validated via ESM | New local guards in the helpers above |
+| Reject ungated Validated via ESM | Local guards in `transition_esm` / `promote_esm_to` |
+| Reject ungated Validated via low-level writer | Local guard in `update_state` (async wrapper inherits) |
 
 ## Consequences
 
