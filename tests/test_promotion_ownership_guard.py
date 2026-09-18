@@ -22,6 +22,7 @@ class _AuthorityCallVisitor(ast.NodeVisitor):
         self.scope: list[str] = []
         self.sites: set[CallSite] = set()
         self.literal_validated_steps: set[CallSite] = set()
+        self.literal_validated_update_state: set[CallSite] = set()
 
     def _scope_name(self) -> str:
         return ".".join(self.scope) or "<module>"
@@ -71,23 +72,32 @@ class _AuthorityCallVisitor(ast.NodeVisitor):
                 self.literal_validated_steps.add(
                     CallSite(self.path, self._scope_name(), callee)
                 )
+        if callee == "update_state" and self._literal_target(node) == "Validated":
+            # Literal production mint of Validated via the low-level writer.
+            # The fail-closed comparison inside update_state itself is not a
+            # Call and is therefore not inventoried here.
+            self.literal_validated_update_state.add(
+                CallSite(self.path, self._scope_name(), callee)
+            )
         self.generic_visit(node)
 
 
-def _scan() -> tuple[set[CallSite], set[CallSite]]:
+def _scan() -> tuple[set[CallSite], set[CallSite], set[CallSite]]:
     authority_sites: set[CallSite] = set()
     literal_validated_steps: set[CallSite] = set()
+    literal_validated_update_state: set[CallSite] = set()
     for path in PRODUCTION_FILES:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         visitor = _AuthorityCallVisitor(path)
         visitor.visit(tree)
         authority_sites.update(visitor.sites)
         literal_validated_steps.update(visitor.literal_validated_steps)
-    return authority_sites, literal_validated_steps
+        literal_validated_update_state.update(visitor.literal_validated_update_state)
+    return authority_sites, literal_validated_steps, literal_validated_update_state
 
 
 def test_direct_single_fact_authority_callers_match_reviewed_inventory() -> None:
-    authority_sites, _ = _scan()
+    authority_sites, _, _ = _scan()
 
     # Exact reviewed boundary. New entries require an ADR and an intentional
     # update to docs/operations/promotion-ownership-inventory.md. World Skills
@@ -130,7 +140,7 @@ def test_direct_single_fact_authority_callers_match_reviewed_inventory() -> None
 
 
 def test_literal_plain_validated_steps_match_reviewed_primitives() -> None:
-    _, literal_validated_steps = _scan()
+    _, literal_validated_steps, _ = _scan()
 
     # Compatibility primitive still names Validated as its ladder target, but
     # promote_esm_to intercepts that target and routes through validate_and_promote
@@ -145,3 +155,12 @@ def test_literal_plain_validated_steps_match_reviewed_primitives() -> None:
     }
 
     assert literal_validated_steps == expected
+
+
+def test_literal_update_state_validated_has_no_production_callers() -> None:
+    _, _, literal_validated_update_state = _scan()
+
+    # After R1 remainder: no ordinary production caller may invoke
+    # update_state(..., "Validated") or update_state(..., new_state="Validated").
+    # The fail-closed guard lives inside update_state itself and is not a call.
+    assert literal_validated_update_state == set()
