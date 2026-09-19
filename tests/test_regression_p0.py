@@ -17,6 +17,43 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # ─── Fixture: правильная тестовая изоляция ────────────────────────────────────
 
+
+def _r1_promote_to_validated(fact_id, by="test", store=None):
+    """TEST-ONLY: enrich to BALANCED TruthGate bar, then protected admission."""
+    from core import memory as memory_mod
+    api = store or memory_mod
+    get = api.get_fact if hasattr(api, "get_fact") else memory_mod.get_fact
+    put = api.store_fact if hasattr(api, "store_fact") else memory_mod.store_fact
+    promote = api.promote_to_validated if hasattr(api, "promote_to_validated") else memory_mod.promote_to_validated
+    fact = get(fact_id)
+    if fact is not None:
+        meta = dict(fact.get("metadata") or {})
+        # TruthGate._count_evidence only counts STRING refs (dicts are ignored).
+        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
+        while len(refs) < 2:
+            refs.append(f"test_ev_{len(refs)+1}")
+        meta["evidence_refs"] = refs
+        payload = {
+            "fact_id": fact_id,
+            "claim": fact.get("claim", ""),
+            "source": fact.get("source") or "test",
+            "confidence": max(float(fact.get("confidence") or 0.0), 0.8),
+            "metadata": meta,
+        }
+        for extra in ("claim_type", "origin_type", "raw_input", "derived_from"):
+            if fact.get(extra) is not None:
+                payload[extra] = fact.get(extra)
+        put(payload)
+    try:
+        ok = promote(fact_id, by=by)
+    except TypeError:
+        ok = promote(fact_id)
+    assert ok is True, (
+        f"expected TruthGate Validated for {fact_id}; "
+        f"fact={get(fact_id)!r}"
+    )
+    return True
+
 @pytest.fixture
 def fresh_db(monkeypatch, tmp_path):
     """Свежий SQLiteGraphStore через make_store() — правильная изоляция."""
@@ -35,8 +72,8 @@ def fresh_db(monkeypatch, tmp_path):
 def test_p0_1_store_fact_preserves_validated_state(fresh_db):
     """P0.1: повторный store_fact (claim changed) не откатывает Validated в L1."""
     m = fresh_db
-    m.store_fact({"fact_id": "x", "claim": "a", "source": "s", "confidence": 0.5})
-    m.promote_to_validated("x")
+    m.store_fact({"fact_id": "x", "claim": "a", "source": "s", "confidence": 0.8, "metadata": {"evidence_refs": ["e1", "e2"]}})
+    _r1_promote_to_validated("x", store=m)
     assert m.get_fact("x")["epistemic_state"] == "Validated"
 
     m._l0.clear()
@@ -139,7 +176,7 @@ def test_pipeline_run_persistent_db_no_crash(fresh_db):
     ]
     for f in facts:
         store_fact(f)
-        promote_to_validated(f["fact_id"])
+        _r1_promote_to_validated(f["fact_id"])
 
     r1 = run("DNA")
     assert r1.get("answer") is not None

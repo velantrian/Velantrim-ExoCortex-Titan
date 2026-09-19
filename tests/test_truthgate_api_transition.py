@@ -467,7 +467,14 @@ def _run_cas_race(store, fact_id, racer_action, *, mode=None):
     def run_racer():
         try:
             rendezvous.wait(timeout=5)
-            racer_action()
+            # If the racer itself performs protected Validated admission, it
+            # must use the real CAS — not the barrier-instrumented wrapper —
+            # or both threads deadlock waiting on each other.
+            store._promote_to_validated_cas = original_cas
+            try:
+                racer_action()
+            finally:
+                store._promote_to_validated_cas = instrumented_cas
         except Exception as exc:  # noqa: BLE001
             errors.append(exc)
         finally:
@@ -679,8 +686,8 @@ class TestValidateAndPromoteConcurrencyGuard:
         store = self._make_strong_supported_fact(tmp_path, "toctou_state_change_v.db")
 
         def other_actor_validates_first():
-            ok = store.transition_esm("race_fact", "Validated", by="other-actor")
-            assert ok, "setup: racer's own transition must succeed"
+            verdict = store.validate_and_promote("race_fact", by="other-actor")
+            assert verdict.passed, "setup: racer's own protected promotion must succeed"
 
         verdict, errors = _run_cas_race(store, "race_fact", other_actor_validates_first)
 

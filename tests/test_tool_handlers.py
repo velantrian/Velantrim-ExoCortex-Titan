@@ -137,18 +137,77 @@ def test_validate_fact_rejects_weak_fact_via_truth_gate():
     assert stored["epistemic_state"] == "Supported"
 
 
-def test_promote_to_validated_bypasses_truth_gate_for_the_same_weak_fact():
-    """Negative control: proves *why* the fix is needed — promote_to_validated()
-    has no TruthGate check at all and would happily validate the exact same
-    weak fact validate_fact() (correctly) rejects."""
+def test_promote_to_validated_rejects_weak_fact_like_truth_gate():
+    """R1 negative control: promote_to_validated no longer bypasses TruthGate.
+    Same weak Supported fact validate_fact() rejects must stay Supported."""
+    import pytest
+
     fact_id = f"weak.{uuid.uuid4().hex[:12]}"
     _store_weak_fact_at_supported(fact_id)
+    memory = _memory()
+    before = memory.get_fact(fact_id)
+    before_updated = before.get("updated_at")
+    before_hist_len = len(before.get("history") or [])
 
-    ok = _memory().promote_to_validated(fact_id, by="test")
+    ok = memory.promote_to_validated(fact_id, by="test")
+
+    assert ok is False
+    stored = memory.get_fact(fact_id)
+    assert stored["epistemic_state"] == "Supported"
+    assert stored.get("updated_at") == before_updated
+    assert len(stored.get("history") or []) == before_hist_len
+
+
+def test_promote_esm_to_validated_rejects_weak_fact():
+    """R1 negative control: promote_esm_to(..., Validated) must not mint
+    Validated for a TruthGate-ineligible fact."""
+    fact_id = f"weak.{uuid.uuid4().hex[:12]}"
+    _store_weak_fact_at_supported(fact_id)
+    memory = _memory()
+    before_hist_len = len(memory.get_fact(fact_id).get("history") or [])
+
+    ok = memory.promote_esm_to(fact_id, "Validated", by="test")
+
+    assert ok is False
+    stored = memory.get_fact(fact_id)
+    assert stored["epistemic_state"] == "Supported"
+    assert len(stored.get("history") or []) == before_hist_len
+
+
+def test_transition_esm_validated_requires_protected_admission():
+    """R1 negative control: generic transition_esm cannot mint Validated."""
+    import pytest
+
+    fact_id = f"weak.{uuid.uuid4().hex[:12]}"
+    _store_weak_fact_at_supported(fact_id)
+    memory = _memory()
+
+    with pytest.raises(ValueError, match="protected admission"):
+        memory.transition_esm(fact_id, "Validated", by="test")
+
+    stored = memory.get_fact(fact_id)
+    assert stored["epistemic_state"] == "Supported"
+
+
+def test_promote_to_validated_accepts_truthgate_eligible_fact():
+    """R1 positive control: eligible Supported fact reaches Validated only
+    via protected admission (TruthGate + CAS under promote_to_validated)."""
+    fact_id = f"strong.{uuid.uuid4().hex[:12]}"
+    memory = _memory()
+    memory.store_fact({
+        "fact_id": fact_id,
+        "claim": "a well evidenced claim",
+        "source": "test",
+        "confidence": 0.85,
+        "metadata": {"evidence_refs": ["e1", "e2"]},
+    })
+    memory.transition_esm(fact_id, "Hypothesized", by="test")
+    memory.transition_esm(fact_id, "Supported", by="test")
+
+    ok = memory.promote_to_validated(fact_id, by="test")
 
     assert ok is True
-    stored = _memory().get_fact(fact_id)
-    assert stored["epistemic_state"] == "Validated"
+    assert memory.get_fact(fact_id)["epistemic_state"] == "Validated"
 
 
 # ─── Codex finding: supersede_fact must go through the atomic CAS flow ──────
@@ -164,7 +223,7 @@ def _make_old_validated_fact(fact_id: str) -> None:
     })
     memory.transition_esm(fact_id, "Hypothesized", by="test")
     memory.transition_esm(fact_id, "Supported", by="test")
-    memory.transition_esm(fact_id, "Validated", by="test")
+    assert memory.promote_to_validated(fact_id, by="test") is True
 
 
 def _strong_new_fact(new_id: str) -> dict:

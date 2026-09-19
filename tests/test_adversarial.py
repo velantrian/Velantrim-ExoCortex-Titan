@@ -20,8 +20,28 @@ import pytest
 # ─── ФИКСТУРЫ ────────────────────────────────────────────────────────────────
 
 def _promote_to_validated(store, fact_id: str, by: str = "test") -> None:
-    """Observed → Hypothesized → Supported → Validated (матрица ESM V8.8)."""
-    store.promote_to_validated(fact_id, by=by)
+    """TEST-ONLY: ensure BALANCED TruthGate eligibility, then protected admission."""
+    fact = store.get_fact(fact_id)
+    if fact is not None:
+        meta = dict(fact.get("metadata") or {})
+        # TruthGate._count_evidence only counts STRING refs (dicts are ignored).
+        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
+        while len(refs) < 2:
+            refs.append(f"test_ev_{len(refs)+1}")
+        meta["evidence_refs"] = refs
+        payload = {
+            "fact_id": fact_id,
+            "claim": fact.get("claim", ""),
+            "source": fact.get("source") or "test",
+            "confidence": max(float(fact.get("confidence") or 0.0), 0.8),
+            "metadata": meta,
+        }
+        for extra in ("claim_type", "origin_type", "raw_input", "derived_from"):
+            if fact.get(extra) is not None:
+                payload[extra] = fact.get(extra)
+        store.store_fact(payload)
+    ok = store.promote_to_validated(fact_id, by=by)
+    assert ok is True, f"expected TruthGate Validated admission for {fact_id}"
 
 
 @pytest.fixture

@@ -101,7 +101,7 @@ class TruthGate:
         gate = TruthGate(store, contradiction_detector="naive")  # включить naive (development!)
         verdict = gate.evaluate(fact, mode=CognitiveMode.BALANCED)
         if verdict:
-            transition_esm(fact_id, "Validated", by="truth_gate")
+            validate_and_promote(fact_id, by="truth_gate")  # CAS write; not transition_esm
     """
 
     # AUDIT-FIX v8.4.0: возможные значения contradiction_detector.
