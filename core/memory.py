@@ -2702,6 +2702,12 @@ class SQLiteGraphStore(GraphStore):
         from core.write_gate import ensure_writes_allowed
         ensure_writes_allowed()
 
+        if new_state == "Validated":
+            raise ValueError(
+                "update_state: Validated requires protected admission "
+                "(validate_and_promote / PromotionGateway)"
+            )
+
         if new_state == "ImmutableCore":
             raise ImmutableStateError(
                 "update_state: direct transition to 'ImmutableCore' is not "
