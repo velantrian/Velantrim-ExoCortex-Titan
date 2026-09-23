@@ -133,6 +133,12 @@ class TestEvidenceCheck:
         assert not v.passed
         assert v.evidence_count == 0
 
+    def test_non_mapping_metadata_counts_as_zero(self, gate, good_fact):
+        good_fact["metadata"] = "malformed"
+        v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
+        assert not v.passed
+        assert v.evidence_count == 0
+
     def test_blank_legacy_tokens_do_not_count(self, gate, good_fact):
         good_fact["metadata"] = {"evidence_refs": ["", "   "]}
         v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
