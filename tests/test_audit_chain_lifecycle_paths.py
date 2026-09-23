@@ -563,10 +563,13 @@ def _make_supersede_ready_old_fact(store, fact_id: str) -> None:
     directly from 'Hypothesized' or 'Validated' (core.memory.
     ESM_TRANSITIONS), matching the real production scenario (replacing an
     established Validated fact), so advance the seed fact there first."""
-    store.store_fact({"fact_id": fact_id, "claim": "old claim", "source": "s", "confidence": 0.9})
+    store.store_fact({
+        "fact_id": fact_id, "claim": "old claim", "source": "s", "confidence": 0.9,
+        "metadata": {"evidence_refs": ["e1", "e2"]},
+    })
     assert store.transition_esm(fact_id, "Hypothesized", by="truth_gate")
     assert store.transition_esm(fact_id, "Supported", by="truth_gate")
-    assert store.transition_esm(fact_id, "Validated", by="truth_gate")
+    assert store.validate_and_promote(fact_id, by="truth_gate").passed
 
 
 class TestSupersedeFactCasAuditWiring:

@@ -42,6 +42,43 @@ _COMPLEX_QUERY = (
 )
 
 
+
+def _r1_promote_to_validated(fact_id, by="test", store=None):
+    """TEST-ONLY: enrich to BALANCED TruthGate bar, then protected admission."""
+    from core import memory as memory_mod
+    api = store or memory_mod
+    get = api.get_fact if hasattr(api, "get_fact") else memory_mod.get_fact
+    put = api.store_fact if hasattr(api, "store_fact") else memory_mod.store_fact
+    promote = api.promote_to_validated if hasattr(api, "promote_to_validated") else memory_mod.promote_to_validated
+    fact = get(fact_id)
+    if fact is not None:
+        meta = dict(fact.get("metadata") or {})
+        # TruthGate._count_evidence only counts STRING refs (dicts are ignored).
+        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
+        while len(refs) < 2:
+            refs.append(f"test_ev_{len(refs)+1}")
+        meta["evidence_refs"] = refs
+        payload = {
+            "fact_id": fact_id,
+            "claim": fact.get("claim", ""),
+            "source": fact.get("source") or "test",
+            "confidence": max(float(fact.get("confidence") or 0.0), 0.8),
+            "metadata": meta,
+        }
+        for extra in ("claim_type", "origin_type", "raw_input", "derived_from"):
+            if fact.get(extra) is not None:
+                payload[extra] = fact.get(extra)
+        put(payload)
+    try:
+        ok = promote(fact_id, by=by)
+    except TypeError:
+        ok = promote(fact_id)
+    assert ok is True, (
+        f"expected TruthGate Validated for {fact_id}; "
+        f"fact={get(fact_id)!r}"
+    )
+    return True
+
 class _StubNGram:
     """Deterministic FTS5 stand-in: always returns a fixed candidate id list,
     so tests don't depend on real trigram matching or a shared index file."""
@@ -109,8 +146,8 @@ def seeded_store(store):
          "source": "astronomy", "confidence": 0.95},
     ]
     for f in facts:
-        store_fact(f)
-        promote_to_validated(str(f["fact_id"]))
+        store.store_fact(f)
+        _r1_promote_to_validated(str(f["fact_id"]), store=store)
     return store
 
 

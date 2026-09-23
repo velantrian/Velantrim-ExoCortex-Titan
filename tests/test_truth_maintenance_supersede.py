@@ -170,7 +170,11 @@ def fake_provenance_chain(monkeypatch):
 
 
 def _make_old_fact(store, fact_id="old_fact", *, final_state="Validated"):
-    """Create an old fact and legally walk it to `final_state`."""
+    """Create an old fact and legally walk it to `final_state`.
+
+    R1: Validated is reached via validate_and_promote (TruthGate + CAS), not
+    transition_esm(..., Validated).
+    """
     store.store_fact({
         "fact_id":    fact_id,
         "claim":      "old claim",
@@ -182,12 +186,15 @@ def _make_old_fact(store, fact_id="old_fact", *, final_state="Validated"):
         "Observed":     [],
         "Hypothesized": ["Hypothesized"],
         "Supported":    ["Hypothesized", "Supported"],
-        "Validated":    ["Hypothesized", "Supported", "Validated"],
+        "Validated":    ["Hypothesized", "Supported"],
         "Contradicted": ["Hypothesized", "Contradicted"],
         "Collapsed":    ["Hypothesized", "Contradicted", "Collapsed"],
     }
     for state in ladder[final_state]:
         store.transition_esm(fact_id, state)
+    if final_state == "Validated":
+        verdict = store.validate_and_promote(fact_id, by="setup")
+        assert verdict.passed, verdict
     return store._get_fact_durable(fact_id)
 
 
