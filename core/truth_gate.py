@@ -235,19 +235,27 @@ class TruthGate:
     # ------------------------------------------------------------------
 
     def _count_evidence(self, fact: dict) -> int:
+        """Count distinct non-empty legacy evidence reference tokens.
+
+        This is a bounded compatibility rule only. Missing/non-list metadata,
+        empty lists, and blank tokens count as zero; duplicate string tokens do
+        not inflate cardinality. A token count is not source validation,
+        independence, evidence sufficiency, or truth.
         """
-        Считаем legacy evidence tokens по точному уникальному строковому значению.
-        Sprint 2c: граф-запрос к Neo4j/Graphiti.
-        """
-        metadata = fact.get("metadata") or {}
-        refs = metadata.get("evidence_refs", [])
-        if isinstance(refs, list):
-            # D1 bounded remediation: повтор одной строки не создаёт новое evidence.
-            # Никакой EvidenceReference/registry/independence authority здесь не вводится.
-            unique_refs = {ref for ref in refs if isinstance(ref, str)}
-            return max(1, len(unique_refs))
-        # Если refs — строка (legacy), считаем как 1
-        return 1
+        from collections.abc import Mapping
+
+        metadata = fact.get("metadata")
+        if not isinstance(metadata, Mapping):
+            return 0
+        refs = metadata.get("evidence_refs")
+        if not isinstance(refs, list):
+            return 0
+        unique_refs = {
+            ref
+            for ref in refs
+            if isinstance(ref, str) and ref.strip()
+        }
+        return len(unique_refs)
 
     def _find_contradictions_naive(self, fact: dict) -> list[str]:
         """
