@@ -26,10 +26,10 @@ def test_sleep_loop_promotes_and_resolves(tmp_path):
                   "source": "domain_seed", "confidence": 0.9})
     # D5/trust-aware: противоречие двух Validated — побеждает БОЛЕЕ ДОВЕРЕННЫЙ источник,
     # проигравший Validated демотируется (демоушен по-прежнему работает, но по доверию, не по новизне).
-    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9})
-    s.promote_to_validated("a", by="test")
-    s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "domain_seed", "confidence": 0.9})
-    s.promote_to_validated("b", by="test")
+    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9, "metadata": {"evidence_refs": ["e1", "e2"]}})
+    assert s.promote_to_validated("a", by="test") is True
+    s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "domain_seed", "confidence": 0.9, "metadata": {"evidence_refs": ["e1", "e2"]}})
+    assert s.promote_to_validated("b", by="test") is True
 
     rep = run_sleep_consolidation(s)
 
@@ -46,8 +46,8 @@ def test_sleep_loop_promotes_and_resolves(tmp_path):
 def test_sleep_loop_validated_not_demoted_by_newer_observed(tmp_path):
     # H2/M3 fix: новый Observed low-trust НЕ демотирует старый Validated trusted.
     s = _store(tmp_path)
-    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9})
-    s.promote_to_validated("a", by="test")
+    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9, "metadata": {"evidence_refs": ["e1", "e2"]}})
+    assert s.promote_to_validated("a", by="test") is True
     s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "u2", "confidence": 0.4})
     first = run_sleep_consolidation(s)
     second = run_sleep_consolidation(s)

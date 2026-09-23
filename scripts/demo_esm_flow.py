@@ -8,7 +8,7 @@
 Показывает по шагам:
   1) любой текст → ingest → Observed
   2) /query BALANCED → почему часто пусто
-  3) ручной переход → Validated
+  3) лестница до Supported; Validated только через TruthGate
   4) /query BALANCED с evidence → успех
 """
 from __future__ import annotations
@@ -70,6 +70,7 @@ def main() -> int:
         make_store,
         store_facts_batch,
         transition_esm,
+        validate_and_promote,
     )
     from core.pipeline import run as pipeline_run
 
@@ -109,17 +110,21 @@ def main() -> int:
     fact = get_fact("demo_dolphins_001")
     show_fact("Факт после CREATIVE query", fact)
 
-    sep("4. Ручной ESM-переход (как PATCH /facts/.../transition)")
+    sep("4. Ручной ESM-переход до Supported (Validated — только через TruthGate)")
     transition_esm("demo_dolphins_001", "Hypothesized", by="demo_user")
     transition_esm("demo_dolphins_001", "Supported", by="demo_user")
-    transition_esm("demo_dolphins_001", "Validated", by="demo_user")
+    try:
+        transition_esm("demo_dolphins_001", "Validated", by="demo_user")
+        print("  ERROR: transition_esm Validated should have been rejected")
+    except ValueError as exc:
+        print(f"  transition_esm(..., Validated) rejected as expected: {exc}")
     fact = get_fact("demo_dolphins_001")
-    show_fact("После Observed→Validated", fact)
+    show_fact("После Observed→Supported (Validated blocked)", fact)
     print("\n  История переходов:")
     for i, h in enumerate(fact.get("history") or [], 1):
         print(f"    {i}. {h.get('from')} → {h.get('state')}  ({h.get('by')})")
 
-    sep("5. Добавляем evidence и снова BALANCED (ожидаемый успех)")
+    sep("5. Добавляем evidence и Validated через validate_and_promote")
     # Важно: enrich уже существующий demo_dolphins_001 через batch-upsert.
     # store_fact() имеет no-op guard по claim/source/confidence и может не обновить metadata.
     store_facts_batch([
@@ -141,9 +146,12 @@ def main() -> int:
             "metadata": {"evidence_refs": ["textbook_ch12", "marine_biology_2024"]},
         },
     ])
+    v1 = validate_and_promote("demo_dolphins_001", by="demo_user")
+    print(f"  validate_and_promote(demo_dolphins_001): passed={v1.passed} reason={v1.reason}")
     transition_esm("demo_dolphins_002", "Hypothesized", by="demo_user")
     transition_esm("demo_dolphins_002", "Supported", by="demo_user")
-    transition_esm("demo_dolphins_002", "Validated", by="demo_user")
+    v2 = validate_and_promote("demo_dolphins_002", by="demo_user")
+    print(f"  validate_and_promote(demo_dolphins_002): passed={v2.passed} reason={v2.reason}")
     r3 = pipeline_run("Кто такие дельфины?", cognitive_mode="BALANCED")
     print(f"  error:  {r3.get('error')}")
     print(f"  answer: {(r3.get('answer') or '')[:120]}...")

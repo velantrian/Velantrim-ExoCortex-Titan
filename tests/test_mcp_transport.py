@@ -107,7 +107,7 @@ def test_handler_tools_call_supersede_fact_atomic_flow_end_to_end(monkeypatch, t
     })
     memory_mod.transition_esm(old_id, "Hypothesized", by="test")
     memory_mod.transition_esm(old_id, "Supported", by="test")
-    memory_mod.transition_esm(old_id, "Validated", by="test")
+    assert memory_mod.promote_to_validated(old_id, by="test") is True
 
     handler = McpHandler()
     resp = handler.handle(

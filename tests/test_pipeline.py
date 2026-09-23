@@ -23,6 +23,43 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # ─── Fixture: правильная тестовая изоляция ────────────────────────────────────
 # AUDIT-FIX v2.0: заменяем _GLOBAL_STORE целиком через make_store().
 
+
+def _r1_promote_to_validated(fact_id, by="test", store=None):
+    """TEST-ONLY: enrich to BALANCED TruthGate bar, then protected admission."""
+    from core import memory as memory_mod
+    api = store or memory_mod
+    get = api.get_fact if hasattr(api, "get_fact") else memory_mod.get_fact
+    put = api.store_fact if hasattr(api, "store_fact") else memory_mod.store_fact
+    promote = api.promote_to_validated if hasattr(api, "promote_to_validated") else memory_mod.promote_to_validated
+    fact = get(fact_id)
+    if fact is not None:
+        meta = dict(fact.get("metadata") or {})
+        # TruthGate._count_evidence only counts STRING refs (dicts are ignored).
+        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
+        while len(refs) < 2:
+            refs.append(f"test_ev_{len(refs)+1}")
+        meta["evidence_refs"] = refs
+        payload = {
+            "fact_id": fact_id,
+            "claim": fact.get("claim", ""),
+            "source": fact.get("source") or "test",
+            "confidence": max(float(fact.get("confidence") or 0.0), 0.8),
+            "metadata": meta,
+        }
+        for extra in ("claim_type", "origin_type", "raw_input", "derived_from"):
+            if fact.get(extra) is not None:
+                payload[extra] = fact.get(extra)
+        put(payload)
+    try:
+        ok = promote(fact_id, by=by)
+    except TypeError:
+        ok = promote(fact_id)
+    assert ok is True, (
+        f"expected TruthGate Validated for {fact_id}; "
+        f"fact={get(fact_id)!r}"
+    )
+    return True
+
 @pytest.fixture(autouse=True)
 def isolated_db(monkeypatch, tmp_path):
     """Каждый тест получает свежий SQLiteGraphStore в tmp_path."""
@@ -69,7 +106,7 @@ def seeded_db(isolated_db):
     ]
     for f in seed_facts:
         store_fact(f)
-        promote_to_validated(f["fact_id"])
+        _r1_promote_to_validated(f["fact_id"])
     return isolated_db
 
 
@@ -119,14 +156,14 @@ def test_pipeline_step6_modality_flag_on(isolated_db, monkeypatch):
         "source": "user_message", "confidence": 0.9,
         "claim_type": "EMOTION", "origin_type": "USER_REPORTED",
     })
-    promote_to_validated("emo1")
+    _r1_promote_to_validated("emo1")
     store_fact({
         "fact_id": "wf1", "claim": "anxiety is a documented physiological response",
         "source": "psychology", "confidence": 0.95,
         "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
         "metadata": {"evidence_refs": [{"source_id": "doi:1", "span": "1-5"}]},
     })
-    promote_to_validated("wf1")
+    _r1_promote_to_validated("wf1")
 
     assert get_fact("emo1")["claim_type"] == "EMOTION"
     assert get_fact("wf1")["claim_type"] == "WORLD_FACT"
@@ -160,7 +197,7 @@ def test_graph_expansion_pulls_reliable_neighbors(isolated_db):
         store_fact({"fact_id": fid, "claim": claim, "source": "physics", "confidence": 0.9,
                     "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
                     "metadata": {"evidence_refs": [{"source_id": "p", "span": "1"}]}})
-        promote_to_validated(fid)
+        _r1_promote_to_validated(fid)
     cg = pipeline._get_causal_graph()
     assert cg is not None, "causal_graph недоступен в тестовом контексте"
     cg.add_relation("ga", "gb", "causes", confidence=0.9)
@@ -190,7 +227,7 @@ def test_graph_expansion_no_graph_is_noop(isolated_db, monkeypatch):
     monkeypatch.setattr(pipeline, "_get_causal_graph", fail_initializer)
     store_fact({"fact_id": "solo", "claim": "Одинокий факт без связей", "source": "x",
                 "confidence": 0.9, "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL"})
-    promote_to_validated("solo")
+    _r1_promote_to_validated("solo")
     seed = [{"fact_id": "solo", "claim": "Одинокий факт без связей",
              "epistemic_state": "Validated", "confidence": 0.9, "claim_type": "WORLD_FACT"}]
     out = pipeline._expand_with_graph_neighbors(seed)
@@ -589,7 +626,7 @@ def test_query_causal_hints_are_proposals_not_relation_writes(isolated_db):
             "source": "physics",
             "confidence": 0.95,
         })
-        promote_to_validated(fid)
+        _r1_promote_to_validated(fid)
 
     def _relation_count() -> int:
         with sqlite3.connect(isolated_db.db_path) as conn:
@@ -677,7 +714,7 @@ def test_causal_hints_in_response_for_causal_facts(seeded_db):
     store_fact({"fact_id": "cg3", "claim": "Cooling results in condensation",
                 "source": "physics", "confidence": 0.9})
     for fid in ["cg1", "cg2", "cg3"]:
-        promote_to_validated(fid)
+        _r1_promote_to_validated(fid)
 
     result = run("heat causes evaporation")
     # Проверяем что ответ пришёл
@@ -732,7 +769,7 @@ def test_conflicts_block_present_when_contradictions_exist(seeded_db):
     store_fact({"fact_id": "earth_flat",  "claim": "Earth is flat",
                 "source": "myth", "confidence": 0.10})
     for fid in ["earth_round", "earth_flat"]:
-        promote_to_validated(fid)
+        _r1_promote_to_validated(fid)
 
     # Создаём contradicts-связь между ними
     cg = _get_causal_graph()
@@ -791,7 +828,7 @@ def test_conflicts_extraction_handles_cycles(seeded_db):
     # Создаём 3 факта с цикличными contradicts (теоретически возможный плохой случай)
     for fid, claim in [("c1","Statement A"), ("c2","Statement B"), ("c3","Statement C")]:
         store_fact({"fact_id": fid, "claim": claim, "source": "test", "confidence": 0.8})
-        promote_to_validated(fid)
+        _r1_promote_to_validated(fid)
 
     cg = _get_causal_graph()
     if cg is not None:
