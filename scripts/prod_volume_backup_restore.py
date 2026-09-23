@@ -55,6 +55,26 @@ DERIVED_DIR_NAMES = frozenset({"backups"})
 # пустой деплой может не создать консольные заметки.
 REQUIRED_CANONICAL_DBS: tuple[str, ...] = ("velantrim.db",)
 
+_EVIDENCE_SOURCE_DIGEST = "sha256:" + "c" * 64
+_EVIDENCE_FRAGMENT_DIGEST = "sha256:" + "d" * 64
+
+
+def _drill_evidence_refs(prefix: str, count: int = 2) -> list[dict[str, object]]:
+    return [
+        {
+            "schema_version": 1,
+            "reference_id": f"{prefix}-ref-{index}",
+            "source_id": f"{prefix}-source-{index}",
+            "source_digest": _EVIDENCE_SOURCE_DIGEST,
+            "fragment_id": f"{prefix}-fragment-{index}",
+            "fragment_digest": _EVIDENCE_FRAGMENT_DIGEST,
+            "span": f"chars:{index * 10}-{index * 10 + 5}",
+            "lineage_id": f"{prefix}-lineage-{index}",
+            "captured_at": "2026-09-23T00:00:00Z",
+        }
+        for index in range(1, count + 1)
+    ]
+
 # Контракт Titan backup — обычные файлы и каталоги. Симлинки, hardlink,
 # fifo/chr/blk в архиве не требуются и отклоняются.
 _SAFE_TAR_TYPES = frozenset({tarfile.REGTYPE, tarfile.AREGTYPE, tarfile.DIRTYPE})
@@ -826,7 +846,7 @@ def _docker_drill_seed(base_url: str, api_key: str, nonce: str) -> dict[str, Any
     for fact_id, claim, confidence, evidence in (
         (observed_id, f"PH-2A observed claim {nonce}", 0.4, None),
         (supported_id, f"PH-2A supported claim {nonce}", 0.6, None),
-        (validated_id, f"PH-2A validated claim {nonce}", 0.9, ["ev-a", "ev-b"]),
+        (validated_id, f"PH-2A validated claim {nonce}", 0.9, _drill_evidence_refs(f"ph2a-{nonce}")),
         (invalidated_id, f"PH-2A invalidated claim {nonce}", 0.55, None),
     ):
         payload: dict[str, Any] = {

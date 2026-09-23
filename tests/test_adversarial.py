@@ -17,6 +17,8 @@ import threading
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 # ─── ФИКСТУРЫ ────────────────────────────────────────────────────────────────
 
 def _promote_to_validated(store, fact_id: str, by: str = "test") -> None:
@@ -24,10 +26,9 @@ def _promote_to_validated(store, fact_id: str, by: str = "test") -> None:
     fact = store.get_fact(fact_id)
     if fact is not None:
         meta = dict(fact.get("metadata") or {})
-        # TruthGate._count_evidence only counts STRING refs (dicts are ignored).
-        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
-        while len(refs) < 2:
-            refs.append(f"test_ev_{len(refs)+1}")
+        refs = list(meta.get("evidence_refs") or [])
+        if len(refs) < 2 or any(not isinstance(ref, dict) for ref in refs):
+            refs = typed_evidence_refs(2, prefix=f"promote-{fact_id}")
         meta["evidence_refs"] = refs
         payload = {
             "fact_id": fact_id,
@@ -154,7 +155,7 @@ class TestTruthGateAttacks:
         pack = {"facts": [{
             "fact_id": "ev1", "claim": "test", "source": "test",
             "confidence": 0.9,
-            "metadata": {"evidence_refs": ["ref1", "ref2"]},
+            "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="adversarial-pass")},
         }]}
         ok, reason = truth_gate(pack, mode="BALANCED")
         assert ok, f"Должен пройти с evidence: {reason}"
@@ -640,7 +641,7 @@ class TestAuditFixesRegression:
                     "fact_id": "boil2",
                     "claim": "вода не кипит при 0 градусах",
                     "source": "physics", "confidence": 0.99,
-                    "metadata": {"evidence_refs": ["r1", "r2"]},
+                    "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="adversarial-naive")},
                 }
                 v = gate.evaluate(new_fact, mode=CognitiveMode.BALANCED)
                 # Оба факта истинны — должно пройти. С naive — упадёт как false positive.
