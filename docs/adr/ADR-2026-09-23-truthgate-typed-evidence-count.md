@@ -1,47 +1,58 @@
-# ADR — TruthGate counts only typed structural evidence references
+# ADR — TruthGate stops phantom evidence fallback
 
 - **Status:** Proposed / bounded enforcement repair
 - **Date:** 2026-09-23
 - **Scope:** `core/truth_gate.py::_count_evidence` only
-- **Baseline:** `main@54c975a3b19ebf5526d4a95416aeb1e12c92e1d1`
+- **Review baseline:** `main@74d2a7ecf713f78698f6224f125648d0fdb3222c`
 
 ## Context
 
-The live TruthGate counts legacy `metadata.evidence_refs` string tokens and
-returns at least one evidence item even for a missing/empty list. That violates
-the repository's established boundary that a reference token is not itself
-evidence and allows EXPLORATION to satisfy its evidence threshold with zero
-actual references.
+The live TruthGate legacy compatibility path returns at least one evidence item
+for a missing or empty `metadata.evidence_refs` value. That creates evidence
+cardinality from absence and lets EXPLORATION satisfy its minimum evidence
+threshold even when the fact carries no reference token at all.
 
-Titan already contains the strict local `EvidenceReference v1` parser. It was
-previously contract-only and unwired.
+A separate Typed Evidence Reference v1 contract exists in Titan, but its accepted
+ADR explicitly keeps it contract-only and unwired. Structural validity,
+registry-local validation, and receipt cardinality are not authorized runtime
+evidence-sufficiency signals.
 
 ## Decision
 
-For TruthGate cardinality only:
+This repair changes only the phantom fallback:
 
-1. missing/non-list `evidence_refs` counts as `0`;
-2. legacy strings count as `0`;
-3. malformed mappings count as `0`;
-4. only mappings accepted by `EvidenceReference.from_mapping()` count;
-5. duplicate typed references are deduplicated by canonical reference digest;
-6. existing CognitiveMode thresholds are unchanged.
+1. missing `evidence_refs` counts as `0`;
+2. non-list `evidence_refs` counts as `0`;
+3. an empty list counts as `0`;
+4. blank/whitespace-only string tokens count as `0`;
+5. duplicate non-empty legacy string tokens deduplicate by exact string value;
+6. distinct non-empty legacy string tokens retain the existing compatibility
+   cardinality behavior;
+7. CognitiveMode thresholds are unchanged.
 
-## Explicit non-claims
+## Explicit boundary
 
-This repair does **not** prove source authenticity, contextual independence,
-registry trust, source availability, fragment truth, or claim truth. It does
-not wire `EvidenceRegistry` as a new authority and does not change promotion
-ownership. A typed reference is necessary for this gate's cardinality after
-this repair, but typed structure alone is not sufficient evidence sovereignty.
+This is **not** a claim that a legacy string token is sufficient evidence.
+The remaining legacy-token cardinality rule is compatibility debt and stays an
+open evidence-admission problem.
+
+This ADR does **not** wire `EvidenceReference`, `EvidenceRegistry`, or
+`EvidenceValidationReceipt` into TruthGate. In particular:
 
 ```text
-legacy token != evidence
+absence != evidence
+reference token != evidence proof
 typed structure != authenticated source
-typed structure != independence
-reference count != truth
+registry-local validation != evidence sufficiency
+reference count != independence
+evidence != truth
 ```
+
+Any migration from legacy token cardinality to source-resolved or
+independence-aware evidence admission requires a separate owner/policy decision,
+differential tests, and explicit authorization.
 
 ## Rollback
 
-Revert this commit. No schema or persisted-data migration is introduced.
+Revert this bounded change. No schema, persistence, producer migration, or
+runtime-authority change is introduced.
