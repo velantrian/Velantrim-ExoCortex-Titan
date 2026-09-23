@@ -7,8 +7,6 @@ import sys
 
 import pytest
 
-from tests.helpers import typed_evidence_refs
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -74,7 +72,7 @@ class TestCognitiveStore:
             "x",
             "s",
             confidence=0.95,
-            metadata={"evidence_refs": typed_evidence_refs(2, prefix="test_cognitive_store")},
+            metadata={"evidence_refs": ["source-a", "source-b"]},
         )
         get_cognitive_store().save(cf)
         get_cognitive_store().transition(cf.id, "Hypothesized")
