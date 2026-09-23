@@ -11,6 +11,8 @@ import json
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 
 @pytest.fixture
 def isolated_store(tmp_path, monkeypatch):
@@ -179,7 +181,7 @@ def test_protected_admission_still_reaches_validated(isolated_store):
         "claim": "well evidenced claim",
         "source": "test",
         "confidence": 0.85,
-        "metadata": {"evidence_refs": ["e1", "e2"]},
+        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_update_state_validated_rejection")},
     })
     assert store.transition_esm(fact_id, "Hypothesized", by="test")
     assert store.transition_esm(fact_id, "Supported", by="test")

@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 from core.consolidation_engine import ConsolidationEngine
 from core.memory import SQLiteGraphStore
 from core.promotion_policy import PromotionConfig, run_graduated_promotion
@@ -166,7 +168,7 @@ def test_consolidation_rejected_candidate_is_retried_after_evidence_added(store)
         "claim": "Some claim entered by hand",
         "source": "manual",
         "confidence": 0.9,
-        "metadata": {"evidence_refs": ["src1", "src2"]},
+        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_p0d_truthgate_enforcement")},
     })
     retried = engine.run()
 
@@ -180,7 +182,7 @@ def test_consolidation_candidate_with_evidence_reaches_validated(store):
         "claim": "Some claim entered by hand",
         "source": "manual",
         "confidence": 0.9,
-        "metadata": {"evidence_refs": ["src1", "src2"]},
+        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_p0d_truthgate_enforcement")},
     })
     engine = ConsolidationEngine(store, min_confidence=0.7)
     report = engine.run()
@@ -195,7 +197,7 @@ def test_consolidation_never_calls_transition_esm_for_validated(store, monkeypat
         "claim": "Some claim entered by hand",
         "source": "manual",
         "confidence": 0.9,
-        "metadata": {"evidence_refs": ["src1", "src2"]},
+        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_p0d_truthgate_enforcement")},
     })
     real_transition_esm = store.transition_esm
 

@@ -7,6 +7,8 @@ import sys
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -127,7 +129,7 @@ def test_consolidation_promotes_high_confidence(mem_db):
             # through validate_and_promote() (TruthGate + CAS) on top of
             # ConsolidationEngine's own confidence/utility gate — needs
             # evidence_refs to clear TruthGate's BALANCED mode (min_evidence=2).
-            "metadata": {"evidence_refs": ["src1", "src2"]},
+            "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_sprint1_integrity")},
         }
     )
     report = run_consolidation(mem_db)
