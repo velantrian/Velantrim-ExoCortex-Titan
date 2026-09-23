@@ -1,3 +1,21 @@
+
+## 2026-09-23 — PR #461 R1 Validated admission boundary · MERGED
+
+> **Reality status:** `MERGED / IMPLEMENTED ON main@c877f1e177dc21687884f73b378213fdd9ef1dbe / EXACT-HEAD PRE-MERGE CI GREEN / POST-MERGE CI NOT YET OBSERVED / PRODUCTION NOT AUTHORIZED / OPERATOR GO NOT ESTABLISHED`.
+
+PR #461 (`fix(memory): close ungated Validated ESM admission (Titan R1)`) merged by squash from exact reviewed head `74c33795322f8279613c6ea912828cf46b5ff351`.
+
+Closure:
+- generic ESM transition cannot mint `Validated`;
+- promotion helpers route the final hop through existing protected admission;
+- direct `SQLiteGraphStore.update_state(..., "Validated")` fails closed before durable mutation;
+- async wrapper inherits the guard;
+- transitive AnyIO was updated 4.13.0 → 4.14.2 in `uv.lock` only;
+- exact-head Full CI, Docker, CodeQL, Stage 9, Stage 10, CAS contention and aggregate merge evidence were SUCCESS before merge.
+
+No runtime activation, Canon authority expansion, Operator GO or production authorization follows from this merge. Post-merge Actions on `c877f1e1…` must be recorded only when directly observed.
+
+---
 # 🧾 AI Engineering Work Log
 
 Re-verify exact SHAs, PR state and workflow conclusions before continuing work.
