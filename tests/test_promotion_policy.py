@@ -1,5 +1,3 @@
-from tests.helpers import typed_evidence_refs
-
 """
 Тесты градуированной петли обучения (core/promotion_policy.py).
 Покрывают: лестницу Observed→Hypothesized→Supported→Validated по доказательствам,
@@ -169,7 +167,7 @@ def test_engine_trusted_fact_climbs_to_validated_over_runs(tmp_path):
     s = _store(tmp_path)
     s.store_fact({"fact_id": "t1", "claim": "A trusted seed axiom about the domain",
                   "source": "domain_seed", "confidence": 0.9,
-                  "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_promotion_policy")}})
+                  "metadata": {"evidence_refs": ["src1", "src2"]}})
     cfg = PromotionConfig(validate_min_age_s=0)  # без выдержки для теста
     run_graduated_promotion(s, cfg=cfg)                    # Observed -> Hypothesized
     assert s.get_fact("t1")["epistemic_state"] == "Hypothesized"
@@ -208,7 +206,7 @@ def test_dispatch_naive_when_flag_off(tmp_path, monkeypatch):
         "claim": "Some random unverified claim from one source",
         "source": "manual",
         "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_promotion_policy")},
+        "metadata": {"evidence_refs": ["src1", "src2"]},
     })
     report = run_consolidation(s)
     assert s.get_fact("d1")["epistemic_state"] == "Validated"      # наивный штамп
