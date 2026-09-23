@@ -1,7 +1,7 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-09-06  
-**Live main at this reconciliation:** `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f`  
+**Snapshot:** 2026-09-23  
+**Live main at this reconciliation:** `main@c877f1e177dc21687884f73b378213fdd9ef1dbe`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
 **C11 lifecycle rule:** this snapshot preserves the reconciled #52 risk record; resolve current issue/PR lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
@@ -50,6 +50,14 @@ CI #1181, Docker #779, CodeQL #19 and aggregate #1213 succeeded; GitHub and same
 FINAL/read-back were reconciled. The remaining risk is semantic, not an admission bypass:
 the historical corpus is still not retroactively reviewed until real source/reviewer
 metadata is authored. C9 proves fail-closed admission, not corpus truth.
+
+## Reduced risk — generic/direct Validated admission bypass is closed on main
+
+PR #461 protected the existing single-fact `Validated` admission boundary and squash-merged as `main@c877f1e177dc21687884f73b378213fdd9ef1dbe` from exact head `74c33795322f8279613c6ea912828cf46b5ff351`.
+
+Generic `transition_esm(..., "Validated")` fails closed; promotion helpers route the final hop through the existing `validate_and_promote()` / TruthGate / CAS owner; direct `SQLiteGraphStore.update_state(..., "Validated")` also rejects before durable mutation. Async store behavior inherits the same rejection. The separate AnyIO 4.13.0 advisory blocker was closed by a lock-only update to 4.14.2.
+
+Exact-head pre-merge CI was green across Full CI, Docker, CodeQL, Stage 9, Stage 10, CAS contention and aggregate merge evidence. Post-merge workflow success on `c877f1e1…` is not claimed until observed directly. This closure does **not** establish Operator GO, runtime authority or production authority.
 
 ## Open risk — TruthGate evidence references remain cardinality-based pending a separate admission
 
