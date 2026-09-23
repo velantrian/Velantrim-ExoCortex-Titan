@@ -36,6 +36,8 @@ import threading
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "..", "scripts")
 APPLY_MIGRATIONS = os.path.join(SCRIPTS_DIR, "apply_migrations.py")
 
@@ -608,7 +610,7 @@ def _make_validatable_fact(store, fact_id: str) -> None:
         store, fact_id,
         claim="A trusted seed axiom about the domain",
         source="domain_seed", confidence=0.9,
-        metadata={"evidence_refs": ["src1", "src2"]},
+        metadata={"evidence_refs": typed_evidence_refs(2, prefix="test_audit_chain_transition_ledger")},
     )
     assert store.transition_esm(fact_id, "Hypothesized", by="truth_gate")
     assert store.transition_esm(fact_id, "Supported", by="truth_gate")

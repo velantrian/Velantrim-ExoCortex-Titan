@@ -103,6 +103,8 @@ import copy
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -180,7 +182,7 @@ def _make_old_fact(store, fact_id="old_fact", *, final_state="Validated"):
         "claim":      "old claim",
         "source":     "integration-test",
         "confidence": 0.9,
-        "metadata":   {"evidence_refs": ["a", "b", "c", "d", "e"]},
+        "metadata":   {"evidence_refs": typed_evidence_refs(5, prefix="test_truth_maintenance_supersede")},
     })
     ladder = {
         "Observed":     [],
@@ -205,7 +207,7 @@ def _strong_candidate(new_id="new_fact"):
         "claim":      "new claim",
         "source":     "integration-test",
         "confidence": 0.95,
-        "metadata":   {"evidence_refs": ["a", "b", "c", "d", "e"]},
+        "metadata":   {"evidence_refs": typed_evidence_refs(5, prefix="test_truth_maintenance_supersede")},
     }
 
 
@@ -480,7 +482,7 @@ class TestSupersedeConcurrentModification:
             racer.store_fact({
                 "fact_id": "old_9", "claim": "old claim",
                 "source": "integration-test", "confidence": 0.1,
-                "metadata": {"evidence_refs": ["a", "b", "c", "d", "e", "raced"]},
+                "metadata": {"evidence_refs": typed_evidence_refs(6, prefix="test_truth_maintenance_supersede")},
             })
             return verdict
 
@@ -768,7 +770,7 @@ class TestSupersedeClaimClassificationParity:
             "claim": "Вода кипит при 100°C",
             "source": "physics.thermo",
             "confidence": 0.95,
-            "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+            "metadata": {"evidence_refs": typed_evidence_refs(5, prefix="test_truth_maintenance_supersede")},
         }
 
         result = supersede("old_15a", candidate)
@@ -794,7 +796,7 @@ class TestSupersedeClaimClassificationParity:
             "claim": "Дерево горит на воздухе",
             "source": "chemistry.combustion",
             "confidence": 0.95,
-            "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+            "metadata": {"evidence_refs": typed_evidence_refs(5, prefix="test_truth_maintenance_supersede")},
         }
 
         result = supersede("old_15b", candidate)

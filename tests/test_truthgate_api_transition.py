@@ -102,6 +102,8 @@ import sys
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -369,7 +371,7 @@ class TestTruthGateApiBypassClosed:
             "claim":      "claim for idempotent_fact",
             "source":     "integration-test",
             "confidence": 0.85,
-            "metadata":   {"evidence_refs": ["a", "b"]},
+            "metadata":   {"evidence_refs": typed_evidence_refs(2, prefix="test_truthgate_api_transition")},
         })
         assert r.status_code in (200, 201), r.text
         assert not r.json().get("deduplicated"), (
@@ -401,7 +403,7 @@ class TestTruthGateApiBypassClosed:
             "claim":      "idempotent claim",
             "source":     "integration-test",
             "confidence": 0.85,
-            "metadata":   {"evidence_refs": ["a", "b"]},
+            "metadata":   {"evidence_refs": typed_evidence_refs(2, prefix="test_truthgate_api_transition")},
         }
         store.store_fact(fact)
         store.transition_esm("idempotent_fact", "Hypothesized")
@@ -510,7 +512,7 @@ class TestValidateAndPromoteConcurrencyGuard:
             "claim":      "race claim",
             "source":     "integration-test",
             "confidence": 0.85,
-            "metadata":   {"evidence_refs": ["src1", "src2"]},
+            "metadata":   {"evidence_refs": typed_evidence_refs(2, prefix="test_truthgate_api_transition")},
         })
         store.transition_esm(fact_id, "Hypothesized")
         store.transition_esm(fact_id, "Supported")
@@ -732,7 +734,7 @@ class TestStoreFactMetadataNoOpFix:
 
         # Metadata-only re-post: identical claim/source/confidence, but a
         # second evidence_ref — must NOT be treated as a no-op.
-        is_new = store.store_fact({**fact, "metadata": {"evidence_refs": ["a", "b"]}})
+        is_new = store.store_fact({**fact, "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_truthgate_api_transition")}})
         assert is_new is False, "setup: expected an upsert of an existing fact"
 
         verdict_after = store.validate_and_promote("meta_fact", by="test")
@@ -755,7 +757,7 @@ class TestStoreFactMetadataNoOpFix:
             "claim":      "noop claim",
             "source":     "integration-test",
             "confidence": 0.8,
-            "metadata":   {"evidence_refs": ["a", "b"]},
+            "metadata":   {"evidence_refs": typed_evidence_refs(2, prefix="test_truthgate_api_transition")},
         }
         store.store_fact(fact)
         before = store.get_fact("noop_fact")
@@ -790,7 +792,7 @@ class TestPromoteToValidatedCasFallbackPath:
             "claim":      "fallback claim",
             "source":     "integration-test",
             "confidence": 0.85,
-            "metadata":   {"evidence_refs": ["a", "b"]},
+            "metadata":   {"evidence_refs": typed_evidence_refs(2, prefix="test_truthgate_api_transition")},
         })
         store.transition_esm("fallback_fact", "Hypothesized")
         store.transition_esm("fallback_fact", "Supported")

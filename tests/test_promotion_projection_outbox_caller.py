@@ -33,6 +33,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 from core.memory import ProjectionOutboxActivationError, SQLiteGraphStore, make_store
 
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
@@ -71,7 +73,7 @@ def _seed_promotable_fact(
             "claim": "A well-evidenced fact for the first Canon caller increment",
             "source": "manual",
             "confidence": 0.95,
-            "metadata": {"evidence_refs": ["source-a", "source-b"]},
+            "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_promotion_projection_outbox_caller")},
         }
     assert store.store_fact(fact) is True
     assert store.promote_esm_to(fact_id, "Supported", by="caller_test_setup") is True
