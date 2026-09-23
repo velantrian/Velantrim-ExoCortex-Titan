@@ -25,8 +25,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers import typed_evidence_refs
-
 from core.living_context import LivingContextStore
 from core.memory import SQLiteGraphStore
 
@@ -201,7 +199,7 @@ def test_promote_to_validated_accepts_truthgate_eligible_fact():
         "claim": "a well evidenced claim",
         "source": "test",
         "confidence": 0.85,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_tool_handlers")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     memory.transition_esm(fact_id, "Hypothesized", by="test")
     memory.transition_esm(fact_id, "Supported", by="test")
@@ -221,7 +219,7 @@ def _make_old_validated_fact(fact_id: str) -> None:
         "claim": "old claim",
         "source": "test",
         "confidence": 0.9,
-        "metadata": {"evidence_refs": typed_evidence_refs(5, prefix="test_tool_handlers")},
+        "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
     })
     memory.transition_esm(fact_id, "Hypothesized", by="test")
     memory.transition_esm(fact_id, "Supported", by="test")
@@ -236,7 +234,7 @@ def _strong_new_fact(new_id: str) -> dict:
         "claim": "new claim",
         "source": "test",
         "confidence": 0.95,
-        "metadata": {"evidence_refs": typed_evidence_refs(5, prefix="test_tool_handlers")},
+        "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
     }
 
 
