@@ -5,8 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers import typed_evidence_refs
-
 
 COGNITIVE_STORE = Path(__file__).resolve().parents[1] / "core" / "cognitive_store.py"
 
@@ -44,7 +42,7 @@ def isolated_cognitive_store(tmp_path, monkeypatch):
 
 
 def _save_observed(cognitive_store, facade, fact_id: str, *, strong: bool) -> None:
-    metadata = {"evidence_refs": typed_evidence_refs(2, prefix="test_cognitive_store_promotion_gateway")} if strong else {}
+    metadata = {"evidence_refs": ["source-a", "source-b"]} if strong else {}
     confidence = 0.95 if strong else 0.4
     fact = cognitive_store.CognitiveFactStore.create_observed(
         f"claim for {fact_id}",
