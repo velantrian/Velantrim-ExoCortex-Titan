@@ -11,8 +11,6 @@ from unittest import mock
 
 import pytest
 
-from tests.helpers import typed_evidence_refs
-
 from core.memory import SQLiteGraphStore
 
 _ROOT = os.path.join(os.path.dirname(__file__), "..")
@@ -34,7 +32,7 @@ def _seed_promotable_fact(store: SQLiteGraphStore, fact_id: str) -> None:
             "claim": "Issue 347 fresh-store bootstrap serialization regression",
             "source": "manual",
             "confidence": 0.95,
-            "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_sqlite_fresh_store_bootstrap_serialization")},
+            "metadata": {"evidence_refs": ["source-a", "source-b"]},
         }
     ) is True
     assert store.promote_esm_to(fact_id, "Supported", by="issue347_setup") is True
