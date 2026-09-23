@@ -235,30 +235,23 @@ class TruthGate:
     # ------------------------------------------------------------------
 
     def _count_evidence(self, fact: dict) -> int:
-        """Count only structurally valid typed EvidenceReference v1 records.
+        """Count distinct non-empty legacy evidence reference tokens.
 
-        Legacy string tokens, malformed mappings and an empty/missing list count
-        as zero. This closes the fail-open cardinality seam without changing
-        CognitiveMode thresholds. Registry resolution, source authentication and
-        independence remain separate future admission concerns.
+        This is a bounded compatibility rule only. Missing/non-list metadata,
+        empty lists, and blank tokens count as zero; duplicate string tokens do
+        not inflate cardinality. A token count is not source validation,
+        independence, evidence sufficiency, or truth.
         """
-        from core.evidence_reference import EvidenceReference, EvidenceReferenceError
-
         metadata = fact.get("metadata") or {}
         refs = metadata.get("evidence_refs")
         if not isinstance(refs, list):
             return 0
-
-        unique_digests: set[str] = set()
-        for raw_ref in refs:
-            if not isinstance(raw_ref, dict):
-                continue
-            try:
-                parsed = EvidenceReference.from_mapping(raw_ref)
-            except EvidenceReferenceError:
-                continue
-            unique_digests.add(parsed.reference_digest)
-        return len(unique_digests)
+        unique_refs = {
+            ref
+            for ref in refs
+            if isinstance(ref, str) and ref.strip()
+        }
+        return len(unique_refs)
 
     def _find_contradictions_naive(self, fact: dict) -> list[str]:
         """
