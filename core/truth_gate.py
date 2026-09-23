@@ -242,7 +242,11 @@ class TruthGate:
         not inflate cardinality. A token count is not source validation,
         independence, evidence sufficiency, or truth.
         """
-        metadata = fact.get("metadata") or {}
+        from collections.abc import Mapping
+
+        metadata = fact.get("metadata")
+        if not isinstance(metadata, Mapping):
+            return 0
         refs = metadata.get("evidence_refs")
         if not isinstance(refs, list):
             return 0
