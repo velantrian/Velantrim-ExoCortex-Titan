@@ -9,6 +9,8 @@ import json
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 from core.mcp_transport import (
     McpHandler,
     _server_max_capability,
@@ -103,7 +105,7 @@ def test_handler_tools_call_supersede_fact_atomic_flow_end_to_end(monkeypatch, t
     old_id, new_id = "old.mcp.fact", "new.mcp.fact"
     memory_mod.store_fact({
         "fact_id": old_id, "claim": "old", "source": "test", "confidence": 0.9,
-        "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+        "metadata": {"evidence_refs": typed_evidence_refs(5, prefix="test_mcp_transport")},
     })
     memory_mod.transition_esm(old_id, "Hypothesized", by="test")
     memory_mod.transition_esm(old_id, "Supported", by="test")
@@ -124,7 +126,7 @@ def test_handler_tools_call_supersede_fact_atomic_flow_end_to_end(monkeypatch, t
                         "claim": "new",
                         "source": "test",
                         "confidence": 0.95,
-                        "metadata": {"evidence_refs": ["a", "b", "c", "d", "e"]},
+                        "metadata": {"evidence_refs": typed_evidence_refs(5, prefix="test_mcp_transport")},
                     },
                 },
             },
