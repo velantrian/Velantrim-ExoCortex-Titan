@@ -31,25 +31,6 @@ def gate(isolated_store):
     return TruthGate(isolated_store)
 
 
-
-_REF_DIGEST = "sha256:" + "a" * 64
-_FRAGMENT_DIGEST = "sha256:" + "b" * 64
-
-
-def _typed_ref(index: int) -> dict:
-    return {
-        "schema_version": 1,
-        "reference_id": f"ref-{index}",
-        "source_id": f"source-{index}",
-        "source_digest": _REF_DIGEST,
-        "fragment_id": f"fragment-{index}",
-        "fragment_digest": _FRAGMENT_DIGEST,
-        "span": f"chars:{index * 10}-{index * 10 + 5}",
-        "lineage_id": f"lineage-{index}",
-        "captured_at": "2026-09-23T00:00:00Z",
-    }
-
-
 @pytest.fixture
 def good_fact():
     return {
@@ -57,7 +38,7 @@ def good_fact():
         "claim": "Земля вращается вокруг Солнца",
         "source": "astronomy_textbook",
         "confidence": 0.95,
-        "metadata": {"evidence_refs": [_typed_ref(1), _typed_ref(2), _typed_ref(3)]},
+        "metadata": {"evidence_refs": ["ref1", "ref2", "ref3"]},
     }
 
 
@@ -117,7 +98,7 @@ class TestConfidenceCheck:
 
     def test_precision_requires_high_confidence(self, gate, good_fact):
         good_fact["confidence"] = 0.85  # PRECISION порог 0.9
-        good_fact["metadata"]["evidence_refs"] = [_typed_ref(i) for i in range(5)]
+        good_fact["metadata"]["evidence_refs"] = [f"r{i}" for i in range(5)]
         v = gate.evaluate(good_fact, mode=CognitiveMode.PRECISION)
         assert not v.passed
         assert v.reason == "low_confidence"
@@ -127,14 +108,14 @@ class TestConfidenceCheck:
 
 class TestEvidenceCheck:
     def test_insufficient_evidence_balanced(self, gate, good_fact):
-        good_fact["metadata"] = {}  # 0 refs stays 0
+        good_fact["metadata"] = {}
         v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
-        # BALANCED min_evidence = 2, у нас 0 → reject
         assert not v.passed
         assert v.reason == "insufficient_evidence"
+        assert v.evidence_count == 0
 
     def test_precision_requires_5_evidence(self, gate, good_fact):
-        good_fact["metadata"] = {"evidence_refs": [_typed_ref(1), _typed_ref(2), _typed_ref(3)]}
+        good_fact["metadata"] = {"evidence_refs": ["r1", "r2", "r3"]}
         v = gate.evaluate(good_fact, mode=CognitiveMode.PRECISION)
         assert not v.passed
         assert v.reason == "insufficient_evidence"
@@ -146,29 +127,27 @@ class TestEvidenceCheck:
         assert v.reason == "insufficient_evidence"
         assert v.evidence_count == 0
 
-    def test_exploration_accepts_one_typed_reference(self, gate, good_fact):
-        good_fact["metadata"] = {"evidence_refs": [_typed_ref(1)]}
+    def test_non_list_evidence_refs_count_as_zero(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": "legacy-ref"}
         v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
-        assert v.passed
-        assert v.evidence_count == 1
-
-    def test_legacy_string_refs_do_not_count_as_evidence(self, gate, good_fact):
-        good_fact["metadata"] = {"evidence_refs": ["ref-a", "ref-b"]}
-        v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
         assert not v.passed
-        assert v.reason == "insufficient_evidence"
         assert v.evidence_count == 0
 
-    def test_duplicate_typed_refs_do_not_inflate_cardinality(self, gate, good_fact):
-        ref = _typed_ref(1)
-        good_fact["metadata"] = {"evidence_refs": [ref, dict(ref)]}
+    def test_blank_legacy_tokens_do_not_count(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": ["", "   "]}
+        v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
+        assert not v.passed
+        assert v.evidence_count == 0
+
+    def test_duplicate_legacy_refs_do_not_inflate_cardinality(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": ["same-ref", "same-ref"]}
         v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
         assert not v.passed
         assert v.reason == "insufficient_evidence"
         assert v.evidence_count == 1
 
-    def test_two_typed_refs_satisfy_balanced_cardinality(self, gate, good_fact):
-        good_fact["metadata"] = {"evidence_refs": [_typed_ref(1), _typed_ref(2)]}
+    def test_distinct_legacy_refs_still_count_separately(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": ["ref-a", "ref-b"]}
         v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
         assert v.passed
         assert v.evidence_count == 2
@@ -186,13 +165,13 @@ class TestCognitiveModes:
     def test_mode_thresholds_applied(self, gate, good_fact, mode, min_conf, min_ev):
         # Точно на пороге — должно пройти с DISTINCT legacy evidence tokens.
         good_fact["confidence"] = min_conf
-        good_fact["metadata"] = {"evidence_refs": [_typed_ref(i) for i in range(min_ev)]}
+        good_fact["metadata"] = {"evidence_refs": [f"r{i}" for i in range(min_ev)]}
         v = gate.evaluate(good_fact, mode=mode)
         assert v.passed, f"{mode.value}: confidence={min_conf} evidence={min_ev} должно пройти"
 
     def test_below_threshold_rejected(self, gate, good_fact):
         good_fact["confidence"] = 0.7
-        good_fact["metadata"] = {"evidence_refs": [_typed_ref(1)]}
+        good_fact["metadata"] = {"evidence_refs": ["r", "r"]}
         v = gate.evaluate(good_fact, mode=CognitiveMode.PRECISION)
         assert not v.passed
 
@@ -227,6 +206,6 @@ class TestAuditTrail:
         assert v.mode == CognitiveMode.CREATIVE
 
     def test_verdict_records_evidence_count(self, gate, good_fact):
-        good_fact["metadata"] = {"evidence_refs": [_typed_ref(1), _typed_ref(2), _typed_ref(3)]}
+        good_fact["metadata"] = {"evidence_refs": ["r1", "r2", "r3"]}
         v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
         assert v.evidence_count == 3
