@@ -12,8 +12,6 @@ import sys
 
 import pytest
 
-from tests.helpers import typed_evidence_refs
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -74,7 +72,7 @@ def fresh_db(monkeypatch, tmp_path):
 def test_p0_1_store_fact_preserves_validated_state(fresh_db):
     """P0.1: повторный store_fact (claim changed) не откатывает Validated в L1."""
     m = fresh_db
-    m.store_fact({"fact_id": "x", "claim": "a", "source": "s", "confidence": 0.8, "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_regression_p0")}})
+    m.store_fact({"fact_id": "x", "claim": "a", "source": "s", "confidence": 0.8, "metadata": {"evidence_refs": ["e1", "e2"]}})
     _r1_promote_to_validated("x", store=m)
     assert m.get_fact("x")["epistemic_state"] == "Validated"
 
