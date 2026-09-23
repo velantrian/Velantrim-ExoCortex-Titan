@@ -17,6 +17,8 @@ import sys
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -34,10 +36,16 @@ def _r1_promote_to_validated(fact_id, by="test", store=None):
     fact = get(fact_id)
     if fact is not None:
         meta = dict(fact.get("metadata") or {})
-        # TruthGate._count_evidence only counts STRING refs (dicts are ignored).
-        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
-        while len(refs) < 2:
-            refs.append(f"test_ev_{len(refs)+1}")
+        refs = list(meta.get("evidence_refs") or [])
+        if len(refs) < 2 or any(not isinstance(ref, dict) for ref in refs):
+            refs = typed_evidence_refs(2, prefix=f"pipeline-{fact_id}")
+        else:
+            from core.evidence_reference import EvidenceReference, EvidenceReferenceError
+            try:
+                for ref in refs:
+                    EvidenceReference.from_mapping(ref)
+            except EvidenceReferenceError:
+                refs = typed_evidence_refs(2, prefix=f"pipeline-{fact_id}")
         meta["evidence_refs"] = refs
         payload = {
             "fact_id": fact_id,
@@ -161,7 +169,7 @@ def test_pipeline_step6_modality_flag_on(isolated_db, monkeypatch):
         "fact_id": "wf1", "claim": "anxiety is a documented physiological response",
         "source": "psychology", "confidence": 0.95,
         "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
-        "metadata": {"evidence_refs": [{"source_id": "doi:1", "span": "1-5"}]},
+        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="pipeline-wf1")},
     })
     _r1_promote_to_validated("wf1")
 
@@ -196,7 +204,7 @@ def test_graph_expansion_pulls_reliable_neighbors(isolated_db):
                        ("gc", "Канал проводит главный разряд молнии")]:
         store_fact({"fact_id": fid, "claim": claim, "source": "physics", "confidence": 0.9,
                     "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
-                    "metadata": {"evidence_refs": [{"source_id": "p", "span": "1"}]}})
+                    "metadata": {"evidence_refs": typed_evidence_refs(2, prefix=f"pipeline-{fid}")}})
         _r1_promote_to_validated(fid)
     cg = pipeline._get_causal_graph()
     assert cg is not None, "causal_graph недоступен в тестовом контексте"
@@ -486,12 +494,12 @@ def test_truth_gate_balanced_uses_metadata_evidence_from_pipeline_pack():
         "source": "astronomy",
         "confidence": 0.95,
         "retrieval_score": 0.9,
-        "metadata": {"evidence_refs": ["ref1", "ref2"]},
+        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="pipeline-pack")},
     }]
     # CREATIVE включает Observed-факты в pack; сам gate проверяем в BALANCED.
     facts_pack = pl.build_facts_pack(retrieved, "earth sun", cognitive_mode="CREATIVE")
     assert len(facts_pack["facts"]) == 1
-    assert facts_pack["facts"][0]["metadata"]["evidence_refs"] == ["ref1", "ref2"]
+    assert len(facts_pack["facts"][0]["metadata"]["evidence_refs"]) == 2
 
     ok, reason = pl.truth_gate(facts_pack, mode="BALANCED")
     assert ok, f"Ожидался PASS c evidence_refs, но получили BLOCKED: {reason}"
@@ -598,7 +606,7 @@ def test_pipeline_does_not_promote_observed_fact(isolated_db):
         "claim": "unconfirmed aurora mechanism",
         "source": "field_note",
         "confidence": 0.9,
-        "metadata": {"evidence_refs": ["note-1", "note-2"]},
+        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="pipeline-observed")},
     })
     before = get_fact("observed_only")
 

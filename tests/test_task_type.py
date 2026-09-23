@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import pytest
 
+from tests.helpers import typed_evidence_refs
+
 
 
 def _r1_promote_to_validated(fact_id, by="test", store=None):
@@ -15,10 +17,9 @@ def _r1_promote_to_validated(fact_id, by="test", store=None):
     fact = get(fact_id)
     if fact is not None:
         meta = dict(fact.get("metadata") or {})
-        # TruthGate._count_evidence only counts STRING refs (dicts are ignored).
-        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
-        while len(refs) < 2:
-            refs.append(f"test_ev_{len(refs)+1}")
+        refs = list(meta.get("evidence_refs") or [])
+        if len(refs) < 2 or any(not isinstance(ref, dict) for ref in refs):
+            refs = typed_evidence_refs(2, prefix=f"task-{fact_id}")
         meta["evidence_refs"] = refs
         payload = {
             "fact_id": fact_id,
@@ -101,7 +102,7 @@ def test_pipeline_task_routing_sets_type(isolated_db, monkeypatch):
                        ("ir2", "Ржавчина это оксид железа на поверхности")]:
         store_fact({"fact_id": fid, "claim": claim, "source": "chem", "confidence": 0.9,
                     "claim_type": "WORLD_FACT", "origin_type": "EXTERNAL",
-                    "metadata": {"evidence_refs": [{"source_id": "c", "span": "1"}]}})
+                    "metadata": {"evidence_refs": typed_evidence_refs(2, prefix=f"task-{fid}")}})
         _r1_promote_to_validated(fid)
 
     r_why = pipeline.run("почему железо ржавеет")
