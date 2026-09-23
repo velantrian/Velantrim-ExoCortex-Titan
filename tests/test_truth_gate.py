@@ -108,11 +108,11 @@ class TestConfidenceCheck:
 
 class TestEvidenceCheck:
     def test_insufficient_evidence_balanced(self, gate, good_fact):
-        good_fact["metadata"] = {}  # 0 refs → counts as 1
+        good_fact["metadata"] = {}
         v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
-        # BALANCED min_evidence = 2, у нас 1 → reject
         assert not v.passed
         assert v.reason == "insufficient_evidence"
+        assert v.evidence_count == 0
 
     def test_precision_requires_5_evidence(self, gate, good_fact):
         good_fact["metadata"] = {"evidence_refs": ["r1", "r2", "r3"]}
@@ -120,10 +120,30 @@ class TestEvidenceCheck:
         assert not v.passed
         assert v.reason == "insufficient_evidence"
 
-    def test_exploration_accepts_single_evidence(self, gate, good_fact):
-        good_fact["metadata"] = {}  # 1 evidence (fallback)
+    def test_exploration_rejects_missing_evidence(self, gate, good_fact):
+        good_fact["metadata"] = {}
         v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
-        assert v.passed
+        assert not v.passed
+        assert v.reason == "insufficient_evidence"
+        assert v.evidence_count == 0
+
+    def test_non_list_evidence_refs_count_as_zero(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": "legacy-ref"}
+        v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
+        assert not v.passed
+        assert v.evidence_count == 0
+
+    def test_non_mapping_metadata_counts_as_zero(self, gate, good_fact):
+        good_fact["metadata"] = "malformed"
+        v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
+        assert not v.passed
+        assert v.evidence_count == 0
+
+    def test_blank_legacy_tokens_do_not_count(self, gate, good_fact):
+        good_fact["metadata"] = {"evidence_refs": ["", "   "]}
+        v = gate.evaluate(good_fact, mode=CognitiveMode.EXPLORATION)
+        assert not v.passed
+        assert v.evidence_count == 0
 
     def test_duplicate_legacy_refs_do_not_inflate_cardinality(self, gate, good_fact):
         good_fact["metadata"] = {"evidence_refs": ["same-ref", "same-ref"]}

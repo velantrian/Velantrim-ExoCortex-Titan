@@ -131,10 +131,20 @@ def _version_count(store, fact_id: str) -> int:
 
 def _make_fact_at(store, fact_id: str, state: str, *, claim: str = "c",
                    confidence: float = 0.9, metadata=None) -> None:
-    """Create a fact and walk it (legally) to `state` via transition_esm()."""
+    """Create a fact and walk it (legally) to `state`.
+
+    R1: Validated uses validate_and_promote; other states use transition_esm.
+    """
+    meta = dict(metadata or {})
+    if state == "Validated":
+        refs = [r for r in (meta.get("evidence_refs") or []) if isinstance(r, str)]
+        while len(refs) < 2:
+            refs.append(f"setup_ev_{len(refs)+1}")
+        meta["evidence_refs"] = refs
+        confidence = max(float(confidence), 0.8)
     store.store_fact_result({
         "fact_id": fact_id, "claim": claim, "source": "s",
-        "confidence": confidence, "metadata": metadata or {},
+        "confidence": confidence, "metadata": meta,
     })
     ladder = {
         "Observed": [],
@@ -142,10 +152,13 @@ def _make_fact_at(store, fact_id: str, state: str, *, claim: str = "c",
         "Contradicted": ["Hypothesized", "Contradicted"],
         "Deprecated": ["Hypothesized", "Contradicted", "Deprecated"],
         "Supported": ["Hypothesized", "Supported"],
-        "Validated": ["Hypothesized", "Supported", "Validated"],
+        "Validated": ["Hypothesized", "Supported"],
     }
     for step in ladder[state]:
         store.transition_esm(fact_id, step, by="setup")
+    if state == "Validated":
+        verdict = store.validate_and_promote(fact_id, by="setup")
+        assert verdict.passed, verdict
 
 
 # ─── Scenarios 1-2: legal transitions into Collapsed now succeed ─────────────

@@ -35,7 +35,7 @@ def populated_store(isolated_store):
     return isolated_store
 
 
-# ─── Базовые проверки ──────────────────────────────────────────────────────
+# ─── Базовые проверки ────────────────────────────────────
 
 class TestBasics:
     def test_calculate_returns_report(self, populated_store):
@@ -66,7 +66,7 @@ class TestBasics:
         assert hasattr(r, "recommendations")
 
 
-# ─── Статусы (HEALTHY / DEGRADED / SAFE_MODE) ──────────────────────────────
+# ─── Статусы (HEALTHY / DEGRADED / SAFE_MODE) ──────────────────────────
 
 class TestStatuses:
     def test_low_mhi_is_safe_mode(self, isolated_store):
@@ -96,7 +96,7 @@ class TestStatuses:
         assert r_good.mhi > r_bad.mhi
 
 
-# ─── Validated facts ───────────────────────────────────────────────────────
+# ─── Validated facts ───────────────────────────────────────
 
 class TestValidatedRatio:
     def test_validated_ratio_zero_initially(self, populated_store):
@@ -106,19 +106,26 @@ class TestValidatedRatio:
         assert r.validated_ratio == 0.0
 
     def test_validated_ratio_after_promotion(self, populated_store):
-        """Перевод 2/3 фактов в Validated → ratio = 0.67."""
+        """Перевод 2/3 фактов в Validated через защищённый admission → ratio = 0.67."""
         memory_mod._GLOBAL_STORE = populated_store
         try:
-            populated_store.update_state(
-                "f1", "Validated",
-                {"state": "Validated", "at": "2026-05-11T00:00:00", "by": "test"},
-                "2026-05-11T00:00:00",
-            )
-            populated_store.update_state(
-                "f2", "Validated",
-                {"state": "Validated", "at": "2026-05-11T00:00:00", "by": "test"},
-                "2026-05-11T00:00:00",
-            )
+            for fact_id in ("f1", "f2"):
+                fact = populated_store.get_fact(fact_id)
+                assert fact is not None
+                meta = dict(fact.get("metadata") or {})
+                meta["evidence_refs"] = ["e1", "e2"]
+                populated_store.store_fact({
+                    "fact_id": fact_id,
+                    "claim": fact["claim"],
+                    "source": fact.get("source", "s"),
+                    "confidence": max(float(fact.get("confidence", 0.0)), 0.85),
+                    "metadata": meta,
+                })
+                assert populated_store.transition_esm(fact_id, "Hypothesized", by="test")
+                assert populated_store.transition_esm(fact_id, "Supported", by="test")
+                ok = populated_store.promote_to_validated(fact_id, by="test")
+                assert ok is True
+                assert populated_store.get_fact(fact_id)["epistemic_state"] == "Validated"
             calc = MHICalculator(populated_store)
             r = calc.calculate()
             assert abs(r.validated_ratio - 2/3) < 0.01
@@ -126,7 +133,7 @@ class TestValidatedRatio:
             memory_mod._GLOBAL_STORE = None
 
 
-# ─── Recommendations ───────────────────────────────────────────────────────
+# ─── Recommendations ───────────────────────────────────────
 
 class TestRecommendations:
     def test_recommendations_never_empty(self, populated_store):
@@ -147,7 +154,7 @@ class TestRecommendations:
             assert any("validated_ratio" in rec or "TruthGate" in rec for rec in r.recommendations)
 
 
-# ─── Helper function ───────────────────────────────────────────────────────
+# ─── Helper function ─────────────────────────────────
 
 class TestCheckMHI:
     def test_check_mhi_returns_status(self, populated_store):
@@ -159,7 +166,7 @@ class TestCheckMHI:
         assert isinstance(status, MHIStatus)
 
 
-# ─── Error handling ────────────────────────────────────────────────────────
+# ─── Error handling ────────────────────────────────
 
 class TestErrorHandling:
     def test_broken_store_returns_safe_mode(self):
