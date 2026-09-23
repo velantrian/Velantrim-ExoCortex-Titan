@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from tests.helpers import typed_evidence_refs
-
 import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -68,7 +66,7 @@ def test_two_valid_promotions_have_one_cas_winner_and_one_explicit_loser(
                 "claim": "A well-evidenced fact for deterministic CAS contention",
                 "source": "manual",
                 "confidence": 0.95,
-                "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_sqlite_promotion_cas_contention")},
+                "metadata": {"evidence_refs": ["source-a", "source-b"]},
             }
         )
         assert created is True
