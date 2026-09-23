@@ -235,19 +235,30 @@ class TruthGate:
     # ------------------------------------------------------------------
 
     def _count_evidence(self, fact: dict) -> int:
+        """Count only structurally valid typed EvidenceReference v1 records.
+
+        Legacy string tokens, malformed mappings and an empty/missing list count
+        as zero. This closes the fail-open cardinality seam without changing
+        CognitiveMode thresholds. Registry resolution, source authentication and
+        independence remain separate future admission concerns.
         """
-        Считаем legacy evidence tokens по точному уникальному строковому значению.
-        Sprint 2c: граф-запрос к Neo4j/Graphiti.
-        """
+        from core.evidence_reference import EvidenceReference, EvidenceReferenceError
+
         metadata = fact.get("metadata") or {}
-        refs = metadata.get("evidence_refs", [])
-        if isinstance(refs, list):
-            # D1 bounded remediation: повтор одной строки не создаёт новое evidence.
-            # Никакой EvidenceReference/registry/independence authority здесь не вводится.
-            unique_refs = {ref for ref in refs if isinstance(ref, str)}
-            return max(1, len(unique_refs))
-        # Если refs — строка (legacy), считаем как 1
-        return 1
+        refs = metadata.get("evidence_refs")
+        if not isinstance(refs, list):
+            return 0
+
+        unique_digests: set[str] = set()
+        for raw_ref in refs:
+            if not isinstance(raw_ref, dict):
+                continue
+            try:
+                parsed = EvidenceReference.from_mapping(raw_ref)
+            except EvidenceReferenceError:
+                continue
+            unique_digests.add(parsed.reference_digest)
+        return len(unique_digests)
 
     def _find_contradictions_naive(self, fact: dict) -> list[str]:
         """
