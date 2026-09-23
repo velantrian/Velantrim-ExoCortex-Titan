@@ -28,8 +28,6 @@ from __future__ import annotations
 
 import pytest
 
-from tests.helpers import typed_evidence_refs
-
 from core.consolidation_engine import ConsolidationEngine
 from core.fact_integrity import compute_content_checksum
 from core.memory import SQLiteGraphStore
@@ -49,7 +47,7 @@ def _basic_fact(fact_id: str, *, confidence: float = 0.9) -> dict:
     }
 
 
-def _trusted_fact(fact_id: str, *, evidence_refs: list[dict]) -> dict:
+def _trusted_fact(fact_id: str, *, evidence_refs: list[str]) -> dict:
     return {
         "fact_id": fact_id,
         "claim": "a normal length claim entered manually",
@@ -93,7 +91,7 @@ def test_hypothesized_happy_path(store):
 # ── B. Validated happy path (real production path, no shortcuts) ─────────────
 
 def test_validated_happy_path_via_real_truthgate(store, monkeypatch):
-    store.store_fact(_trusted_fact("b1", evidence_refs=typed_evidence_refs(2, prefix="checksum-b1")))
+    store.store_fact(_trusted_fact("b1", evidence_refs=["src1", "src2"]))
 
     real_transition_esm = store.transition_esm
 
@@ -119,7 +117,7 @@ def test_validated_happy_path_via_real_truthgate(store, monkeypatch):
     assert fact["metadata"]["content_checksum"] == compute_content_checksum(
         fact["claim"], fact["source"], fact["confidence"], "Validated"
     )
-    assert fact["metadata"]["evidence_refs"] == typed_evidence_refs(2, prefix="checksum-b1")
+    assert fact["metadata"]["evidence_refs"] == ["src1", "src2"]
 
 
 # ── C. Genuine metadata no-op ─────────────────────────────────────────────────
