@@ -1,5 +1,3 @@
-from tests.helpers import typed_evidence_refs
-
 """
 Тесты разрешения противоречий (core/contradiction_resolver.py).
 Детекция — чистая; движок — на реальном SQLite-сторе (matrix-safe, no-DELETE).
@@ -84,7 +82,7 @@ def _store(tmp_path):
 def test_resolve_validated_not_demoted_by_newer_observed(tmp_path):
     # H2/M3 fix: новый low-trust Observed НЕ демотирует старый Validated (trust-aware).
     s = _store(tmp_path)
-    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "s1", "confidence": 0.9, "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_contradiction_resolver")}})
+    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "s1", "confidence": 0.9, "metadata": {"evidence_refs": ["e1", "e2"]}})
     assert s.promote_to_validated("a", by="test") is True
     s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "s2", "confidence": 0.4})
     rep = resolve_contradictions(s)
@@ -97,9 +95,9 @@ def test_resolve_demotes_weaker_validated_loser(tmp_path):
     # Демоушен по-прежнему работает: доверенный Validated-победитель демотирует
     # менее доверенный Validated-проигравший (выбор по доверию, а не по новизне).
     s = _store(tmp_path)
-    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9, "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_contradiction_resolver")}})
+    s.store_fact({"fact_id": "a", "claim": "Дерево подходит для дома", "source": "u1", "confidence": 0.9, "metadata": {"evidence_refs": ["e1", "e2"]}})
     assert s.promote_to_validated("a", by="test") is True
-    s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "domain_seed", "confidence": 0.9, "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_contradiction_resolver")}})
+    s.store_fact({"fact_id": "b", "claim": "Дерево не подходит для дома", "source": "domain_seed", "confidence": 0.9, "metadata": {"evidence_refs": ["e1", "e2"]}})
     assert s.promote_to_validated("b", by="test") is True
     rep = resolve_contradictions(s)
     assert rep.detected == 1 and rep.demoted == 1
