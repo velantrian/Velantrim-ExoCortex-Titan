@@ -12,24 +12,6 @@ import urllib.request
 from pathlib import Path
 
 
-_EVIDENCE_SOURCE_DIGEST = "sha256:" + "a" * 64
-_EVIDENCE_FRAGMENT_DIGEST = "sha256:" + "b" * 64
-
-
-def _typed_evidence_ref(index: int, *, prefix: str) -> dict:
-    return {
-        "schema_version": 1,
-        "reference_id": f"{prefix}-ref-{index}",
-        "source_id": f"{prefix}-source-{index}",
-        "source_digest": _EVIDENCE_SOURCE_DIGEST,
-        "fragment_id": f"{prefix}-fragment-{index}",
-        "fragment_digest": _EVIDENCE_FRAGMENT_DIGEST,
-        "span": f"chars:{index * 10}-{index * 10 + 5}",
-        "lineage_id": f"{prefix}-lineage-{index}",
-        "captured_at": "2026-09-23T00:00:00Z",
-    }
-
-
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -132,10 +114,7 @@ def main() -> int:
                     "confidence": 0.9,
                     "metadata": {
                         "memory_category": "personal",
-                        "evidence_refs": [
-                            _typed_evidence_ref(1, prefix="stage9"),
-                            _typed_evidence_ref(2, prefix="stage9"),
-                        ],
+                        "evidence_refs": ["stage9-source-1", "stage9-source-2"],
                     },
                 },
             )
