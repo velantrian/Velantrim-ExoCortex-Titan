@@ -1,7 +1,7 @@
 # 📍 Current System State
 
-**Verified:** 2026-09-06  
-**Current repository head at this reconciliation:** `main@635d0d6c725db0c7a7df8cfb3ce059c0500a418f` · parent `1bf4b12d9c8f1a33fb5650eb294b82177ef3a4b9` · PR #445  
+**Verified:** 2026-09-23  
+**Current repository head at this reconciliation:** `main@c877f1e177dc21687884f73b378213fdd9ef1dbe` · parent `54c975a3b19ebf5526d4a95416aeb1e12c92e1d1` · PR #461  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
 **Continuity canary machine checkpoint:** `docs/state/project_state.json` remains `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` (schema v7). That SHA is the bounded Continuity observation checkpoint, not today's repository head.  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
@@ -13,6 +13,16 @@
 > This document separates the **current repository checkpoint** from older implementation
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
+
+## 2026-09-23 — R1 Validated admission boundary (MERGED #461 · main@c877f1e1)
+
+PR #461 is **MERGED / IMPLEMENTED ON MAIN** as squash-merge `c877f1e177dc21687884f73b378213fdd9ef1dbe` from exact reviewed head `74c33795322f8279613c6ea912828cf46b5ff351`.
+
+The bounded enforcement closure prevents generic ESM helpers and direct `SQLiteGraphStore.update_state(..., "Validated")` calls from durably minting `Validated` outside the existing protected `validate_and_promote()` / TruthGate / CAS path. The transitive AnyIO advisory gate was separately closed by updating the lock from 4.13.0 to 4.14.2 on the exact PR head.
+
+Exact-head pre-merge evidence on `74c33795…`: Full CI, Docker hardening, CodeQL, Stage 9, Stage 10, CAS contention and aggregate merge evidence = SUCCESS. At this reconciliation point, post-merge workflow evidence for `main@c877f1e1…` is **NOT YET OBSERVED through the available GitHub Actions query**, so no post-merge CI success is claimed here.
+
+**PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.** Merge closes the local enforcement gap; it does not activate runtime or production authority.
 
 ## 2026-09-09 — PH-2A local backup/restore proof (MERGED #455 · main@c7a34cce)
 
