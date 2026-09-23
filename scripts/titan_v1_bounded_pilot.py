@@ -22,24 +22,6 @@ from scripts.titan_tools import list_tools
 PILOT_API_KEY = "stage10-pilot-local-key"
 
 
-_EVIDENCE_SOURCE_DIGEST = "sha256:" + "a" * 64
-_EVIDENCE_FRAGMENT_DIGEST = "sha256:" + "b" * 64
-
-
-def _typed_evidence_ref(index: int, *, prefix: str) -> dict:
-    return {
-        "schema_version": 1,
-        "reference_id": f"{prefix}-ref-{index}",
-        "source_id": f"{prefix}-source-{index}",
-        "source_digest": _EVIDENCE_SOURCE_DIGEST,
-        "fragment_id": f"{prefix}-fragment-{index}",
-        "fragment_digest": _EVIDENCE_FRAGMENT_DIGEST,
-        "span": f"chars:{index * 10}-{index * 10 + 5}",
-        "lineage_id": f"{prefix}-lineage-{index}",
-        "captured_at": "2026-09-23T00:00:00Z",
-    }
-
-
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -138,10 +120,7 @@ def _seed_validated_fact(base_url: str) -> dict:
             "confidence": 0.9,
             "metadata": {
                 "memory_category": "personal",
-                "evidence_refs": [
-                    _typed_evidence_ref(1, prefix="pilot"),
-                    _typed_evidence_ref(2, prefix="pilot"),
-                ],
+                "evidence_refs": ["pilot-evidence-a", "pilot-evidence-b"],
             },
         },
     )
