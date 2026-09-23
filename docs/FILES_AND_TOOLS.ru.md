@@ -77,20 +77,11 @@ python scripts/titan_tools.py --capability ingester list
 
 ## 🧠 Что исправлено в TruthGate на этом этапе
 
-Legacy `metadata.evidence_refs` больше не может увеличить evidence cardinality простым повторением одной и той же строки.
+Draft PR #466 ужесточает evidence cardinality fail-closed: legacy string tokens,
+пустой/не-list `evidence_refs` и malformed mappings дают **0**. Считаются только
+строго валидные `EvidenceReference v1`, а повтор одного и того же typed reference
+дедуплицируется по canonical reference digest.
 
-Пример:
-
-```json
-["source-A", "source-A"]
-```
-
-считается как **1** legacy evidence token, а:
-
-```json
-["source-A", "source-B"]
-```
-
-как **2**.
-
-Это только bounded normalization старого string-list контракта. Оно **не** вводит EvidenceReference authority, trusted registry, independence classifier или Evidence Admission.
+Это bounded enforcement структуры, а не доказательство истины. Оно **не** вводит
+trusted registry, source authentication, independence classifier или отдельный Evidence
+Admission authority. Пока #466 не merged, live `main` сохраняет прежнее поведение.
