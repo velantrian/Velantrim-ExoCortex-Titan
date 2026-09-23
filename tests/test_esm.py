@@ -24,8 +24,6 @@ import sys
 
 import pytest
 
-from tests.helpers import typed_evidence_refs
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -88,7 +86,7 @@ def test_transition_esm_valid():
     from core.memory import get_fact, promote_to_validated, store_fact
     store_fact({
         "fact_id": "t2", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     assert promote_to_validated("t2") is True
     assert get_fact("t2")["epistemic_state"] == "Validated"
@@ -152,7 +150,7 @@ def test_transition_to_immutable_core_blocked_for_regular_fact():
     from core.memory import ImmutableStateError, promote_to_validated, store_fact, transition_esm
     store_fact({
         "fact_id": "regular", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     assert promote_to_validated("regular") is True
     with pytest.raises(ImmutableStateError, match="ImmutableCore"):
@@ -169,7 +167,7 @@ def test_store_fact_drift_protection_auto_contradicted():
     from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({
         "fact_id": "drift1", "claim": "original", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     assert promote_to_validated("drift1") is True
 
@@ -188,7 +186,7 @@ def test_store_fact_drift_protection_same_claim_no_transition():
     from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({
         "fact_id": "nodrift", "claim": "same", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     assert promote_to_validated("nodrift") is True
     store_fact({"fact_id": "nodrift", "claim": "same", "source": "s", "confidence": 0.9})
@@ -370,7 +368,7 @@ def test_store_fact_preserves_validated_after_upsert(isolated_db):
     from core import memory
     memory.store_fact({
         "fact_id": "x", "claim": "a", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     assert memory.promote_to_validated("x") is True
     assert memory.get_fact("x")["epistemic_state"] == "Validated"
@@ -400,7 +398,7 @@ def test_store_fact_drift_protection_keeps_l0_l1_in_sync(isolated_db):
     from core import memory
     memory.store_fact({
         "fact_id": "y", "claim": "original", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     assert memory.promote_to_validated("y") is True
     assert memory.get_fact("y")["epistemic_state"] == "Validated"
@@ -437,7 +435,7 @@ def test_transition_appends_history_entry():
     from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({
         "fact_id": "h2", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     promote_to_validated("h2")
     f = get_fact("h2")
@@ -453,7 +451,7 @@ def test_history_persists_across_l0_clear(isolated_db):
     from core import memory
     memory.store_fact({
         "fact_id": "h5", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     memory.promote_to_validated("h5")
 
@@ -477,7 +475,7 @@ def test_transition_esm_by_param_recorded():
     from core.memory import get_fact, promote_to_validated, store_fact, transition_esm
     store_fact({
         "fact_id": "h_by", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     promote_to_validated("h_by", by="custom_caller")
     entry = get_fact("h_by")["history"][-1]
@@ -490,11 +488,11 @@ def test_get_all_facts_filter_by_state():
     from core.memory import get_all_facts, promote_to_validated, store_fact, transition_esm
     store_fact({
         "fact_id": "a1", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     store_fact({
         "fact_id": "a2", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     store_fact({"fact_id": "a3", "claim": "x", "source": "s"})
     promote_to_validated("a1")
@@ -513,7 +511,7 @@ def test_get_all_facts_no_filter_returns_all():
     from core.memory import get_all_facts, promote_to_validated, store_fact, transition_esm
     store_fact({
         "fact_id": "all1", "claim": "x", "source": "s", "confidence": 0.8,
-        "metadata": {"evidence_refs": typed_evidence_refs(2, prefix="test_esm")},
+        "metadata": {"evidence_refs": ["e1", "e2"]},
     })
     store_fact({"fact_id": "all2", "claim": "x", "source": "s"})
     promote_to_validated("all1")
