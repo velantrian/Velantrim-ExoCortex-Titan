@@ -269,6 +269,20 @@ def test_snapshot_rejects_values_outside_its_json_data_contract(invalid_value) -
         snapshot_synaptic_shadow_input([{"metadata": invalid_value}])
 
 
+def test_snapshot_rejects_cyclic_input() -> None:
+    cyclic_fact: dict[str, object] = {}
+    cyclic_fact["self"] = cyclic_fact
+
+    with pytest.raises(SynapticShadowInputDataError):
+        snapshot_synaptic_shadow_input([cyclic_fact])
+
+
+@pytest.mark.parametrize("value", [float("inf"), float("-inf")])
+def test_snapshot_rejects_positive_and_negative_infinity(value: float) -> None:
+    with pytest.raises(SynapticShadowInputDataError):
+        snapshot_synaptic_shadow_input([{"metadata": {"value": value}}])
+
+
 def test_restricted_projection_never_enters_context_pack() -> None:
     secret = "restricted shadow text"
     preview = build_synaptic_shadow_preview(

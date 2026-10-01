@@ -218,6 +218,19 @@ class ProvenanceChain:
         finally:
             conn.close()
 
+        required_text_columns = (0, 2, 3, 8, 10)
+        nullable_text_columns = (4, 5, 6, 7, 9)
+        for row in rows:
+            if not isinstance(row[1], int) or isinstance(row[1], bool):
+                raise ValueError("provenance row has an invalid sequence type")
+            if any(not isinstance(row[index], str) for index in required_text_columns):
+                raise ValueError("provenance row has a non-TEXT required field")
+            if any(
+                row[index] is not None and not isinstance(row[index], str)
+                for index in nullable_text_columns
+            ):
+                raise ValueError("provenance row has a non-TEXT optional field")
+
         return [
             {
                 "fact_id": r[0],
