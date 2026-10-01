@@ -203,10 +203,10 @@ class ProvenanceChain:
 
     # ── Чтение ────────────────────────────────────────────────────────────
 
-    def get_chain(self, fact_id: str) -> List[Dict[str, Any]]:
-        """Получить полную цепочку провенанса факта."""
+    def _read_chain(self, fact_id: str) -> List[Dict[str, Any]]:
+        """Read and decode a chain, allowing callers to distinguish read failure."""
+        conn = sqlite3.connect(self._db_path, timeout=10.0)
         try:
-            conn = sqlite3.connect(self._db_path, timeout=10.0)
             rows = conn.execute(
                 """SELECT fact_id, seq, event_type, actor, from_state, to_state,
                           reason, payload_json, event_hash, prev_hash, created_at
@@ -215,24 +215,47 @@ class ProvenanceChain:
                    ORDER BY seq""",
                 (fact_id,),
             ).fetchall()
+        finally:
             conn.close()
 
-            return [
-                {
-                    "fact_id": r[0],
-                    "seq": r[1],
-                    "event_type": r[2],
-                    "actor": r[3],
-                    "from_state": r[4],
-                    "to_state": r[5],
-                    "reason": r[6],
-                    "payload": json.loads(r[7]) if r[7] else {},
-                    "event_hash": r[8],
-                    "prev_hash": r[9],
-                    "created_at": r[10],
-                }
-                for r in rows
-            ]
+        required_text_columns = (0, 2, 3, 8, 10)
+        nullable_text_columns = (4, 5, 6, 7, 9)
+        for row in rows:
+            if not isinstance(row[1], int) or isinstance(row[1], bool):
+                raise ValueError("provenance row has an invalid sequence type")
+            if any(not isinstance(row[index], str) for index in required_text_columns):
+                raise ValueError("provenance row has a non-TEXT required field")
+            if any(
+                row[index] is not None and not isinstance(row[index], str)
+                for index in nullable_text_columns
+            ):
+                raise ValueError("provenance row has a non-TEXT optional field")
+
+        return [
+            {
+                "fact_id": r[0],
+                "seq": r[1],
+                "event_type": r[2],
+                "actor": r[3],
+                "from_state": r[4],
+                "to_state": r[5],
+                "reason": r[6],
+                "payload": json.loads(r[7]) if r[7] else {},
+                "event_hash": r[8],
+                "prev_hash": r[9],
+                "created_at": r[10],
+            }
+            for r in rows
+        ]
+
+    def get_chain(self, fact_id: str) -> List[Dict[str, Any]]:
+        """Получить полную цепочку провенанса факта.
+
+        This compatibility API retains its historical empty-list fallback. Integrity
+        verification uses _read_chain directly so read failures cannot look valid.
+        """
+        try:
+            return self._read_chain(fact_id)
         except Exception:
             return []
 
@@ -247,7 +270,11 @@ class ProvenanceChain:
         Проверить целостность цепочки провенанса.
         Пересчитывает хеш каждого события и сравнивает с сохранённым.
         """
-        chain = self.get_chain(fact_id)
+        try:
+            chain = self._read_chain(fact_id)
+        except Exception as exc:
+            logger.warning("Provenance verify read failed for %s: %s", fact_id, exc)
+            return False, "read_error"
         if not chain:
             return True, "empty_chain"
 
