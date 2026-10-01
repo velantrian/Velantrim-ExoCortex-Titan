@@ -199,6 +199,14 @@ class TruthGate:
         # или ждать NLI в Sprint 2c.
         if self._contradiction_detector == "naive":
             contradictions = self._find_contradictions_naive(fact)
+            if contradictions is None:
+                return self._reject(fact_id, mode, fact,
+                    reason="contradiction_check_unavailable",
+                    justification=(
+                        "Не удалось прочитать или проверить факты для naive "
+                        "проверки противоречий; TruthGate отказал безопасно."
+                    ),
+                    evidence_count=evidence_count)
             if contradictions:
                 return self._reject(fact_id, mode, fact,
                     reason="active_contradictions",
@@ -257,7 +265,7 @@ class TruthGate:
         }
         return len(unique_refs)
 
-    def _find_contradictions_naive(self, fact: dict) -> list[str]:
+    def _find_contradictions_naive(self, fact: dict) -> list[str] | None:
         """
         ⚠️ NAIVE детектор противоречий — даёт ЛОЖНЫЕ срабатывания.
 
@@ -275,38 +283,36 @@ class TruthGate:
         (NLI-1 invariant). До тех пор включать только для development/debug.
         """
         if self._store is None:
-            return []
+            return None
         try:
             all_facts = self._store.get_all_facts()
+            fact_id  = fact.get("fact_id", "")
+            claim    = (fact.get("claim") or "").strip().lower()
+            if not claim:
+                return []
+
+            contradicting: list[str] = []
+            for stored in all_facts:
+                if stored.get("fact_id") == fact_id:
+                    continue
+                if stored.get("epistemic_state") not in ("Validated", "Supported"):
+                    continue
+                stored_claim = (stored.get("claim") or "").strip().lower()
+                claim_words   = set(claim.split())
+                stored_words  = set(stored_claim.split())
+                negation_markers = {"не", "нет", "no", "not", "never", "никогда"}
+                overlap = claim_words & stored_words
+                if len(overlap) >= 2:
+                    xor_negation = (
+                        bool(claim_words & negation_markers) ^
+                        bool(stored_words & negation_markers)
+                    )
+                    if xor_negation:
+                        contradicting.append(stored["fact_id"])
+            return contradicting
         except Exception as exc:
-            logger.warning("TruthGate: не удалось проверить contradictions: %s", exc)
-            return []
-
-        fact_id  = fact.get("fact_id", "")
-        claim    = (fact.get("claim") or "").strip().lower()
-        if not claim:
-            return []
-
-        contradicting: list[str] = []
-        for stored in all_facts:
-            if stored.get("fact_id") == fact_id:
-                continue
-            if stored.get("epistemic_state") not in ("Validated", "Supported"):
-                continue
-            stored_claim = (stored.get("claim") or "").strip().lower()
-            claim_words   = set(claim.split())
-            stored_words  = set(stored_claim.split())
-            negation_markers = {"не", "нет", "no", "not", "never", "никогда"}
-            overlap = claim_words & stored_words
-            if len(overlap) >= 2:
-                xor_negation = (
-                    bool(claim_words & negation_markers) ^
-                    bool(stored_words & negation_markers)
-                )
-                if xor_negation:
-                    contradicting.append(stored["fact_id"])
-
-        return contradicting
+            logger.warning("TruthGate: contradiction check unavailable: %s", exc)
+            return None
 
     def _reject(
         self,

@@ -215,3 +215,48 @@ class TestAuditTrail:
         good_fact["metadata"] = {"evidence_refs": ["r1", "r2", "r3"]}
         v = gate.evaluate(good_fact, mode=CognitiveMode.BALANCED)
         assert v.evidence_count == 3
+
+
+def test_naive_detector_read_failure_fails_closed(good_fact):
+    class BrokenStore:
+        def get_all_facts(self):
+            raise OSError("fact store unavailable")
+
+    verdict = TruthGate(
+        BrokenStore(), contradiction_detector="naive"
+    ).evaluate(good_fact)
+
+    assert not verdict.passed
+    assert verdict.reason == "contradiction_check_unavailable"
+    assert verdict.evidence_count == 3
+
+
+def test_naive_detector_requires_a_store_to_be_available(good_fact):
+    verdict = TruthGate(None, contradiction_detector="naive").evaluate(good_fact)
+
+    assert not verdict.passed
+    assert verdict.reason == "contradiction_check_unavailable"
+
+
+def test_naive_detector_accepts_a_successfully_read_empty_fact_set(good_fact):
+    class EmptyStore:
+        def get_all_facts(self):
+            return []
+
+    verdict = TruthGate(
+        EmptyStore(), contradiction_detector="naive"
+    ).evaluate(good_fact)
+
+    assert verdict.passed
+    assert verdict.reason == "passed"
+
+
+def test_default_detector_none_does_not_read_facts(good_fact):
+    class UnreadableStore:
+        def get_all_facts(self):
+            raise AssertionError("detector=none must not query the store")
+
+    verdict = TruthGate(UnreadableStore()).evaluate(good_fact)
+
+    assert verdict.passed
+    assert verdict.reason == "passed"

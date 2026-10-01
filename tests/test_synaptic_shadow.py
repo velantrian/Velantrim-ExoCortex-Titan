@@ -6,11 +6,13 @@ import time
 
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
+import pytest
 
 import api.server_middleware as middleware_module
 from api.server_middleware import register_server_middleware
 from core.synaptic_shadow import (
     SynapticShadowConfig,
+    SynapticShadowInputDataError,
     SynapticShadowInputLimitError,
     build_synaptic_shadow_preview,
     snapshot_synaptic_shadow_input,
@@ -217,6 +219,54 @@ def test_shadow_input_count_and_size_are_hard_bounded() -> None:
         assert exc.code == "shadow_input_chars_exceeded"
     else:
         raise AssertionError("character overflow must be rejected")
+
+
+def test_snapshot_is_deeply_immutable_and_isolated_from_source_mutation() -> None:
+    fact = _fact(
+        "external",
+        "External assertion",
+        metadata={
+            "evidence_refs": [{"source_id": "doc-1"}],
+            "nested": {"labels": ["original"]},
+        },
+    )
+    fact["claim_type"] = "WORLD_FACT"
+    fact["origin_type"] = "EXTERNAL"
+    fact["source"] = "documented-source"
+    snapshot = snapshot_synaptic_shadow_input([fact])
+
+    fact["claim"] = "mutated assertion"
+    fact["metadata"]["evidence_refs"][0]["source_id"] = ""
+    fact["metadata"]["nested"]["labels"].append("mutated")
+
+    captured = snapshot[0]
+    assert captured["claim"] == "External assertion"
+    assert captured["metadata"]["evidence_refs"][0]["source_id"] == "doc-1"
+    assert captured["metadata"]["nested"]["labels"] == ("original",)
+    with pytest.raises(TypeError):
+        captured["metadata"]["evidence_refs"][0]["source_id"] = "changed"
+    with pytest.raises(AttributeError):
+        captured["metadata"]["nested"]["labels"].append("changed")
+
+    # The background preview consumes frozen Mapping/tuple containers without
+    # changing the legacy fact's evidence-admission semantics.
+    preview = build_synaptic_shadow_preview(snapshot)
+    assert preview["metrics"]["dispositions"]["active"] == 1
+    assert len(preview["context_pack_preview"]["claims"]) == 1
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    [
+        {"unsupported": {"set-value"}},
+        {"unsupported": b"bytes"},
+        {"unsupported": float("nan")},
+        {"unsupported": {1: "non-string key"}},
+    ],
+)
+def test_snapshot_rejects_values_outside_its_json_data_contract(invalid_value) -> None:
+    with pytest.raises(SynapticShadowInputDataError):
+        snapshot_synaptic_shadow_input([{"metadata": invalid_value}])
 
 
 def test_restricted_projection_never_enters_context_pack() -> None:
