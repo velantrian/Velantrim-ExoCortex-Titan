@@ -52,7 +52,7 @@ def test_direct_dependency_security_floors_and_archived_owners() -> None:
     assert setuptools_floor >= 83
     assert not any(requirement.lower().startswith("wheel") for requirement in build_requires)
 
-    assert '"pypdf>=6.14.2,<7"' in text
+    assert '"pypdf>=6.19.0,<7"' in text
     assert '"pypdf2>=' not in text.lower()
     assert '"pillow>=12.3.0"' in text
     assert '"pytest>=9.0.3,<10"' in text
