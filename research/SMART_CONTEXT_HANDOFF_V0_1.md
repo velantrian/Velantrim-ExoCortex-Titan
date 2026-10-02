@@ -250,3 +250,134 @@ documented
 ```
 
 Stop after documentation unless a separate bounded implementation scope is explicitly selected. Titan V1 remains closed; this work must not be described as a mandatory post-V1 stage.
+
+---
+
+## 14. 🪢 TCE / EDCA methodological delta — 2026-09-16
+
+**Status:** `RESEARCH / DOCUMENTATION ONLY · NO NEW PRIMITIVE · NO NEW OWNER · NO IMPLEMENTATION AUTHORIZATION`
+
+This section records a bounded research-method update from the Thought Continuity / EDCA review line. It does not change Titan ownership, authorize a runtime path, or create a new subsystem.
+
+### 14.1 Keep Thread Continuity separate from cognitive adaptation
+
+```text
+TCE = restoring the correct unfinished cognitive orientation after interruption
+EDCA = prior experience causally changes later representation / evaluation / action
+
+TCE PASS != EDCA PASS
+GOOD HANDOFF != LEARNING
+CONTINUITY != UNDERSTANDING
+PROMPT CONDITIONING != COGNITIVE ADAPTATION
+```
+
+Smart Context/Handoff is currently a TCE-relevant research surface. A successful successor handoff must not be promoted into evidence for EDCA.
+
+### 14.2 Decompose the handoff pipeline
+
+Continuation quality should not be treated as one opaque capability. Distinguish at least:
+
+```text
+STATE EXTRACTION
+→ STATE TRANSMISSION
+→ RESUME / RECONSTRUCTION
+→ STATE REVISION
+```
+
+A fluent successor can hide an extraction error. Correct extraction can still be mistransmitted. Correct transmission can later drift during revision.
+
+### 14.3 Matched-information baselines are required
+
+A structured state must not receive credit merely because it contains more useful semantic material than a competing summary.
+
+Future clean evaluation should compare, where feasible:
+
+- topic-only / weak baseline;
+- ordinary practical summary;
+- matched-information prose containing the same semantic atoms;
+- structured state;
+- capable persistent programmable state with explicit currentness / supersession / provenance rules.
+
+If ordinary state management explains the behavior, that is a valid null result:
+
+```text
+NO OPERATIONALLY DISTINGUISHABLE RESIDUAL
+→ NO NEW MEMORY / COGNITIVE PRIMITIVE REQUIRED
+```
+
+### 14.4 False promotion is a hard failure mode
+
+Observed examples in the research workflow motivate explicit checks for status drift such as:
+
+```text
+HYPOTHESIS → CONFIRMED
+DEFERRED → REJECTED
+MODEL INFERENCE → USER DECISION
+OLD / SUPERSEDED → CURRENT
+```
+
+These are failure modes to test, not evidence that all RAG or agent systems fail this way.
+
+### 14.5 Delta First remains a hypothesis
+
+Incremental revision may reduce unnecessary wholesale rewriting:
+
+```text
+OLD STATE + NEW MATERIAL
+→ WHAT CHANGED?
+→ STATE DELTA
+```
+
+But the delta itself can be wrong. Candidate failures include incorrect status transitions, deletions, contradiction interpretation, and next-action changes. Therefore `Delta First` is a control strategy candidate, not a solved anti-drift mechanism.
+
+### 14.6 Human resume is a separate evaluation target
+
+Model-to-model continuation and human orientation recovery are distinct. A future usability observation may ask whether a person can recover the unfinished thread quickly and correctly from the explicit state without reopening the source conversation.
+
+This does not change the current shadow-only implementation posture.
+
+### 14.7 State-mediated orientation distortion
+
+A safer engineering formulation for one identified risk is:
+
+```text
+SOURCE HISTORY
+→ MODEL EXTRACTION
+→ DISTORTED STATE
+→ SUCCESSOR / HUMAN READS STATE
+→ NEXT ATTENTION OR ACTION SHIFTS
+```
+
+This risk does not require claims about AI subjectivity. It is a state-quality and provenance problem.
+
+### 14.8 Architecture gate
+
+Before introducing any new cognitive construct, compare against good ordinary persistent state management and existing owner-local semantics.
+
+```text
+PHENOMENON
+→ BASELINES
+→ DISCRIMINATING TEST
+→ RESIDUAL
+→ ONLY THEN ARCHITECTURAL CONSEQUENCE
+```
+
+Current bounded status:
+
+```text
+TCE-E0 = DESIGN FROZEN · DIRTY PILOT NOT YET RUN
+HUMAN-RESUME-001 = UNEDITED BASELINE · NOT YET TESTED
+EXTRACTION-VARIANCE-OBS-001 = NATURALISTIC OBSERVATION · NOT CONTROLLED
+EDCA = RESEARCH FRONTIER · NOT VALIDATED HERE
+ARCHITECTURAL GAP = NOT ESTABLISHED
+NEW MODULE / OWNER / PRIMITIVE = NONE
+```
+
+Core guardrails:
+
+```text
+STABILITY WITHOUT RIGIDITY
+REVISION WITHOUT AMNESIA
+CURRENTNESS WITHOUT SILENT REWRITING
+CONTINUITY WITHOUT FALSE PROMOTION
+```
