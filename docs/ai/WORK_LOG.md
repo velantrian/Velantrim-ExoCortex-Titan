@@ -1,4 +1,22 @@
 
+## 2026-10-04 — Pilot-0 reproducible harness · DRAFT / NOT RUN
+
+> **Reality status:** `IMPLEMENTED ON feat/pilot0-frozen-reader-harness FROM main@ef134c324ef08c1a5f7f011433b8e2424e40ecea / 15 SYNTHETIC OFFLINE TESTS PASS / NO READER OR MODEL RUN / NO FROZEN-CORPUS PARSE / NOT MERGED / NOT WIRED / NOT ENABLED / NOT OBSERVED / NO OPERATOR GO / NO PRODUCTION AUTHORITY`.
+
+Bounded preparation only: one local pypdf pin; deterministic allowlisted frozen
+SemanticReader artifact; strict Q1–Q15 JSON/Markdown input and offline fake evaluator;
+strict DeepSeek thinking setting on the existing adapter. Frozen PDF and question hashes
+matched the owner-provided values. The sealed key was left completely untouched. No API
+key intake/use, network calls, frozen-source extraction, Q&A run, benchmark, or annotation.
+
+Before a real Pilot-0: resolve the pypdf pin vs `parsers` extra mismatch; establish a safe
+secret-injection path; select a model separately; review egress/capability; resolve
+rights/publication; verify frozen Markdown syntax only in a separately authorized step.
+Notion synchronization is blocked by the task's explicit no-Notion instruction; keep the
+PR draft and do not change Notion/Drive/issues.
+
+---
+
 ## 2026-09-23 — PR #461 R1 Validated admission boundary · MERGED
 
 > **Reality status:** `MERGED / IMPLEMENTED ON main@c877f1e177dc21687884f73b378213fdd9ef1dbe / EXACT-HEAD PRE-MERGE CI GREEN / POST-MERGE CI NOT YET OBSERVED / PRODUCTION NOT AUTHORIZED / OPERATOR GO NOT ESTABLISHED`.

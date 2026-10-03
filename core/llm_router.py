@@ -13,6 +13,7 @@ from typing import Any
 
 import httpx
 
+from core.deepseek_config import validate_deepseek_thinking_mode
 from core.remote_egress import (
     ensure_remote_egress_allowed,
     sanitize_remote_system_prompt,

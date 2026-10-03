@@ -395,6 +395,31 @@ default-branch code, so the new workflow entrypoint is proven in real Actions ex
 This governance hardening changes no runtime, Canon, capability, provider, Continuity,
 schema, Operator GO, runtime-authority or production-authority semantics.
 
+## Proposed Pilot-0 harness — unresolved pre-run gates · DRAFT ONLY
+
+This section records the owner-authorized, non-merged implementation proposal only; it
+does not describe a live `main` runtime, an experiment, or accepted production risk.
+
+- The local harness pins the already-present `pypdf==6.18.1`, while the existing
+  `parsers` extra requires `pypdf>=6.19.0,<7`. The package/version contract must be
+  reconciled under separate authorization before relying on the standard extra.
+- `SECRET_INTAKE_SAFE=NO`; there is no safe API-key injection path in this proposal.
+- The model is still `OWNER_SELECTED`; no model was selected or confirmed.
+- Current remote policy is not asserted to be host-bounded or DeepSeek-exclusive. Any
+  future DeepSeek call requires a separate capability/egress review.
+- Frozen-corpus rights/publication limits remain unresolved. The PDF and blind-question
+  bytes were hash-checked only; the sealed key was not opened/read/hashed, and no Reader,
+  extraction, Q&A, benchmark, or annotation ran on frozen inputs.
+- The Markdown question parser was tested only on synthetic Q1–Q15 content; the frozen
+  question content was not read, so syntax compatibility remains unverified.
+- The evaluator callable is injected and is not sandboxed by Python; a future execution
+  requires an explicit offline/capability-controlled caller.
+
+Reality status: `IMPLEMENTED ON REVIEW BRANCH / 15 SYNTHETIC OFFLINE TESTS PASS / NOT
+MERGED / NOT WIRED / NOT ENABLED / NOT OBSERVED / NO OPERATOR GO / NO PRODUCTION
+AUTHORITY`. This proposal remains draft-only while the task's explicit permission
+boundary prohibits the required Notion synchronization.
+
 ## Operational residuals
 
 Still not proved:
