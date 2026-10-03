@@ -16,7 +16,7 @@
 
 - Network policy for the parser, canonical serialization/freezing, evaluator implementation, and tests in this package is **DENY**. The focused tests use synthetic in-memory PDF/artifact data, a fake evaluator, a fake router transport, and network tripwires; no provider, HTTP, or DNS call is made. No remote egress policy was changed or enabled.
 - This code does **not** claim that the existing remote policy is host-bounded or restricts egress exclusively to DeepSeek. A future DeepSeek call is a separate capability boundary and was not exercised.
-- No API key was requested, received, read from the environment, stored, or used. No `.env` was created. `SECRET_INTAKE_SAFE=NO`. The existing adapter still has its pre-existing key parameter; this work adds no key-intake path. A future runtime needs a separately reviewed safe secret-injection path.
+- No API-key value was written to the repository or artifacts; this package did not read/use a runtime credential and made no provider/API call; no `.env` was created; `SECRET_INTAKE_SAFE=NO`. The existing adapter still has its pre-existing key parameter; this work adds no key-intake path. A future runtime needs a separately reviewed safe secret-injection path.
 - No Canon, ESM, persistence, runtime route, or production authority is added. No Operator GO is implied.
 
 ## Frozen-input handling
