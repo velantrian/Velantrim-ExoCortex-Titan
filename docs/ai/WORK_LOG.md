@@ -7,7 +7,8 @@ Bounded preparation only: one local pypdf pin; deterministic allowlisted frozen
 SemanticReader artifact; strict Q1–Q15 JSON/Markdown input and offline fake evaluator;
 strict DeepSeek thinking setting on the existing adapter. Frozen PDF and question hashes
 matched the owner-provided values. The sealed key was left completely untouched. No API
-key intake/use, network calls, frozen-source extraction, Q&A run, benchmark, or annotation.
+key intake/use, parser/evaluator/provider network calls, frozen-source extraction, Q&A run,
+benchmark, or annotation. GitHub was used only for the authorized feature branch and draft PR.
 
 Before a real Pilot-0: resolve the pypdf pin vs `parsers` extra mismatch; establish a safe
 secret-injection path; select a model separately; review egress/capability; resolve
