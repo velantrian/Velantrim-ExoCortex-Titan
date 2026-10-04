@@ -252,24 +252,33 @@ class Pilot0HarnessTests(unittest.TestCase):
             )
 
     def test_secret_shaped_claim_is_rejected_not_persisted(self):
-        import core.knowledge_capsule as knowledge_capsule
-
+        # Full-suite tests evict core.*; reuse classes captured by this builder.
+        artifact_contracts = freeze_reader_output.__globals__
+        result_type = artifact_contracts["ReaderResult"]
+        capsule_type = (
+            result_type.success.__func__.__globals__["KnowledgeCapsule"]
+        )
+        capsule_contracts = capsule_type.create.__func__.__globals__
+        source_type = artifact_contracts["RawSource"]
+        mode_type = artifact_contracts["ReaderMode"]
+        budget_type = artifact_contracts["ReaderBudget"]
+        artifact_error_type = artifact_contracts["Pilot0ArtifactError"]
         text = "Bearer abcdefghijklmnopqrstuv"
-        source = RawSource("synthetic-secret", text, "sha256:" + "b" * 64)
-        span = knowledge_capsule.SourceSpan.from_text(
+        source = source_type("synthetic-secret", text, "sha256:" + "b" * 64)
+        span = capsule_contracts["SourceSpan"].from_text(
             document_id=source.document_id,
             raw_text=text,
             start_offset=0,
             end_offset=len(text),
             source_revision=source.source_revision,
         )
-        claim = knowledge_capsule.CapsuleClaim.create(
+        claim = capsule_contracts["CapsuleClaim"].create(
             text=text,
-            modality=knowledge_capsule.ClaimModality.OBSERVATION,
+            modality=capsule_contracts["ClaimModality"].OBSERVATION,
             source_spans=(span,),
             extraction_confidence=1.0,
         )
-        capsule = KnowledgeCapsule.create(
+        capsule = capsule_type.create(
             source_document_id=source.document_id,
             essence=text,
             claims=(claim,),
@@ -278,13 +287,13 @@ class Pilot0HarnessTests(unittest.TestCase):
             coverage_score=1.0,
             compression_ratio=1.0,
         )
-        with self.assertRaises(Pilot0ArtifactError):
+        with self.assertRaises(artifact_error_type):
             freeze_reader_output(
                 FakeSemanticReader(),
                 source,
-                mode=ReaderMode.FAST,
-                budget=ReaderBudget(),
-                result=ReaderResult.success(capsule),
+                mode=mode_type.FAST,
+                budget=budget_type(),
+                result=result_type.success(capsule),
             )
 
     def test_evaluator_requires_trusted_digest_and_blocks_in_process_callback(self):
