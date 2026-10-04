@@ -254,7 +254,9 @@ def _deepseek_request_body(
         "max_tokens": cap,
         "stream": stream,
     }
-    thinking = normalize_deepseek_thinking(getattr(cfg, "deepseek_thinking", "off"))
+    thinking = validate_deepseek_thinking_mode(
+        getattr(cfg, "deepseek_thinking", "off")
+    )
     if quick_ping or thinking == "off":
         body["thinking"] = {"type": "disabled"}
     else:

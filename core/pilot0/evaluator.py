@@ -1,14 +1,16 @@
-"""Offline-only Q1–Q15 evaluation interface for frozen Reader JSON.
+"""Fail-closed Q1–Q15 input validation for frozen Reader JSON.
 
-No model client, HTTP client, document parser, Reader, source path, or answer
-store is implemented here. Tests may inject a fake local evaluator.
+This module does not read filesystem paths and does not execute evaluator
+callbacks. Inputs must already be loaded bytes; exact Reader-envelope integrity
+is checked before either serialized input is parsed. A future execution path
+requires a separately verified restricted runtime.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 import json
-from pathlib import Path
 import re
 from typing import Any, Callable, Mapping, Protocol
 
@@ -25,7 +27,11 @@ class Pilot0EvaluationInputError(ValueError):
 
 
 class OfflineEvaluator(Protocol):
-    """Injected local evaluator; receives no filesystem paths or source document."""
+    """Callable contract placeholder; in-process callables are not a sandbox.
+
+    The public entry point deliberately does not invoke this protocol until a
+    separately verified restricted runtime is available.
+    """
 
     def __call__(
         self,
@@ -79,8 +85,10 @@ def _validate_question_items(items: Any) -> tuple[tuple[str, str], ...]:
 
 def _parse_markdown_questions(markdown: str) -> tuple[tuple[str, str], ...]:
     marker = re.compile(
-        r"^\s*(?:#{1,6}\s*)?(?:[-*+]\s*)?(?:\*\*)?Q(?P<number>1[0-5]|[1-9])"
-        r"(?:\*\*)?(?:[.:)\s—-]+)(?P<body>.*)$",
+        r"^\s*(?:#{1,6}\s*)?(?:[-*+]\s*)?"
+        r"(?:\*\*(?P<bold_number>1[0-5]|[1-9])\.\*\*|"
+        r"(?:\*\*)?Q(?P<q_number>1[0-5]|[1-9])(?:[.:)\s—-]+)(?:\*\*)?)"
+        r"\s*(?P<body>.*)$",
         re.IGNORECASE,
     )
     forbidden_answer_heading = re.compile(
@@ -105,7 +113,8 @@ def _parse_markdown_questions(markdown: str) -> tuple[tuple[str, str], ...]:
         match = marker.match(line)
         if match:
             finish_current()
-            current_id = f"Q{int(match.group('number'))}"
+            number = match.group("bold_number") or match.group("q_number")
+            current_id = f"Q{int(number)}"
             current_lines = [match.group("body").strip()]
             continue
         if forbidden_answer_heading.match(line):
@@ -119,15 +128,15 @@ def _parse_markdown_questions(markdown: str) -> tuple[tuple[str, str], ...]:
     return _validate_question_items(items)
 
 
-def parse_blind_questions(blind_questions_json: bytes) -> tuple[tuple[str, str], ...]:
-    """Accept strict JSON or Markdown Q1–Q15 only; reject answer/source fields."""
+def parse_blind_questions(blind_questions_bytes: bytes) -> tuple[tuple[str, str], ...]:
+    """Accept strict JSON or supported Markdown markers; reject answer/source fields."""
 
-    if not isinstance(blind_questions_json, bytes):
-        raise Pilot0EvaluationInputError("Blind questions must be supplied as UTF-8 bytes")
-    if len(blind_questions_json) > MAX_QUESTIONS_JSON_BYTES:
+    if not isinstance(blind_questions_bytes, bytes):
+        raise Pilot0EvaluationInputError("Blind questions must be supplied as already-loaded UTF-8 bytes")
+    if len(blind_questions_bytes) > MAX_QUESTIONS_JSON_BYTES:
         raise Pilot0EvaluationInputError("Blind questions exceed the size bound")
     try:
-        decoded = blind_questions_json.decode("utf-8")
+        decoded = blind_questions_bytes.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise Pilot0EvaluationInputError("Blind questions are not valid UTF-8") from exc
     if decoded.lstrip("\ufeff \t\r\n").startswith("{"):
@@ -145,104 +154,69 @@ def parse_blind_questions(blind_questions_json: bytes) -> tuple[tuple[str, str],
     return _parse_markdown_questions(decoded)
 
 
-def _validate_input_path(path: str | Path, *, role: str) -> Path:
-    candidate = Path(path)
-    allowed_suffixes = {".json"} if role == "reader" else {".json", ".md"}
-    if candidate.suffix.lower() not in allowed_suffixes:
-        raise Pilot0EvaluationInputError("Evaluator accepts frozen Reader JSON and blind questions only")
-    if candidate.is_symlink():
-        raise Pilot0EvaluationInputError("Symlink evaluator inputs are refused")
-    name = candidate.as_posix().lower().replace("_", "-")
-    forbidden_markers = (
-        "manuscript",
-        "source-map",
-        "sourcemap",
-        "sealed-key",
-        "sealedkey",
-        "prior-answer",
-        "previous-answer",
-        "raw-document",
-        "raw-source",
-    )
-    if any(marker in name for marker in forbidden_markers):
-        raise Pilot0EvaluationInputError("Forbidden source, key, map, or prior-answer path")
-    if role == "reader" and not ("frozen" in name and "reader" in name):
-        raise Pilot0EvaluationInputError("Reader input must be named as a frozen Reader JSON artifact")
-    if role == "questions" and "question" not in name:
-        raise Pilot0EvaluationInputError("Question input must be named as a questions file")
+def validate_frozen_evaluator_input_bytes(
+    frozen_reader_json: bytes,
+    blind_questions_bytes: bytes,
+    *,
+    expected_reader_artifact_sha256: str | None = None,
+) -> tuple[Mapping[str, Any], tuple[tuple[str, str], ...]]:
+    """Validate already-loaded bytes; verify the trusted Reader digest before parsing.
+
+    Filesystem paths and path-derived aliases are intentionally unsupported.
+    The caller must supply the exact trusted digest for the serialized Reader
+    envelope, not merely its internally recomputable payload digest.
+    """
+
+    if not isinstance(frozen_reader_json, bytes):
+        raise Pilot0EvaluationInputError("Frozen Reader input must be supplied as already-loaded bytes")
+    if not isinstance(blind_questions_bytes, bytes):
+        raise Pilot0EvaluationInputError("Blind questions must be supplied as already-loaded bytes")
+    if len(frozen_reader_json) > MAX_READER_JSON_BYTES:
+        raise Pilot0EvaluationInputError("Frozen Reader JSON exceeds the size bound")
+    if len(blind_questions_bytes) > MAX_QUESTIONS_JSON_BYTES:
+        raise Pilot0EvaluationInputError("Blind questions exceed the size bound")
+    if not isinstance(expected_reader_artifact_sha256, str) or not re.fullmatch(
+        r"[0-9a-f]{64}", expected_reader_artifact_sha256
+    ):
+        raise Pilot0EvaluationInputError("A trusted expected_reader_artifact_sha256 is required")
+    if sha256(frozen_reader_json).hexdigest() != expected_reader_artifact_sha256:
+        raise Pilot0EvaluationInputError("Exact frozen Reader bytes do not match the trusted digest")
+
     try:
-        resolved = candidate.resolve(strict=True)
-        if not resolved.is_file():
-            raise Pilot0EvaluationInputError("Evaluator input must be a regular local file")
-        limit = MAX_READER_JSON_BYTES if role == "reader" else MAX_QUESTIONS_JSON_BYTES
-        if resolved.stat().st_size <= 0 or resolved.stat().st_size > limit:
-            raise Pilot0EvaluationInputError("Evaluator input is outside the configured size bound")
-    except OSError as exc:
-        raise Pilot0EvaluationInputError("Evaluator input is unavailable") from exc
-    return resolved
-
-
-def load_frozen_evaluator_inputs(
-    frozen_reader_path: str | Path,
-    blind_questions_path: str | Path,
-) -> tuple[bytes, bytes]:
-    """Read the two permitted local files; reject source, PDF, map, key, and answers."""
-
-    reader_path = _validate_input_path(frozen_reader_path, role="reader")
-    questions_path = _validate_input_path(blind_questions_path, role="questions")
-    if reader_path == questions_path:
-        raise Pilot0EvaluationInputError("Reader and blind questions must be separate files")
-    reader_bytes = reader_path.read_bytes()
-    questions_bytes = questions_path.read_bytes()
-    try:
-        parse_frozen_reader_json(reader_bytes)
+        reader_view = parse_frozen_reader_json(
+            frozen_reader_json,
+            expected_sha256=expected_reader_artifact_sha256,
+        )
     except Pilot0ArtifactError as exc:
-        raise Pilot0EvaluationInputError("Reader file is not a verified frozen Reader artifact") from exc
-    parse_blind_questions(questions_bytes)
-    return reader_bytes, questions_bytes
+        raise Pilot0EvaluationInputError("Reader input is not verified frozen JSON") from exc
+    questions = parse_blind_questions(blind_questions_bytes)
+    return reader_view, questions
 
 
 def evaluate_q1_q15_frozen(
     frozen_reader_json: bytes,
-    blind_questions_json: bytes,
+    blind_questions_bytes: bytes,
     *,
     evaluator: OfflineEvaluator | Callable[[Mapping[str, Any], str, str], str | None],
-    expected_sha256: str | None = None,
+    expected_reader_artifact_sha256: str | None = None,
 ) -> tuple[EvaluationAnswer, ...]:
-    """Run an injected local evaluator with only frozen Reader data and Q1–Q15.
+    """Fail closed: validate exact bytes, then block execution pending restricted runtime.
 
-    A ``None`` or blank result is rendered as ``INSUFFICIENT_EVIDENCE``. This
-    function does not select or provide an evaluator implementation.
+    An arbitrary Python callback is not a filesystem/network sandbox. This
+    function therefore never invokes ``evaluator``; execution remains blocked
+    until a separately verified restricted runtime is integrated.
     """
 
+    validate_frozen_evaluator_input_bytes(
+        frozen_reader_json,
+        blind_questions_bytes,
+        expected_reader_artifact_sha256=expected_reader_artifact_sha256,
+    )
     if not callable(evaluator):
-        raise Pilot0EvaluationInputError("An explicit local evaluator implementation is required")
-    if not isinstance(frozen_reader_json, bytes):
-        raise Pilot0EvaluationInputError("Evaluator accepts frozen Reader JSON bytes only")
-    if len(frozen_reader_json) > MAX_READER_JSON_BYTES:
-        raise Pilot0EvaluationInputError("Frozen Reader JSON exceeds the size bound")
-    try:
-        reader_view = parse_frozen_reader_json(
-            frozen_reader_json,
-            expected_sha256=expected_sha256,
-        )
-    except Pilot0ArtifactError as exc:
-        raise Pilot0EvaluationInputError("Reader input is not verified frozen JSON") from exc
-    questions = parse_blind_questions(blind_questions_json)
-
-    answers: list[EvaluationAnswer] = []
-    for question_id, question in questions:
-        answer = evaluator(reader_view, question_id, question)
-        if answer is not None and not isinstance(answer, str):
-            raise Pilot0EvaluationInputError("Evaluator must return text or None")
-        normalized = answer.strip() if isinstance(answer, str) else ""
-        answers.append(
-            EvaluationAnswer(
-                question_id=question_id,
-                answer=normalized or INSUFFICIENT_EVIDENCE,
-            )
-        )
-    return tuple(answers)
+        raise Pilot0EvaluationInputError("An explicit evaluator interface is required")
+    raise Pilot0EvaluationInputError(
+        "Evaluator execution is blocked until a separately verified restricted runtime is available"
+    )
 
 
 __all__ = [
@@ -251,6 +225,6 @@ __all__ = [
     "OfflineEvaluator",
     "Pilot0EvaluationInputError",
     "evaluate_q1_q15_frozen",
-    "load_frozen_evaluator_inputs",
     "parse_blind_questions",
+    "validate_frozen_evaluator_input_bytes",
 ]

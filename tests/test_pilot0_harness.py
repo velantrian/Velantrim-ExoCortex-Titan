@@ -41,10 +41,10 @@ from core.pilot0.artifact import (
 )
 from core.pilot0.config import Pilot0ReaderConfig
 from core.pilot0.evaluator import (
-    INSUFFICIENT_EVIDENCE,
     Pilot0EvaluationInputError,
     evaluate_q1_q15_frozen,
-    load_frozen_evaluator_inputs,
+    parse_blind_questions,
+    validate_frozen_evaluator_input_bytes,
 )
 from core.pilot0.pdf_input import (
     PARSER_NAME,
@@ -53,7 +53,6 @@ from core.pilot0.pdf_input import (
     _pinned_pdf_reader,
     parse_local_pdf,
 )
-from core.readers.llm_adapter import LlmReaderAdapter
 from core.semantic_reader import (
     RawSource,
     ReaderBudget,
@@ -142,7 +141,7 @@ def questions_json() -> bytes:
 
 def questions_markdown() -> bytes:
     lines = ["# Synthetic blind question set", ""]
-    lines.extend(f"Q{i}. Synthetic markdown question {i}?" for i in range(1, 16))
+    lines.extend(f"**{i}.** Synthetic markdown question {i}?" for i in range(1, 16))
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
@@ -159,12 +158,8 @@ def frozen_bytes():
 
 class Pilot0HarnessTests(unittest.TestCase):
     def test_pinned_parser_extracts_only_synthetic_local_pdf(self):
-        try:
-            installed = metadata.version(PARSER_NAME)
-        except metadata.PackageNotFoundError:
-            self.skipTest("the exact local Pilot-0 parser is not installed in this environment")
-        if installed != PINNED_PARSER_VERSION:
-            self.skipTest("the exact local Pilot-0 parser version is not installed in this environment")
+        installed = metadata.version(PARSER_NAME)
+        self.assertEqual(installed, PINNED_PARSER_VERSION)
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "synthetic.pdf"
             path.write_bytes(synthetic_pdf_bytes())
@@ -257,29 +252,31 @@ class Pilot0HarnessTests(unittest.TestCase):
             )
 
     def test_secret_shaped_claim_is_rejected_not_persisted(self):
+        import core.knowledge_capsule as knowledge_capsule
+
         text = "Bearer abcdefghijklmnopqrstuv"
-        source = RawSource("synthetic-secret", text, "synthetic-r1")
-        span = SourceSpan.from_text(
+        source = RawSource("synthetic-secret", text, "sha256:" + "b" * 64)
+        span = knowledge_capsule.SourceSpan.from_text(
             document_id=source.document_id,
             raw_text=text,
             start_offset=0,
             end_offset=len(text),
             source_revision=source.source_revision,
         )
-        claim = CapsuleClaim.create(
+        claim = knowledge_capsule.CapsuleClaim.create(
             text=text,
-            modality=ClaimModality.OBSERVATION,
+            modality=knowledge_capsule.ClaimModality.OBSERVATION,
             source_spans=(span,),
             extraction_confidence=1.0,
         )
-        from core.knowledge_capsule import KnowledgeCapsule
-
-        capsule = KnowledgeCapsule.create(
+        capsule = knowledge_capsule.KnowledgeCapsule.create(
             source_document_id=source.document_id,
             essence=text,
             claims=(claim,),
             reader_id=FakeSemanticReader.reader_id,
             reader_version=FakeSemanticReader.reader_version,
+            coverage_score=1.0,
+            compression_ratio=1.0,
         )
         with self.assertRaises(Pilot0ArtifactError):
             freeze_reader_output(
@@ -290,26 +287,51 @@ class Pilot0HarnessTests(unittest.TestCase):
                 result=ReaderResult.success(capsule),
             )
 
-    def test_q1_q15_uses_only_frozen_representation_and_abstains_when_fake_does(self):
+    def test_evaluator_requires_trusted_digest_and_blocks_in_process_callback(self):
         frozen = frozen_bytes()
-        seen = []
+        called = []
 
         def fake_evaluator(reader_view, question_id, question):
-            seen.append((question_id, question, reader_view["schema"]))
-            return "Synthetic answer" if question_id == "Q1" else None
+            called.append((reader_view, question_id, question))
+            return "Synthetic answer"
 
-        with patch("socket.socket.connect", side_effect=AssertionError("network denied")):
-            answers = evaluate_q1_q15_frozen(
+        with self.assertRaisesRegex(Pilot0EvaluationInputError, "restricted runtime"):
+            evaluate_q1_q15_frozen(
                 frozen.json_bytes,
                 questions_json(),
                 evaluator=fake_evaluator,
-                expected_sha256=frozen.sha256,
+                expected_reader_artifact_sha256=frozen.sha256,
             )
-        self.assertEqual(len(answers), 15)
-        self.assertEqual(answers[0].answer, "Synthetic answer")
-        self.assertTrue(all(item.answer == INSUFFICIENT_EVIDENCE for item in answers[1:]))
-        self.assertEqual(len(seen), 15)
-        self.assertEqual(seen[0][2], "pilot0.frozen-reader.v1")
+        self.assertEqual(called, [])
+        with self.assertRaisesRegex(
+            Pilot0EvaluationInputError, "trusted expected_reader_artifact_sha256"
+        ):
+            evaluate_q1_q15_frozen(
+                frozen.json_bytes,
+                questions_json(),
+                evaluator=fake_evaluator,
+            )
+
+    def test_stale_trusted_digest_rejects_rehashed_claim_before_parse_or_callback(self):
+        frozen = frozen_bytes()
+        envelope = json.loads(frozen.json_bytes)
+        claim = envelope["payload"]["claims"][0]
+        claim["text"] = "Bearer abcdefghijklmnopqrstuv"
+        claim["source_spans"][0]["end_offset"] = len(claim["text"])
+        envelope["payload_sha256"] = sha256(
+            canonical_json_bytes(envelope["payload"])
+        ).hexdigest()
+        tampered = canonical_json_bytes(envelope)
+        called = []
+
+        with self.assertRaisesRegex(Pilot0EvaluationInputError, "trusted digest"):
+            evaluate_q1_q15_frozen(
+                tampered,
+                questions_json(),
+                evaluator=lambda *_args: called.append(True),
+                expected_reader_artifact_sha256=frozen.sha256,
+            )
+        self.assertEqual(called, [])
 
     def test_evaluator_rejects_pdf_raw_text_maps_keys_prior_answers_and_wrong_hash(self):
         frozen = frozen_bytes()
@@ -325,13 +347,18 @@ class Pilot0HarnessTests(unittest.TestCase):
         for value in forbidden:
             with self.subTest(value=value[:20]):
                 with self.assertRaises(Pilot0EvaluationInputError):
-                    evaluate_q1_q15_frozen(value, questions, evaluator=fake)
-        with self.assertRaises(Pilot0EvaluationInputError):
+                    evaluate_q1_q15_frozen(
+                        value,
+                        questions,
+                        evaluator=fake,
+                        expected_reader_artifact_sha256=sha256(value).hexdigest(),
+                    )
+        with self.assertRaisesRegex(Pilot0EvaluationInputError, "trusted digest"):
             evaluate_q1_q15_frozen(
                 frozen.json_bytes,
                 questions,
                 evaluator=fake,
-                expected_sha256="0" * 64,
+                expected_reader_artifact_sha256="0" * 64,
             )
 
     def test_question_schema_rejects_prior_answers_and_non_q1_q15(self):
@@ -343,6 +370,7 @@ class Pilot0HarnessTests(unittest.TestCase):
                 frozen.json_bytes,
                 json.dumps(contaminated).encode(),
                 evaluator=fake,
+                expected_reader_artifact_sha256=frozen.sha256,
             )
         short = {"questions": [{"id": "Q1", "question": "Q?"}]}
         with self.assertRaises(Pilot0EvaluationInputError):
@@ -350,45 +378,40 @@ class Pilot0HarnessTests(unittest.TestCase):
                 frozen.json_bytes,
                 json.dumps(short).encode(),
                 evaluator=fake,
+                expected_reader_artifact_sha256=frozen.sha256,
             )
 
-    def test_markdown_q1_q15_is_accepted_and_answer_section_is_rejected(self):
-        frozen = frozen_bytes()
-        fake = lambda _reader, _qid, _question: None
-        answers = evaluate_q1_q15_frozen(
-            frozen.json_bytes,
-            questions_markdown(),
-            evaluator=fake,
-        )
-        self.assertEqual(len(answers), 15)
+    def test_bold_numbered_markdown_q1_q15_is_accepted_and_answer_section_rejected(self):
+        parsed = parse_blind_questions(questions_markdown())
+        self.assertEqual([item[0] for item in parsed], [f"Q{i}" for i in range(1, 16)])
         contaminated = questions_markdown() + b"\n## Answers\nPrior response.\n"
         with self.assertRaises(Pilot0EvaluationInputError):
-            evaluate_q1_q15_frozen(
-                frozen.json_bytes,
-                contaminated,
-                evaluator=fake,
-            )
+            parse_blind_questions(contaminated)
 
-    def test_file_entry_rejects_original_manuscript_path_and_accepts_only_named_pair(self):
+    def test_evaluator_rejects_traversal_symlink_and_alias_paths_before_reading(self):
+        import os
+
         frozen = frozen_bytes()
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             reader_path = root / "frozen_reader.json"
-            questions_path = root / "Reader_questions_v0.3_candidate.md"
             reader_path.write_bytes(frozen.json_bytes)
-            questions_path.write_bytes(questions_markdown())
-            self.assertEqual(
-                load_frozen_evaluator_inputs(reader_path, questions_path),
-                (frozen.json_bytes, questions_markdown()),
-            )
-            manuscript = root / "original_manuscript.pdf"
-            manuscript.write_bytes(b"%PDF-1.7\nsynthetic only")
-            with self.assertRaises(Pilot0EvaluationInputError):
-                load_frozen_evaluator_inputs(manuscript, questions_path)
-            raw = root / "raw_document.txt"
-            raw.write_text("synthetic raw text", encoding="utf-8")
-            with self.assertRaises(Pilot0EvaluationInputError):
-                load_frozen_evaluator_inputs(reader_path, raw)
+            traversal = root / ".." / "outside" / "frozen_reader.json"
+            symlink = root / "reader-link.json"
+            symlink.symlink_to(reader_path)
+            parent_alias = root / "directory-alias"
+            parent_alias.symlink_to(root, target_is_directory=True)
+            hardlink_alias = root / "reader-alias.json"
+            os.link(reader_path, hardlink_alias)
+            candidates = (reader_path, traversal, symlink, parent_alias / reader_path.name, hardlink_alias)
+            for candidate in candidates:
+                with self.subTest(path_kind=str(candidate)):
+                    with self.assertRaisesRegex(Pilot0EvaluationInputError, "already-loaded bytes"):
+                        validate_frozen_evaluator_input_bytes(
+                            candidate,
+                            questions_markdown(),
+                            expected_reader_artifact_sha256=frozen.sha256,
+                        )
 
     def test_thinking_mode_strict_allowlist_and_existing_high_payload_mapping(self):
         for invalid in ("enabled", "HIGH", " high", "xhigh", None):
@@ -397,41 +420,25 @@ class Pilot0HarnessTests(unittest.TestCase):
                     Pilot0ReaderConfig(deepseek_thinking=invalid)  # type: ignore[arg-type]
         config = Pilot0ReaderConfig(deepseek_thinking="high")
         self.assertEqual(config.to_safe_dict()["model_selection"], "OWNER_SELECTED")
-        adapter = LlmReaderAdapter(
-            provider="deepseek",
-            model="OWNER_SELECTED",
-            api_key="",
-            deepseek_thinking=config.deepseek_thinking,
-        )
-        captured = []
-
-        async def fake_chat_complete(call_config, *_args, **_kwargs):
-            captured.append(call_config)
-            return "synthetic only"
-
-        import asyncio
-        import core.llm_router
-
-        with patch.object(core.llm_router, "chat_complete", new=fake_chat_complete):
-            asyncio.run(adapter._call_provider("synthetic source text"))
-        self.assertEqual(len(captured), 1)
-        self.assertEqual(captured[0].deepseek_thinking, "high")
-        body = _deepseek_request_body(
-            captured[0],
-            [{"role": "user", "content": "synthetic only"}],
-            quick_ping=False,
-        )
-        self.assertEqual(body["thinking"], {"type": "enabled"})
-        self.assertEqual(body["reasoning_effort"], "high")
+        for mode in ("off", "high", "max"):
+            cfg = LlmCallConfig(
+                provider="deepseek",
+                api_key="",
+                model="OWNER_SELECTED",
+                deepseek_thinking=mode,
+            )
+            body = _deepseek_request_body(
+                cfg,
+                [{"role": "user", "content": "offline synthetic"}],
+                quick_ping=False,
+            )
+            if mode == "off":
+                self.assertEqual(body["thinking"], {"type": "disabled"})
+            else:
+                self.assertEqual(body["thinking"], {"type": "enabled"})
+                self.assertEqual(body["reasoning_effort"], mode)
 
     def test_thinking_mapping_has_no_network_call_and_rejects_non_deepseek_mode(self):
-        with self.assertRaises(ValueError):
-            LlmReaderAdapter(
-                provider="openai",
-                model="synthetic-model",
-                api_key="",
-                deepseek_thinking="high",
-            )
         cfg = LlmCallConfig(
             provider="deepseek",
             api_key="",
@@ -446,6 +453,18 @@ class Pilot0HarnessTests(unittest.TestCase):
         self.assertEqual(body["reasoning_effort"], "max")
         with patch("httpx.AsyncClient", side_effect=AssertionError("network denied")):
             self.assertEqual(body["thinking"], {"type": "enabled"})
+            invalid = LlmCallConfig(
+                provider="deepseek",
+                api_key="",
+                model="synthetic-model",
+                deepseek_thinking="enabled",
+            )
+            with self.assertRaises(ValueError):
+                _deepseek_request_body(
+                    invalid,
+                    [{"role": "user", "content": "offline synthetic"}],
+                    quick_ping=False,
+                )
 
 
 if __name__ == "__main__":

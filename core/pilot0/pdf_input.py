@@ -1,8 +1,8 @@
 """Single-parser local PDF input for the experimental Pilot-0 path.
 
-The parser is deliberately pinned to the version already present in the local
-implementation environment. There is no parser cascade, fallback, installer,
-download, or remote input path.
+The local parser path pins the repository baseline version and contains no
+fallback, cascade, installer, download, URL, or remote-input path. This does
+not establish process-wide network denial; that is a separate runtime capability.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from io import BytesIO
 from pathlib import Path
 
 PARSER_NAME = "pypdf"
-PINNED_PARSER_VERSION = "6.18.1"
+PINNED_PARSER_VERSION = "6.19.0"
 MAX_PDF_BYTES = 32_000_000
 MAX_PDF_PAGES = 500
 MAX_EXTRACTED_CHARS = 2_000_000

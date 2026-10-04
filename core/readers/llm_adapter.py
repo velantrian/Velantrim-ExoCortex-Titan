@@ -382,7 +382,6 @@ class LlmReaderAdapter(BaseSemanticReader):
         model: str,
         limits: LlmReaderLimits | None = None,
         api_key: str = "",
-        deepseek_thinking: str = "off",
     ) -> None:
         """No provider-callable seam.
 
@@ -394,20 +393,14 @@ class LlmReaderAdapter(BaseSemanticReader):
         from core.llm_router import (
             LlmCallConfig,
             resolve_llm_execution_identity,
-            validate_deepseek_thinking_mode,
         )
-
-        thinking_mode = validate_deepseek_thinking_mode(deepseek_thinking)
 
         identity = resolve_llm_execution_identity(
             LlmCallConfig(provider=provider, api_key=api_key, model=model)
         )
-        if identity.provider != "deepseek" and thinking_mode != "off":
-            raise ValueError("deepseek_thinking is supported only for the DeepSeek provider")
         self._provider = identity.provider
         self._model = identity.model
         self._api_key = api_key
-        self._deepseek_thinking = thinking_mode
         self._limits = _provider_safe_limits(
             identity.provider, limits or LlmReaderLimits()
         )
@@ -424,7 +417,6 @@ class LlmReaderAdapter(BaseSemanticReader):
             api_key=self._api_key,
             model=self._model,
             timeout=self._limits.request_timeout_s,
-            deepseek_thinking=self._deepseek_thinking,
         )
         # data_mode="raw": the chunk is source content, so it must be subject to
         # the remote-data policy dimension. "none" is reserved for metadata-only
