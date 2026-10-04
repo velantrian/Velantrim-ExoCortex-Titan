@@ -20,6 +20,36 @@ INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 MAX_READER_JSON_BYTES = 10_000_000
 MAX_QUESTIONS_JSON_BYTES = 1_000_000
 MAX_QUESTION_CHARS = 2_000
+_FROZEN_MARKDOWN_PREAMBLE = (
+    "# Reader questions v0.3 candidate — только вопросы",
+    "**Статус:** CANDIDATE; локальный оценочный комплект, не канонический и не для публичного распространения.",
+    "Этот файл содержит только вопросы; ответы, локаторы и критерии оценки вынесены в отдельный файл.",
+    "## I. Прямые факты",
+)
+_FORBIDDEN_MARKDOWN_SECTION = re.compile(
+    r"^\s*#{1,6}\s*(?:\*\*)?(?:ANSWERS?|PRIOR\s+ANSWERS?|SEALED[\s_-]+KEYS?|"
+    r"KEYS?|SCORES?|SCORING|RUBRICS?|RESPONSES?|SOURCE[\s_-]*MAPS?|LOCATORS?)\b",
+    re.IGNORECASE,
+)
+_FORBIDDEN_MARKDOWN_FIELD = re.compile(
+    r"^\s*(?:[-*+]\s*)?(?:\*\*)?(?:(?:Q(?:1[0-5]|[1-9])\s+)?"
+    r"(?:ANSWERS?|RESPONSES?)|PRIOR[\s_-]+ANSWERS?|A\d{1,2}|"
+    r"SEALED[\s_-]+KEYS?|KEYS?|SCORES?|SCORING|RUBRICS?|"
+    r"SOURCE[\s_-]*MAPS?|LOCATORS?)(?:\*\*)?\s*[:=]",
+    re.IGNORECASE,
+)
+_FORBIDDEN_MARKDOWN_LABEL = re.compile(
+    r"^\s*(?:[-*+]\s*)?(?:\*\*)?(?:ANSWERS?|PRIOR[\s_-]+ANSWERS?|A\d{1,2}|"
+    r"SEALED[\s_-]+KEYS?|KEYS?|SCORES?|SCORING|RUBRICS?|"
+    r"SOURCE[\s_-]*MAPS?|LOCATORS?)(?:\*\*)?\s*$",
+    re.IGNORECASE,
+)
+_FORBIDDEN_MARKDOWN_PAYLOAD = re.compile(
+    r"[\"'`](?:ANSWERS?|RESPONSES?|PRIOR[_ -]+ANSWERS?|SEALED[_ -]+KEYS?|"
+    r"KEYS?|SCORES?|SCORING|RUBRICS?|SOURCE[_ -]*MAPS?|LOCATORS?)[\"'`]\s*:",
+    re.IGNORECASE,
+)
+_MARKDOWN_HEADING = re.compile(r"^\s*#{1,6}\s+\S")
 
 
 class Pilot0EvaluationInputError(ValueError):
@@ -91,13 +121,21 @@ def _parse_markdown_questions(markdown: str) -> tuple[tuple[str, str], ...]:
         r"\s*(?P<body>.*)$",
         re.IGNORECASE,
     )
-    forbidden_answer_heading = re.compile(
-        r"^\s*(?:#{1,6}\s*)?(?:\*\*)?(?:A\d{1,2}|answers?|responses?|prior answers?)\b",
-        re.IGNORECASE,
-    )
     items: list[dict[str, str]] = []
     current_id: str | None = None
     current_lines: list[str] = []
+    preamble_index = 0
+
+    def reject_forbidden_line(line: str) -> None:
+        if (
+            _FORBIDDEN_MARKDOWN_SECTION.match(line)
+            or _FORBIDDEN_MARKDOWN_FIELD.match(line)
+            or _FORBIDDEN_MARKDOWN_LABEL.match(line)
+            or _FORBIDDEN_MARKDOWN_PAYLOAD.search(line)
+        ):
+            raise Pilot0EvaluationInputError(
+                "Answer/key/scoring/rubric/source sections or fields are forbidden"
+            )
 
     def finish_current() -> None:
         nonlocal current_id, current_lines
@@ -112,17 +150,30 @@ def _parse_markdown_questions(markdown: str) -> tuple[tuple[str, str], ...]:
             continue
         match = marker.match(line)
         if match:
+            if current_id is None and not items and preamble_index != len(_FROZEN_MARKDOWN_PREAMBLE):
+                raise Pilot0EvaluationInputError("Frozen question preamble is incomplete")
             finish_current()
             number = match.group("bold_number") or match.group("q_number")
             current_id = f"Q{int(number)}"
-            current_lines = [match.group("body").strip()]
+            body = match.group("body").strip()
+            reject_forbidden_line(body)
+            current_lines = [body]
             continue
-        if forbidden_answer_heading.match(line):
-            raise Pilot0EvaluationInputError("Answer/prior-answer sections are forbidden")
+        reject_forbidden_line(line)
         if current_id is None:
-            if line.lstrip().startswith("#"):
-                continue
-            raise Pilot0EvaluationInputError("Unexpected content outside Q1–Q15 in blind questions")
+            expected = (
+                _FROZEN_MARKDOWN_PREAMBLE[preamble_index]
+                if preamble_index < len(_FROZEN_MARKDOWN_PREAMBLE)
+                else None
+            )
+            if line.strip() != expected:
+                raise Pilot0EvaluationInputError(
+                    "Unexpected content outside the frozen question preamble and Q1–Q15"
+                )
+            preamble_index += 1
+            continue
+        if _MARKDOWN_HEADING.match(line):
+            raise Pilot0EvaluationInputError("Extra Markdown sections are forbidden")
         current_lines.append(line)
     finish_current()
     return _validate_question_items(items)

@@ -6,7 +6,6 @@ from io import BytesIO
 from importlib import metadata
 import json
 from pathlib import Path
-import socket
 import sys
 import tempfile
 import types
@@ -140,7 +139,16 @@ def questions_json() -> bytes:
 
 
 def questions_markdown() -> bytes:
-    lines = ["# Synthetic blind question set", ""]
+    lines = [
+        "# Reader questions v0.3 candidate — только вопросы",
+        "",
+        "**Статус:** CANDIDATE; локальный оценочный комплект, не канонический и не для публичного распространения.",
+        "",
+        "Этот файл содержит только вопросы; ответы, локаторы и критерии оценки вынесены в отдельный файл.",
+        "",
+        "## I. Прямые факты",
+        "",
+    ]
     lines.extend(f"**{i}.** Synthetic markdown question {i}?" for i in range(1, 16))
     return ("\n".join(lines) + "\n").encode("utf-8")
 
@@ -396,6 +404,67 @@ class Pilot0HarnessTests(unittest.TestCase):
         contaminated = questions_markdown() + b"\n## Answers\nPrior response.\n"
         with self.assertRaises(Pilot0EvaluationInputError):
             parse_blind_questions(contaminated)
+
+    def test_frozen_preamble_and_exact_trusted_digest_are_accepted_without_answers(self):
+        frozen = frozen_bytes()
+        with patch("core.pilot0.evaluator.parse_blind_questions") as parse_questions:
+            with self.assertRaisesRegex(Pilot0EvaluationInputError, "trusted digest"):
+                validate_frozen_evaluator_input_bytes(
+                    frozen.json_bytes,
+                    questions_markdown(),
+                    expected_reader_artifact_sha256="0" * 64,
+                )
+            parse_questions.assert_not_called()
+
+        _reader_view, parsed = validate_frozen_evaluator_input_bytes(
+            frozen.json_bytes,
+            questions_markdown(),
+            expected_reader_artifact_sha256=frozen.sha256,
+        )
+        self.assertEqual([question_id for question_id, _question in parsed], [f"Q{i}" for i in range(1, 16)])
+        self.assertTrue(all(len(item) == 2 for item in parsed))
+
+    def test_markdown_parser_rejects_unknown_preamble_and_answer_like_fields(self):
+        unknown_preamble = questions_markdown().replace(
+            b"**1.**", b"Unapproved pre-Q1 annotation.\n\n**1.**", 1
+        )
+        with self.assertRaises(Pilot0EvaluationInputError):
+            parse_blind_questions(unknown_preamble)
+
+        for field in (
+            b"Answer: synthetic",
+            b"A1: synthetic",
+            b"Answers",
+            b"Prior answers: synthetic",
+            b"sealed key: synthetic",
+            b"score: 1",
+            b"scoring: synthetic",
+            b"Key",
+            b"Score",
+            b"Rubric",
+            b"rubric: synthetic",
+            b"source_map: {}",
+            b"locator: synthetic",
+        ):
+            with self.subTest(field=field):
+                contaminated = questions_markdown().replace(
+                    b"Synthetic markdown question 1?",
+                    b"Synthetic markdown question 1?\n" + field,
+                    1,
+                )
+                with self.assertRaises(Pilot0EvaluationInputError):
+                    parse_blind_questions(contaminated)
+
+    def test_markdown_parser_rejects_inserted_answer_scoring_and_key_sections(self):
+        for section in (b"## ANSWERS", b"## SCORING", b"## SEALED KEY"):
+            with self.subTest(section=section):
+                contaminated = questions_markdown().replace(
+                    b"Synthetic markdown question 1?\n",
+                    b"Synthetic markdown question 1?\n" + section + b"\n\n",
+                    1,
+                )
+                with self.assertRaises(Pilot0EvaluationInputError):
+                    parse_blind_questions(contaminated)
 
     def test_evaluator_rejects_traversal_symlink_and_alias_paths_before_reading(self):
         import os
