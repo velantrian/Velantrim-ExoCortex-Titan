@@ -485,3 +485,20 @@ Phase 3B                               NOT ADMITTED / NOT STARTED
 
 Before any later wiring, quality benchmark, CSM Stage D, Phase 3B or activation, re-audit
 live `main`, preserve the owners above, and require a separate bounded admission decision.
+
+## 16. Proposed Pilot-0 scaffold · non-merged branch only
+
+The following paths exist only on the implementation branch for the owner-authorized
+Pilot-0 preparation PR; they are not part of the current `main` architecture until merged:
+
+```text
+core/pilot0/pdf_input.py      one exact local parser pin; no fallback or network
+core/pilot0/artifact.py       canonical allowlisted frozen SemanticReader output
+core/pilot0/evaluator.py      strict Q1–Q15 input interface; no model client
+core/pilot0/config.py         deepseek-only config; model remains OWNER_SELECTED
+core/deepseek_config.py       shared strict thinking-value validator
+```
+
+This proposal adds no runtime route, Canon/ESM write authority, egress-policy change,
+operator GO, model call, corpus execution, benchmark, or production authority. Re-audit
+the exact current `main` and separately admit any future runtime or experiment work.
