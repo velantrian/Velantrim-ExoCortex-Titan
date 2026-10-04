@@ -269,7 +269,7 @@ class Pilot0HarnessTests(unittest.TestCase):
             source_spans=(span,),
             extraction_confidence=1.0,
         )
-        capsule = knowledge_capsule.KnowledgeCapsule.create(
+        capsule = KnowledgeCapsule.create(
             source_document_id=source.document_id,
             essence=text,
             claims=(claim,),
