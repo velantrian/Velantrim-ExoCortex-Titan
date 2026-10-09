@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "canonical_text_policy_version": "world-skills-canonical-text-v1",
+  "candidates": [
+    {
+      "source_id": "wsc:ru:p0-formal-logic-math",
+      "relative_path": "docs/knowledge/world_skills_core/ru/01_P0_FORMAL_LOGIC_MATH.ru.md",
+      "source_digest": "sha256:3f48cea688b2ce41923533f31fc5981ccbbd6f68c0d52e6b414ac039bbf6538c",
+      "canonical_text_digest": "sha256:3f48cea688b2ce41923533f31fc5981ccbbd6f68c0d52e6b414ac039bbf6538c",
+      "status": "pending_owner_review"
+    }
+  ],
+  "sources": [],
+  "claim_support_reviews": []
+}
