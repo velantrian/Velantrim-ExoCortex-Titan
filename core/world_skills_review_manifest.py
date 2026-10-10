@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
-from typing import Literal, Mapping
+from typing import Literal, Mapping, cast
 
 from core.evidence_reference import EvidenceReference
 from core.evidence_registry import (
@@ -402,7 +402,7 @@ class WorldSkillsEvidenceResolver:
                     source_id=source_id,
                     source_digest=source_digest,
                     lineage_id=lineage_id,
-                    status=source["status"],
+                    status=cast(Literal["active", "revoked"], source["status"]),
                     fragments=fragments,
                 )
             )
