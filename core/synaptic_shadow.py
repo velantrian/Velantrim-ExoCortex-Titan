@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 import json
 import math
+from types import MappingProxyType
 from typing import Iterable, Mapping
 
 from core.context_pack import ContextPackBudget, ContextPackBuilder
@@ -92,9 +93,80 @@ class SynapticShadowInputLimitError(ValueError):
         super().__init__(code)
 
 
+class SynapticShadowInputDataError(ValueError):
+    """Input is not a finite, JSON-compatible fact snapshot."""
+
+    code = "shadow_input_invalid_data"
+
+    def __init__(self) -> None:
+        super().__init__(self.code)
+
+
+def _normalize_json_value(
+    value: object,
+    *,
+    immutable: bool,
+    active: set[int] | None = None,
+) -> object:
+    """Validate JSON-shaped data and copy it to detached plain/frozen containers."""
+
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, float):
+        if math.isfinite(value):
+            return value
+        raise SynapticShadowInputDataError
+
+    ancestors = active if active is not None else set()
+    if isinstance(value, Mapping):
+        identity = id(value)
+        if identity in ancestors:
+            raise SynapticShadowInputDataError
+        ancestors.add(identity)
+        try:
+            copied: dict[str, object] = {}
+            for key, item in value.items():
+                if not isinstance(key, str):
+                    raise SynapticShadowInputDataError
+                copied[key] = _normalize_json_value(
+                    item, immutable=immutable, active=ancestors
+                )
+        except SynapticShadowInputDataError:
+            raise
+        except Exception:
+            raise SynapticShadowInputDataError from None
+        finally:
+            ancestors.remove(identity)
+        return MappingProxyType(copied) if immutable else copied
+
+    if isinstance(value, (list, tuple)):
+        identity = id(value)
+        if identity in ancestors:
+            raise SynapticShadowInputDataError
+        ancestors.add(identity)
+        try:
+            copied_items = [
+                _normalize_json_value(item, immutable=immutable, active=ancestors)
+                for item in value
+            ]
+        except SynapticShadowInputDataError:
+            raise
+        except Exception:
+            raise SynapticShadowInputDataError from None
+        finally:
+            ancestors.remove(identity)
+        return tuple(copied_items) if immutable else copied_items
+
+    raise SynapticShadowInputDataError
+
+
 def _canonical_json(payload: object) -> str:
     return json.dumps(
-        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        _normalize_json_value(payload, immutable=False),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
     )
 
 
@@ -108,10 +180,11 @@ def _snapshot_with_size(
     for raw_fact in facts:
         if len(snapshot) >= config.max_input_facts:
             raise SynapticShadowInputLimitError("shadow_input_facts_exceeded")
-        input_chars += len(_canonical_json(raw_fact))
+        frozen_fact = _normalize_json_value(raw_fact, immutable=True)
+        input_chars += len(_canonical_json(frozen_fact))
         if input_chars > config.max_input_chars:
             raise SynapticShadowInputLimitError("shadow_input_chars_exceeded")
-        snapshot.append(dict(raw_fact) if isinstance(raw_fact, Mapping) else raw_fact)
+        snapshot.append(frozen_fact)
     return tuple(snapshot), input_chars
 
 
@@ -173,7 +246,7 @@ def _has_structural_evidence_refs(metadata: Mapping[str, object]) -> bool:
     """Mirror truth_policy: evidence is a list of mappings with a source reference."""
 
     refs = metadata.get("evidence_refs")
-    if not isinstance(refs, list):
+    if not isinstance(refs, (list, tuple)):
         return False
     for ref in refs:
         if not isinstance(ref, Mapping):
@@ -510,6 +583,7 @@ def shadow_error_preview(code: str) -> dict[str, object]:
 __all__ = [
     "SHADOW_SCHEMA_VERSION",
     "SOURCE_MODE",
+    "SynapticShadowInputDataError",
     "SynapticShadowInputLimitError",
     "SynapticShadowConfig",
     "build_synaptic_shadow_preview",
