@@ -13,11 +13,11 @@ all currently observed pins are listed explicitly.
 |---|---|---|---|
 | `actions/checkout` | `3d3c42e5aac5ba805825da76410c181273ba90b1` | v7.0.1 | CI, CodeQL, Pages, Stage 9, Stage 10 |
 | `actions/setup-python` | `5fda3b95a4ea91299a34e894583c3862153e4b97` | v7.0.0 | CI, Pages, Stage 9, Stage 10 |
-| `actions/upload-artifact` | `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` | as pinned in workflow | CI evidence jobs |
+| `actions/upload-artifact` | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` | as pinned in workflow | CI evidence jobs |
 | `astral-sh/setup-uv` | `ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d` | v10.0.0 | `.github/actions/sync-python-deps` |
-| `astral-sh/setup-uv` | `20cfd1bf945f4377ade1205e4dbc17946fc9a30d` | v10.0.1 | CI dependency-audit and reproducible-wheel jobs |
-| `github/codeql-action/init` | `cdf488f595d80d6e07e03d4674febd5ab45fa938` | v4.37.9 | CodeQL |
-| `github/codeql-action/analyze` | `cdf488f595d80d6e07e03d4674febd5ab45fa938` | v4.37.9 | CodeQL |
+| `astral-sh/setup-uv` | `c18668ad3cf93ea998bef934396af7bb5c839dc7` | v10.2.0 | CI dependency-audit and reproducible-wheel jobs |
+| `github/codeql-action/init` | `2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2` | v4.38.2 | CodeQL |
+| `github/codeql-action/analyze` | `2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2` | v4.38.2 | CodeQL |
 | `JamesIves/github-pages-deploy-action` | `fa24774553152dd7873cd16ebd8d959b010c5445` | v4.9.0 | Pages |
 
 `actions/cache` is **not** listed: the frozen-uv CI path removed the previous pip cache steps.

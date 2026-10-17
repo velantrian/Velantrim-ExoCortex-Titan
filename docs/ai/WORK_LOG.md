@@ -717,3 +717,12 @@ Phase 2A closure sequence completed:
 CSM Stage C adds a tested structural scanner lifecycle only. It remains unwired,
 not enabled and non-canonical. PR #341 hardens only the ownership lifecycle of the existing
 multilingual retrieval wrapper. Neither grants runtime or production authority.
+
+
+## 2026-10-18 — PR #473 compatibility review
+
+Kept the Pilot0 Reader/evaluator harness offline and unexecuted against real models or the external frozen source. Updated the exact local PDF parser pin to `pypdf==6.20.1`, matching the reviewed dependency lock from #478; this prevents an integration failure caused by the earlier 6.19.0 pin. Focused harness/DeepSeek request tests: 28 passed / 31 subtests passed with the pinned parser. Changed-code Ruff and diff checks passed. Existing evidence, activation and production gates remain separate. Exact-head hosted checks remain required.
+
+## 2026-10-18 — PR #474 local manifest review
+
+Reviewed the unwired local World Skills resolver, fixed-source/hash/span validation, revocation handling and the distinction between reference resolution and unverified review attestation. Added a public technical boundary and component route. Focused resolver/MemoryOps tests: 16 passed locally. Runtime wiring, authenticated owner identity, Canon admission and action authority remain absent. Documentation impact: GITHUB_ONLY; no architecture/owner or runtime authorization change. Exact published-head CI remains the merge gate.

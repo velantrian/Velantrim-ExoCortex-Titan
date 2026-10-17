@@ -486,10 +486,9 @@ Phase 3B                               NOT ADMITTED / NOT STARTED
 Before any later wiring, quality benchmark, CSM Stage D, Phase 3B or activation, re-audit
 live `main`, preserve the owners above, and require a separate bounded admission decision.
 
-## 16. Proposed Pilot-0 scaffold · non-merged branch only
+## 16. Offline Pilot-0 preparation harness
 
-The following paths exist only on the implementation branch for the owner-authorized
-Pilot-0 preparation PR; they are not part of the current `main` architecture until merged:
+The following paths implement the bounded offline Pilot-0 preparation harness. Their presence does not authorize a model run or runtime activation:
 
 ```text
 core/pilot0/pdf_input.py      one exact local parser pin; no fallback or network
@@ -502,3 +501,8 @@ core/deepseek_config.py       shared strict thinking-value validator
 This proposal adds no runtime route, Canon/ESM write authority, egress-policy change,
 operator GO, model call, corpus execution, benchmark, or production authority. Re-audit
 the exact current `main` and separately admit any future runtime or experiment work.
+
+
+### Local World Skills manifest resolver (unwired)
+
+`core/world_skills_review_manifest.py` adapts the existing typed evidence registry to a fixed local review manifest. It has no HTTP/ingest/promotion callers. Reference resolution and unverified review attestations are separate; see `docs/evidence/WORLD_SKILLS_LOCAL_RESOLVER.md`. Coverage: `tests/test_world_skills_review_manifest.py` and the source-metadata spoofing regression in `tests/test_memory_ops.py`.
