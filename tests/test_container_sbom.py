@@ -81,7 +81,7 @@ def test_docker_workflow_generates_and_publishes_final_image_sbom() -> None:
     assert "container-sbom-out/sbom.spdx.json" in text
     assert "scripts/validate_container_sbom.py" in text
     assert "name: titan-container-sbom" in text
-    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in text
+    assert "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9" in text
     assert "docker login" not in text.lower()
     assert "--push" not in text
 
