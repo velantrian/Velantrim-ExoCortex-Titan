@@ -485,3 +485,8 @@ Phase 3B                               NOT ADMITTED / NOT STARTED
 
 Before any later wiring, quality benchmark, CSM Stage D, Phase 3B or activation, re-audit
 live `main`, preserve the owners above, and require a separate bounded admission decision.
+
+
+### Local World Skills manifest resolver (unwired)
+
+`core/world_skills_review_manifest.py` adapts the existing typed evidence registry to a fixed local review manifest. It has no HTTP/ingest/promotion callers. Reference resolution and unverified review attestations are separate; see `docs/evidence/WORLD_SKILLS_LOCAL_RESOLVER.md`. Coverage: `tests/test_world_skills_review_manifest.py` and the source-metadata spoofing regression in `tests/test_memory_ops.py`.
