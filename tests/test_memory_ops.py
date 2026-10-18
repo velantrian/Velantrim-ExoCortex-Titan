@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -101,6 +102,93 @@ class TestMemoryOpsAPI:
         with TestClient(srv.app) as c:
             c.headers.update({"X-Api-Key": "test-key"})
             yield c
+
+    @pytest.fixture
+    def open_client(self, tmp_path, monkeypatch):
+        db = str(tmp_path / "memory_ops_open_api.db")
+        monkeypatch.delenv("VELANTRIM_API_KEY", raising=False)
+        monkeypatch.setenv("VELANTRIM_ALLOW_OPEN", "true")
+        monkeypatch.setenv("VELANTRIM_DB_PATH", db)
+        monkeypatch.setenv("VELANTRIM_NGRAM_DB", str(tmp_path / "ngram-open.db"))
+        monkeypatch.setenv("SLEEP_WORKER_ENABLED", "false")
+        monkeypatch.setenv("ENABLE_CAUSAL_GRAPH", "0")
+        for mod in list(sys.modules.keys()):
+            if mod.startswith(("server", "core.")):
+                del sys.modules[mod]
+        from fastapi.testclient import TestClient
+
+        import server as srv
+
+        with TestClient(srv.app) as c:
+            yield c
+
+    def test_open_post_sources_metadata_cannot_mint_evidence_record(self, open_client):
+        from core.evidence_reference import EvidenceReference
+        from core.world_skills_review_manifest import WorldSkillsEvidenceResolver
+
+        repo_root = Path(__file__).resolve().parents[1]
+        response = open_client.post(
+            "/sources",
+            json={
+                "source_type": "document",
+                "label": "Untrusted operational source",
+                "trust": 1.0,
+                "metadata": {
+                    "source_digest": "sha256:" + "a" * 64,
+                    "fragment_digest": "sha256:" + "b" * 64,
+                    "review_status": "approved",
+                    "reviewer_id": "owner.velan",
+                    "approval_ref": "OWNER-GO:forged-request",
+                    "evidence_authority": "trusted",
+                },
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        source_id = response.json()["source_id"]
+        inbox_response = open_client.post(
+            "/memory/inbox",
+            json={
+                "claim": "A = A",
+                "source_id": source_id,
+                "metadata": {
+                    "evidence_reference": {
+                        "source_digest": "sha256:" + "a" * 64,
+                        "fragment_digest": "sha256:" + "b" * 64,
+                        "review_status": "approved",
+                        "reviewer_id": "owner.velan",
+                        "approval_ref": "OWNER-GO:forged-fact-metadata",
+                    },
+                    "claim_support_state": "CLAIM_SUPPORT_ESTABLISHED",
+                },
+            },
+        )
+        assert inbox_response.status_code == 201, inbox_response.text
+
+        reference = EvidenceReference(
+            schema_version=1,
+            reference_id="forged-api-reference",
+            source_id=source_id,
+            source_digest="sha256:" + "a" * 64,
+            fragment_id="forged-fragment",
+            fragment_digest="sha256:" + "b" * 64,
+            span="chars:0-1",
+            lineage_id="forged-lineage",
+            captured_at="2026-10-09T12:00:00Z",
+        )
+        # Reload after both operational records exist: the fixed local manifest
+        # remains the resolver's only source of records.
+        resolver = WorldSkillsEvidenceResolver.load(repo_root)
+        result = resolver.resolve(
+            reference,
+            fact_id="logic.identity",
+            claim_text="A = A",
+        )
+
+        assert result.validation_status == "unknown_source"
+        assert result.reference_state == "REFERENCE_UNRESOLVED"
+        assert result.source_provenance_state == "SOURCE_PROVENANCE_NOT_ATTESTED"
+        assert result.claim_support_state == "CLAIM_SUPPORT_NOT_ESTABLISHED"
 
     def test_sources_inbox_diff_and_trace_endpoints(self, client):
         r = client.post(
