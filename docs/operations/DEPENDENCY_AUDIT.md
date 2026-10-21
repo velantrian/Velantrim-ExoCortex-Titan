@@ -45,6 +45,17 @@ The first post-remediation acceptance cycle proved the vulnerability job and Doc
 
 Titan did not weaken the coverage ratchet or revert the audited pytest security floor. The existing dev dependency owner was raised to `pytest-asyncio>=1.4.0,<2`, and repository `uv 0.12.3` regenerated the lock to `pytest-asyncio==1.4.0`. A regression assertion binds that compatibility floor. The one-use compatibility lock-refresh workflow was removed before final acceptance evidence.
 
+## 2026-10-21 advisory refresh (certifi, pillow)
+
+OSV published new advisories on 2026-10-20 against two locked packages. The unchanged lock (`certifi==2026.5.20`, `pillow==12.3.0`) then failed the gate with 11 records:
+
+| Locked entry | Advisories | Remediation |
+|---|---|---|
+| `certifi==2026.5.20` | GHSA-6q48-6c7w-9gw2 / PYSEC-2026-4320 | targeted lock refresh resolves `certifi==2026.10.19` (transitive; no new owner) |
+| `pillow==12.3.0` | GHSA-462x-pgg6-55fp, GHSA-58r4-6rv3-gfh8, GHSA-65qm-jvmh-6pqg, GHSA-8g5g-8vmr-9782, GHSA-c6hw-5grf-ff96, GHSA-p4wg-p73j-c528, GHSA-pchr-8j38-3x4p, GHSA-q45j-58j2-45rg, GHSA-vx6w-vv9f-6gvg | parser floor raised to `>=13.0.0`; lock resolves `pillow==13.0.0` |
+
+The lock was regenerated with repository `uv 0.12.3` (`uv lock --upgrade-package certifi --upgrade-package pillow`); no other package version changed. The security-floor regression assertion now binds `pillow>=13.0.0`. No ignore or allow-list entry was added. Titan's only Pillow usage (`core/file_parsers/image_parser.py`: `Image.open`, `size`/`format`/`mode`, `_getexif`, `ExifTags.TAGS`) is not affected by the Pillow 13 backwards-incompatible changes (Python 3.10 dropped; Titan requires `>=3.11`).
+
 ## Evidence semantics
 
 The audit procedure is reproducible from the checked-in lockfile, pinned tool release, and recorded service contract. The evidence artifact is bound to the exact `uv.lock` content through SHA-256.
