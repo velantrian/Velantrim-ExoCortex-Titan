@@ -2,6 +2,14 @@
 
 **English** · [Русский](README.ru.md)
 
+> 🗿 **A local-first memory system for AI work where finding information does not count as permission to trust or act on it.**
+>
+> **Why it matters:** An AI assistant may recover an old note saying “the purchase was approved.” Retrieving that note is not proof of current approval. Titan separates recall, provenance, review and authorized changes instead of silently turning an assistant's suggestion into a human decision.
+>
+> **What exists:** A research-grade memory and orchestration prototype with explicit trust/write boundaries, audit surfaces and optional integrations. **Not** a production-authorized service or a guarantee of correct answers.
+>
+> **Explore:** [60-second explanation](#-titan-in-60-seconds) · [Quick start](#quick-start) · [Engineering status](docs/PROJECT_STATUS.md)
+
 > **Local-first verifiable memory for AI agents:** explicit epistemic states,
 > controlled write/admission boundaries, provenance, TRACE, retrieval, tools,
 > and a replaceable language/provider layer.
