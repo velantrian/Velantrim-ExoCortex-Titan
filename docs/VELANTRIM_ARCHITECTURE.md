@@ -4,6 +4,8 @@
 > **Дата:** Май 2026
 > **Статус:** Production-ready core · Understanding Layer в разработке
 
+> ⚠️ **Исторический документ (v8.5/v8.6, май 2026).** Он описывает архитектуру того периода и не является текущим статусом проекта. Метка «Production-ready core» выше — оценка того времени, а не текущее заявление о production readiness. Актуальное состояние Titan 9.0: [`PROJECT_STATUS.md`](PROJECT_STATUS.md) и [`README.md`](../README.md).
+
 ---
 
 ## 🧭 Содержание
