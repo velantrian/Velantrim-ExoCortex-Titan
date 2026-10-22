@@ -390,7 +390,10 @@ class LlmReaderAdapter(BaseSemanticReader):
         function. Remote access therefore has exactly one path:
         `core.llm_router.chat_complete`.
         """
-        from core.llm_router import LlmCallConfig, resolve_llm_execution_identity
+        from core.llm_router import (
+            LlmCallConfig,
+            resolve_llm_execution_identity,
+        )
 
         identity = resolve_llm_execution_identity(
             LlmCallConfig(provider=provider, api_key=api_key, model=model)
