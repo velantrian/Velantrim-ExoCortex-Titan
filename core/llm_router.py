@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, replace
 from typing import Any
@@ -142,6 +143,35 @@ class LlmExecutionIdentity:
 
 class LlmTransportTimeoutError(TimeoutError):
     """Provider transport exceeded its deadline before returning a response."""
+
+
+class LlmCallCancelledError(Exception):
+    """User/session cancelled the call. Deliberately NOT a TimeoutError:
+    cancellation is a caller decision, a timeout is a transport outcome."""
+
+
+async def _run_cancellable(coro, cancel_event: asyncio.Event | None):
+    """Run ``coro``; if ``cancel_event`` is set first, cancel the in-flight
+    task (closing the httpx request) and raise LlmCallCancelledError."""
+    if cancel_event is None:
+        return await coro
+    if cancel_event.is_set():
+        coro.close()
+        raise LlmCallCancelledError("LLM call cancelled before start")
+    task = asyncio.ensure_future(coro)
+    waiter = asyncio.ensure_future(cancel_event.wait())
+    try:
+        done, _ = await asyncio.wait({task, waiter}, return_when=asyncio.FIRST_COMPLETED)
+        if task in done:
+            return task.result()
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
+        raise LlmCallCancelledError("LLM call cancelled by user/session")
+    finally:
+        waiter.cancel()
 
 
 class LlmProviderRequestError(ValueError):
@@ -523,8 +553,13 @@ async def chat_complete(
     system: str = "",
     *,
     data_mode: str = "raw",
+    cancel_event: asyncio.Event | None = None,
 ) -> str:
     """Единая точка вызова LLM по провайдеру.
+
+    ``cancel_event``: optional user/session cancellation signal; when set,
+    the in-flight HTTP call is aborted and LlmCallCancelledError is raised
+    (distinct from LlmTransportTimeoutError).
 
     ``data_mode`` is ``raw`` for normal user/memory prompts and ``none`` for
     provider connectivity tests that contain no user data.
@@ -535,7 +570,19 @@ async def chat_complete(
     if not cfg.api_key:
         raise ValueError("LLM API key не задан")
     assert_model_allowed(resolved_cfg)
+    return await _run_cancellable(
+        _chat_complete_dispatch(resolved_cfg, provider, prompt, system, data_mode),
+        cancel_event,
+    )
 
+
+async def _chat_complete_dispatch(
+    resolved_cfg: LlmCallConfig,
+    provider: str,
+    prompt: str,
+    system: str,
+    data_mode: str,
+) -> str:
     try:
         if provider == "openai":
             return await _openai_compatible_chat(
