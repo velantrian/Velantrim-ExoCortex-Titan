@@ -211,6 +211,18 @@ authority и не становится answer authority автоматическ
 
 <a id="engineer"></a>
 
+## ⏹️ Отмена LLM-вызова ≠ таймаут
+
+`core/llm_router.chat_complete(..., cancel_event=asyncio.Event | None)`:
+
+| Исход | Исключение | Смысл |
+|---|---|---|
+| пользователь/сессия выставили `cancel_event` | `LlmCallCancelledError` (не `TimeoutError`) | решение вызывающего; HTTP-запрос к провайдеру прерывается, до старта — не отправляется |
+| провайдер не ответил за `LlmCallConfig.timeout` | `LlmTransportTimeoutError` (`TimeoutError`) | исход транспорта; ответ мог быть обработан провайдером |
+
+Без `cancel_event` поведение прежнее. Тесты: `tests/test_llm_router_cancellation.py`.
+Пока не передаётся из API/Telegram и не покрывает STT/TTS.
+
 ## 🧑‍💻 Инженерные границы
 
 - read/retrieval не должен тихо становиться canonical write;
