@@ -5,6 +5,14 @@
 
 ---
 
+## [Unreleased]
+
+### Добавлено
+- `core/llm_router.py` — отмена LLM-вызова пользователем/сессией: `chat_complete(cancel_event=...)`
+  и `LlmCallCancelledError`, отдельно от `LlmTransportTimeoutError` (см. SYSTEM_OVERVIEW.md).
+
+---
+
 ## [9.0.0] — 2026-07-12 — Titan 9.0 version/branding unification (completed)
 
 Аудит показал, что запись от 2026-07-09 (ниже) объявила ребрендинг Titan 9.0
