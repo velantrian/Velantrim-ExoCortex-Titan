@@ -26,10 +26,10 @@ def test_build_constraints_are_derived_from_authoritative_uv_lock(tmp_path: Path
     versions = generate_build_constraints(constraints)
     text = constraints.read_text(encoding="utf-8")
 
-    assert versions == {"setuptools": "84.0.0"}
-    assert text.startswith("setuptools==84.0.0 ")
-    assert "--hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670" in text
-    assert "--hash=sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73" in text
+    assert versions == {"setuptools": "84.1.0"}
+    assert text.startswith("setuptools==84.1.0 ")
+    assert "--hash=sha256:5231689c6ac8156cd155cfb98c3fd6fb252c3e7e9bd3d78b64d3c55f132624c9" in text
+    assert "--hash=sha256:23657205b63d4d31395ab917815247f694aafad28cd21316bf5fd45a51048ea0" in text
 
 
 def test_ci_enforces_two_build_byte_identity_and_keeps_evidence() -> None:

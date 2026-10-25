@@ -80,3 +80,15 @@ This Python dependency audit does not prove:
 - Operator GO, runtime authority, or production authority.
 
 Those remain independent #52 residuals.
+
+## 2026-10-25 security lock refresh
+
+`uv audit --frozen` (OSV, uv 0.12.3) reported 11 vulnerability records on new advisories. Targeted `uv lock --upgrade-package` with repository `uv 0.12.3` (only `uv.lock` resolution changed):
+
+| Entry | Advisories | Resolved |
+|---|---|---|
+| `filelock==3.29.1` | GHSA-567q-5qvw-pf92, GHSA-9vhv-jxww-xfm5, GHSA-v4x8-3wr5-3wq8 | `filelock==4.2.1` (transitive via torch / huggingface-hub) |
+| `pypdf==6.20.1` | GHSA-5hx5-vpf9-5wcv, GHSA-6c7f-9265-g8fw, GHSA-6vvc-x485-93v7, GHSA-cgf9-327m-v77c, GHSA-f54x-cmq8-qg57, GHSA-gmh7-3g9r-mjh5, GHSA-jr96-gvgh-j3r4 | `pypdf==6.21.2` |
+| `setuptools==84.0.0` | GHSA-xmj3-9gf7-h52w | `setuptools==84.1.0` (build constraint test updated) |
+
+Local `uv audit --frozen`: 121 packages, 0 vulnerabilities, 0 adverse statuses. No ignore/allow-list entry added.
