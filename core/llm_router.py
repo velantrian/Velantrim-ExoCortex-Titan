@@ -141,13 +141,30 @@ class LlmExecutionIdentity:
     model: str
 
 
+# Provider-side outcome of an aborted call, as far as the client can know it.
+# NOT_SENT: request provably never left the client (cancel before start,
+#           connect/pool timeout). UNKNOWN: request may have reached the
+#           provider; a local abort does not prove it was not executed/billed.
+PROVIDER_OUTCOME_NOT_SENT = "NOT_SENT"
+PROVIDER_OUTCOME_UNKNOWN = "UNKNOWN"
+
+
 class LlmTransportTimeoutError(TimeoutError):
     """Provider transport exceeded its deadline before returning a response."""
+
+    provider_outcome: str = PROVIDER_OUTCOME_UNKNOWN
 
 
 class LlmCallCancelledError(Exception):
     """User/session cancelled the call. Deliberately NOT a TimeoutError:
-    cancellation is a caller decision, a timeout is a transport outcome."""
+    cancellation is a caller decision, a timeout is a transport outcome.
+
+    ``provider_outcome`` is NOT_SENT only for cancellation before start; after
+    start it is UNKNOWN (local abort is not proof the provider did nothing)."""
+
+    def __init__(self, message: str, *, provider_outcome: str = PROVIDER_OUTCOME_UNKNOWN):
+        super().__init__(message)
+        self.provider_outcome = provider_outcome
 
 
 async def _run_cancellable(coro, cancel_event: asyncio.Event | None):
@@ -157,7 +174,9 @@ async def _run_cancellable(coro, cancel_event: asyncio.Event | None):
         return await coro
     if cancel_event.is_set():
         coro.close()
-        raise LlmCallCancelledError("LLM call cancelled before start")
+        raise LlmCallCancelledError(
+            "LLM call cancelled before start", provider_outcome=PROVIDER_OUTCOME_NOT_SENT
+        )
     task = asyncio.ensure_future(coro)
     waiter = asyncio.ensure_future(cancel_event.wait())
     try:
@@ -169,7 +188,10 @@ async def _run_cancellable(coro, cancel_event: asyncio.Event | None):
             await task
         except (asyncio.CancelledError, Exception):
             pass
-        raise LlmCallCancelledError("LLM call cancelled by user/session")
+        raise LlmCallCancelledError(
+            "LLM call cancelled by user/session; provider outcome unknown",
+            provider_outcome=PROVIDER_OUTCOME_UNKNOWN,
+        )
     finally:
         waiter.cancel()
 
@@ -624,9 +646,10 @@ async def _chat_complete_dispatch(
             )
         raise ValueError(f"Неизвестный LLM provider: {provider}")
     except httpx.TimeoutException as exc:
-        raise LlmTransportTimeoutError(
-            f"{provider}: provider transport timed out"
-        ) from exc
+        err = LlmTransportTimeoutError(f"{provider}: provider transport timed out")
+        if isinstance(exc, (httpx.ConnectTimeout, httpx.PoolTimeout)):
+            err.provider_outcome = PROVIDER_OUTCOME_NOT_SENT
+        raise err from exc
 
 
 async def transcribe_audio_gemini(
