@@ -66,3 +66,79 @@ async def test_no_event_unchanged(cfg, monkeypatch):
 
     monkeypatch.setattr(lr, "_openai_compatible_chat", ok)
     assert await lr.chat_complete(cfg, "hi") == "ok"
+
+
+# --- provider outcome after possible send (2026-10-26) ---------------------
+
+async def test_cancel_after_start_reports_unknown_provider_outcome(cfg, monkeypatch):
+    calls, started = [], asyncio.Event()
+
+    async def slow(*a, **k):
+        calls.append(1)
+        started.set()
+        await asyncio.sleep(30)
+
+    monkeypatch.setattr(lr, "_openai_compatible_chat", slow)
+    ev = asyncio.Event()
+    call = asyncio.create_task(lr.chat_complete(cfg, "hi", cancel_event=ev))
+    await started.wait()
+    ev.set()
+    with pytest.raises(LlmCallCancelledError) as ei:
+        await asyncio.wait_for(call, 2)
+    assert ei.value.provider_outcome == lr.PROVIDER_OUTCOME_UNKNOWN
+    assert calls == [1]  # no hidden retry
+
+
+async def test_cancel_before_start_reports_not_sent(cfg, monkeypatch):
+    monkeypatch.setattr(lr, "_openai_compatible_chat", lambda *a, **k: None)
+    ev = asyncio.Event(); ev.set()
+    with pytest.raises(LlmCallCancelledError) as ei:
+        await lr.chat_complete(cfg, "hi", cancel_event=ev)
+    assert ei.value.provider_outcome == lr.PROVIDER_OUTCOME_NOT_SENT
+
+
+async def test_response_wins_race_with_simultaneous_cancel(cfg, monkeypatch):
+    ev = asyncio.Event()
+
+    async def answer(*a, **k):
+        ev.set()  # cancel arrives in the same loop tick the response completes
+        return "answer"
+
+    monkeypatch.setattr(lr, "_openai_compatible_chat", answer)
+    assert await lr.chat_complete(cfg, "hi", cancel_event=ev) == "answer"
+
+
+@pytest.mark.parametrize(
+    "exc, outcome",
+    [
+        (httpx.ConnectTimeout("c"), lr.PROVIDER_OUTCOME_NOT_SENT),
+        (httpx.PoolTimeout("p"), lr.PROVIDER_OUTCOME_NOT_SENT),
+        (httpx.ReadTimeout("r"), lr.PROVIDER_OUTCOME_UNKNOWN),
+        (httpx.WriteTimeout("w"), lr.PROVIDER_OUTCOME_UNKNOWN),
+    ],
+)
+async def test_timeout_provider_outcome(cfg, monkeypatch, exc, outcome):
+    calls = []
+
+    async def to(*a, **k):
+        calls.append(1)
+        raise exc
+
+    monkeypatch.setattr(lr, "_openai_compatible_chat", to)
+    with pytest.raises(LlmTransportTimeoutError) as ei:
+        await lr.chat_complete(cfg, "hi", cancel_event=asyncio.Event())
+    assert ei.value.provider_outcome == outcome
+    assert calls == [1]
+
+
+async def test_transport_failure_propagates_without_retry(cfg, monkeypatch):
+    calls = []
+
+    async def boom(*a, **k):
+        calls.append(1)
+        raise httpx.RemoteProtocolError("peer closed connection after request")
+
+    monkeypatch.setattr(lr, "_openai_compatible_chat", boom)
+    with pytest.raises(httpx.RemoteProtocolError):
+        await lr.chat_complete(cfg, "hi", cancel_event=asyncio.Event())
+    assert calls == [1]

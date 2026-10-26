@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+- llm_router: `LlmCallCancelledError` и `LlmTransportTimeoutError` получили `provider_outcome`: `NOT_SENT` (отмена до старта, ConnectTimeout/PoolTimeout) или `UNKNOWN` (запрос мог дойти до провайдера; локальная отмена не доказывает отсутствие выполнения/списания). Скрытых повторов нет (тесты). Добавлены тесты совместимости filelock 4 на путях huggingface-hub (исключение, отмена asyncio, убитый держатель, таймаут).
+
 ### Добавлено
 - `core/llm_router.py` — отмена LLM-вызова пользователем/сессией: `chat_complete(cancel_event=...)`
   и `LlmCallCancelledError`, отдельно от `LlmTransportTimeoutError` (см. SYSTEM_OVERVIEW.md).
