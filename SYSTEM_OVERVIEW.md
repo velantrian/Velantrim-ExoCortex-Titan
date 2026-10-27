@@ -211,6 +211,20 @@ authority и не становится answer authority автоматическ
 
 <a id="engineer"></a>
 
+## ⏹️ Отмена LLM-вызова ≠ таймаут
+
+`core/llm_router.chat_complete(..., cancel_event=asyncio.Event | None)`:
+
+| Исход | Исключение | Смысл |
+|---|---|---|
+| пользователь/сессия выставили `cancel_event` | `LlmCallCancelledError` (не `TimeoutError`) | решение вызывающего; HTTP-запрос к провайдеру прерывается, до старта — не отправляется |
+| провайдер не ответил за `LlmCallConfig.timeout` | `LlmTransportTimeoutError` (`TimeoutError`) | исход транспорта; ответ мог быть обработан провайдером |
+
+Оба исключения несут `provider_outcome`: `NOT_SENT` — отмена до старта, `httpx.ConnectTimeout`/`PoolTimeout`; `UNKNOWN` — отмена в полёте, Read/WriteTimeout. `UNKNOWN` значит: локальная отмена не доказывает, что провайдер ничего не выполнил и не списал. Роутер не повторяет вызов сам; при гонке «ответ и отмена в одном такте» возвращается ответ. Соответствие Continuum: `UNKNOWN` ≈ `UNKNOWN_OUTCOME`, `NOT_SENT` ≈ отказ до старта адаптера; enum'ы намеренно не объединены.
+
+Без `cancel_event` поведение прежнее. Тесты: `tests/test_llm_router_cancellation.py`.
+Пока не передаётся из API/Telegram и не покрывает STT/TTS.
+
 ## 🧑‍💻 Инженерные границы
 
 - read/retrieval не должен тихо становиться canonical write;

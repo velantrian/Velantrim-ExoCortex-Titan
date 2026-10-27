@@ -46,7 +46,7 @@ parsers = [
     "python-docx>=1.0",
     "openpyxl>=3.1",
     "pyyaml>=6.0",
-    "pillow>=12.3.0",
+    "pillow>=13.0.0",
     # blake3 — если нет, автоматический fallback на sha256 с WARNING
     "blake3>=0.4.1; platform_python_implementation == 'CPython'",
 ]
