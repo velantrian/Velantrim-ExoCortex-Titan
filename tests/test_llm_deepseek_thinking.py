@@ -34,6 +34,23 @@ def test_deepseek_thinking_body():
     assert body["reasoning_effort"] == "max"
 
 
+@pytest.mark.parametrize("invalid", ["enabled", "HIGH", " high", "xhigh", None])
+def test_low_level_router_rejects_invalid_thinking_mode(invalid):
+    cfg = LlmCallConfig(
+        provider="deepseek",
+        api_key="",
+        model="synthetic-model",
+        deepseek_thinking=invalid,
+    )
+
+    with pytest.raises(ValueError, match="exactly off, high, or max"):
+        _deepseek_request_body(
+            cfg,
+            [{"role": "user", "content": "synthetic only"}],
+            quick_ping=False,
+        )
+
+
 def test_deepseek_message_content_is_compacted_to_provider_limit():
     long_text = "x" * 5000
     messages = compact_messages_for_deepseek(

@@ -1,4 +1,23 @@
 
+## 2026-10-04 — Pilot-0 reproducible harness · DRAFT / NOT RUN
+
+> **Reality status:** `IMPLEMENTED ON feat/pilot0-frozen-reader-harness FROM main@ef134c324ef08c1a5f7f011433b8e2424e40ecea / 15 SYNTHETIC OFFLINE TESTS PASS / NO READER OR MODEL RUN / NO FROZEN-CORPUS PARSE / NOT MERGED / NOT WIRED / NOT ENABLED / NOT OBSERVED / NO OPERATOR GO / NO PRODUCTION AUTHORITY`.
+
+Bounded preparation only: one local pypdf pin; deterministic allowlisted frozen
+SemanticReader artifact; strict Q1–Q15 JSON/Markdown input and offline fake evaluator;
+strict DeepSeek thinking setting on the existing adapter. Frozen PDF and question hashes
+matched the owner-provided values. The sealed key was left completely untouched. No API
+key intake/use, parser/evaluator/provider network calls, frozen-source extraction, Q&A run,
+benchmark, or annotation. GitHub was used only for the authorized feature branch and draft PR.
+
+Before a real Pilot-0: resolve the pypdf pin vs `parsers` extra mismatch; establish a safe
+secret-injection path; select a model separately; review egress/capability; resolve
+rights/publication; verify frozen Markdown syntax only in a separately authorized step.
+Notion synchronization is blocked by the task's explicit no-Notion instruction; keep the
+PR draft and do not change Notion/Drive/issues.
+
+---
+
 ## 2026-09-23 — PR #461 R1 Validated admission boundary · MERGED
 
 > **Reality status:** `MERGED / IMPLEMENTED ON main@c877f1e177dc21687884f73b378213fdd9ef1dbe / EXACT-HEAD PRE-MERGE CI GREEN / POST-MERGE CI NOT YET OBSERVED / PRODUCTION NOT AUTHORIZED / OPERATOR GO NOT ESTABLISHED`.
@@ -699,6 +718,10 @@ CSM Stage C adds a tested structural scanner lifecycle only. It remains unwired,
 not enabled and non-canonical. PR #341 hardens only the ownership lifecycle of the existing
 multilingual retrieval wrapper. Neither grants runtime or production authority.
 
+
+## 2026-10-18 — PR #473 compatibility review
+
+Kept the Pilot0 Reader/evaluator harness offline and unexecuted against real models or the external frozen source. Updated the exact local PDF parser pin to `pypdf==6.20.1`, matching the reviewed dependency lock from #478; this prevents an integration failure caused by the earlier 6.19.0 pin. Focused harness/DeepSeek request tests: 28 passed / 31 subtests passed with the pinned parser. Changed-code Ruff and diff checks passed. Existing evidence, activation and production gates remain separate. Exact-head hosted checks remain required.
 
 ## 2026-10-18 — PR #474 local manifest review
 
