@@ -4,6 +4,8 @@
 **Russian source:** [`VELANTRIM_ARCHITECTURE.md`](VELANTRIM_ARCHITECTURE.md)  
 **Purpose:** visual English companion architecture document.
 
+> ⚠️ **Historical document (v8.5/v8.6, May 2026).** It describes the architecture of that period and is not the current project status. The Russian source's "Production-ready core" label is a contemporaneous assessment, not a current production-readiness claim. Current Titan 9.0 state: [`PROJECT_STATUS.md`](PROJECT_STATUS.md) and [`README.md`](../README.md).
+
 ---
 
 ## 🧭 Contents
