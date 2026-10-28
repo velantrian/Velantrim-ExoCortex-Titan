@@ -85,3 +85,47 @@ def test_fixed_probe_still_works_without_user_data_permission(monkeypatch, provi
 def test_probe_rejects_missing_key():
     with pytest.raises(ValueError, match="API key"):
         asyncio.run(llm_router.test_connection(llm_router.LlmCallConfig(provider="openai", api_key="")))
+
+
+@pytest.mark.parametrize("provider, model", [
+    ("gemini", "gemini-private-memory-42"),
+    ("openai", "private-memory-42"),
+    ("deepseek", "private-memory-42"),
+    ("openrouter", "private-memory-42"),
+    ("anthropic", "private-memory-42"),
+])
+def test_metadata_probe_rejects_non_catalog_model_before_http(monkeypatch, provider, model):
+    """Even a fixed prompt must not carry caller text through its model field."""
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unknown probe model must fail before HTTP")
+    monkeypatch.setattr(llm_router.httpx, "AsyncClient", forbidden)
+    with pytest.raises(ValueError, match="reviewed .* catalog"):
+        asyncio.run(llm_router.test_connection(
+            llm_router.LlmCallConfig(
+                provider=provider, api_key="synthetic-key", model=model,
+            )
+        ))
+
+
+def test_public_probe_handler_rejects_gemini_model_payload(monkeypatch):
+    """The existing /llm/test handler must reject model-field smuggling."""
+    from fastapi import HTTPException
+    from api.llm_routes import LlmTestBody, _run_llm_test
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("no HTTP for non-catalog metadata-only probe")
+    monkeypatch.setattr(llm_router.httpx, "AsyncClient", forbidden)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(_run_llm_test(LlmTestBody(
+            provider="gemini", api_key="synthetic-key",
+            model="gemini-private-memory-42",
+        )))
+    assert exc.value.status_code == 400
+
+
+def test_non_catalog_model_remains_permitted_in_raw_chat():
+    """Only metadata-only probes are narrowed, not normal consented chat."""
+    llm_router.assert_model_allowed(llm_router.LlmCallConfig(
+        provider="gemini", api_key="synthetic-key",
+        model="gemini-private-memory-42",
+    ))
