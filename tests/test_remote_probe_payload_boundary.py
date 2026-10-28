@@ -1,11 +1,12 @@
 """Metadata-only exceptions cannot relabel arbitrary chat payloads."""
 import asyncio
+import importlib
 import json
 
 import httpx
 import pytest
 
-from core import llm_router, policy_kernel
+from core import llm_router
 from core.remote_egress import ensure_remote_egress_allowed
 
 
@@ -48,6 +49,9 @@ def test_provider_adapters_reject_arbitrary_metadata_payload(monkeypatch, adapte
 
 @pytest.mark.parametrize("provider", ["openai", "deepseek", "gemini", "openrouter", "anthropic"])
 def test_fixed_probe_still_works_without_user_data_permission(monkeypatch, provider):
+    # Earlier API tests purge core.* after collection. Patch the live module
+    # used by remote_egress, rather than an obsolete collection-time instance.
+    policy_kernel = importlib.import_module("core.policy_kernel")
     kernel = policy_kernel.PolicyKernel()
     snapshot = kernel._make_snapshot(
         policy_kernel.EffectivePolicy(
