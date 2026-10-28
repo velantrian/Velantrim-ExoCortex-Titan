@@ -12,6 +12,11 @@
   transport tests do not prove real provider delivery or browser/PWA coverage.
 - Historical checkpoints below are preserved; review the actual PR head and CI
   for merge readiness.
+- Hosted CI on the initial proposed head found a collection-time test-module
+  reference surviving the core.* purge in earlier API tests. The probe fixture
+  now patches the live PolicyKernel module. The same network_denied failure
+  was reproduced with an isolated module-reload harness before the fixture fix;
+  production enforcement is unchanged. Full CI on the revised head is required.
 
 ## 2026-09-23 — PR #461 R1 Validated admission boundary · MERGED
 
