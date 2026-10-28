@@ -1,4 +1,18 @@
 
+## 2026-10-28 — Fixed-payload metadata probe hardening
+
+- Base: `main@f44216656673b2a49e64f8cc7c8bca6d32e44d3f`.
+- General `chat_complete` rejects metadata-only modes. `test_connection` owns
+  the fixed synthetic probe; each provider adapter checks the payload before
+  allowing `none`. Egress normalizes modes before applying the whitelist.
+- Focused regressions cover all five providers, normalized mode variants,
+  adapters, fixed-probe compatibility, and the missing-key failure path.
+- Documentation impact: `GITHUB_ONLY`, enforcement of the existing metadata-only
+  contract, with no new policy owner, provider, dependency or activation. Mock
+  transport tests do not prove real provider delivery or browser/PWA coverage.
+- Historical checkpoints below are preserved; review the actual PR head and CI
+  for merge readiness.
+
 ## 2026-09-23 — PR #461 R1 Validated admission boundary · MERGED
 
 > **Reality status:** `MERGED / IMPLEMENTED ON main@c877f1e177dc21687884f73b378213fdd9ef1dbe / EXACT-HEAD PRE-MERGE CI GREEN / POST-MERGE CI NOT YET OBSERVED / PRODUCTION NOT AUTHORIZED / OPERATOR GO NOT ESTABLISHED`.
