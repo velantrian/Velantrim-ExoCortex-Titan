@@ -14,6 +14,8 @@ from typing import Any
 
 import httpx
 
+from core.policy_kernel import _normalize_data_mode
+
 from core.remote_egress import (
     ensure_remote_egress_allowed,
     sanitize_remote_system_prompt,
@@ -23,6 +25,19 @@ logger = logging.getLogger(__name__)
 
 _DEEPSEEK_MESSAGE_CHAR_LIMIT = 4000
 _TRUNCATED_SUFFIX = "\n...[truncated by Velantrim console]"
+
+_CONNECTIVITY_PROBE_PROMPT = "Ответь одним словом: OK"
+_CONNECTIVITY_PROBE_SYSTEM = "Ты помощник Velantrim."
+
+
+def _validate_llm_payload_mode(prompt: str, system: str, data_mode: str) -> str:
+    """A metadata-only provider adapter may carry only the fixed probe."""
+    mode = _normalize_data_mode(data_mode)
+    if mode == "none" and (prompt, system) != (
+        _CONNECTIVITY_PROBE_PROMPT, _CONNECTIVITY_PROBE_SYSTEM
+    ):
+        raise ValueError("data_mode='none' permits only the fixed connectivity probe")
+    return mode
 
 
 def _format_api_error_detail(data: Any) -> str:
@@ -364,6 +379,7 @@ async def _openai_compatible_chat(
     quick_ping: bool = False,
     data_mode: str = "raw",
 ) -> str:
+    data_mode = _validate_llm_payload_mode(prompt, system, data_mode)
     ensure_remote_egress_allowed(
         _llm_capability(data_mode, quick_ping=quick_ping),
         provider=cfg.provider,
@@ -455,6 +471,7 @@ async def _gemini_chat(
     *,
     data_mode: str = "raw",
 ) -> str:
+    data_mode = _validate_llm_payload_mode(prompt, system, data_mode)
     from core.gemini_models import (
         gemini_generation_config,
         normalize_gemini_model_id,
@@ -517,6 +534,7 @@ async def _anthropic_chat(
     *,
     data_mode: str = "raw",
 ) -> str:
+    data_mode = _validate_llm_payload_mode(prompt, system, data_mode)
     ensure_remote_egress_allowed(
         _llm_capability(data_mode),
         provider=cfg.provider,
@@ -583,9 +601,12 @@ async def chat_complete(
     the in-flight HTTP call is aborted and LlmCallCancelledError is raised
     (distinct from LlmTransportTimeoutError).
 
-    ``data_mode`` is ``raw`` for normal user/memory prompts and ``none`` for
-    provider connectivity tests that contain no user data.
+    ``data_mode`` is ``raw`` or ``redacted`` for user/memory prompts. Use
+    ``test_connection`` for the metadata-only, fixed-payload probe.
     """
+    data_mode = _normalize_data_mode(data_mode)
+    if data_mode == "none":
+        raise ValueError("chat_complete cannot use data_mode='none'; use test_connection")
     identity = resolve_llm_execution_identity(cfg)
     resolved_cfg = replace(cfg, provider=identity.provider, model=identity.model)
     provider = identity.provider
@@ -845,6 +866,8 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
     identity = resolve_llm_execution_identity(cfg)
     resolved_cfg = replace(cfg, provider=identity.provider, model=identity.model)
     provider = identity.provider
+    if not cfg.api_key:
+        raise ValueError("LLM API key не задан")
     # Здесь, а не только в chat_complete: deepseek-ветка ниже зовёт
     # _openai_compatible_chat напрямую и иначе обошла бы проверку модели — тот
     # самый паттерн «проверка у вызывающего обходится следующим вызывающим».
@@ -859,11 +882,12 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
             data_mode="none",
         )
     else:
-        reply = await chat_complete(
+        reply = await _chat_complete_dispatch(
             resolved_cfg,
+            provider,
             "Ответь одним словом: OK",
-            system="Ты помощник Velantrim.",
-            data_mode="none",
+            "Ты помощник Velantrim.",
+            "none",
         )
     return {
         "ok": True,
