@@ -872,6 +872,17 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
     # _openai_compatible_chat напрямую и иначе обошла бы проверку модели — тот
     # самый паттерн «проверка у вызывающего обходится следующим вызывающим».
     assert_model_allowed(resolved_cfg)
+    # A probe exempt from remote-data checks must not allow caller-supplied
+    # payload text to ride in a custom model id (including a Gemini URL path).
+    # This additional check applies only to metadata-only connectivity tests;
+    # normal LLM chat retains its existing model and raw-data policy.
+    provider_info = get_provider_info(provider)
+    approved_models = (provider_info or {}).get("models") or ()
+    if identity.model not in approved_models:
+        raise ValueError(
+            f"Connectivity probe model {identity.model!r} is not in the "
+            f"reviewed {provider!r} catalog"
+        )
     if provider == "deepseek":
         reply = await _openai_compatible_chat(
             resolved_cfg,
