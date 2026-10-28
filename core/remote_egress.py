@@ -126,7 +126,12 @@ def ensure_remote_egress_allowed(
     opt-out would be invisible in review.
     """
 
-    from core.policy_kernel import get_policy_kernel
+    from core.policy_kernel import _normalize_data_mode, get_policy_kernel
+
+    # Enforce the whitelist on the same canonical value the policy will use.
+    # Otherwise e.g. " NONE " can bypass this guard and normalize to "none"
+    # later, silently skipping the remote-data policy dimension.
+    data_mode = _normalize_data_mode(data_mode)
 
     if data_mode == "none" and capability not in _METADATA_ONLY_CAPABILITIES:
         raise ValueError(

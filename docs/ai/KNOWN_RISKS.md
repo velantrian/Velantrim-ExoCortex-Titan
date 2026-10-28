@@ -1,5 +1,18 @@
 # ⚠️ Known Risks and Required Proof
 
+## 2026-10-28 — Fixed-payload connectivity probe boundary
+
+The general chat API rejects metadata-only `data_mode="none"`. Connectivity
+probes use `test_connection(cfg)` and provider adapters require the fixed
+repository-owned prompt/system before accepting that exception. Egress checks
+normalize modes before checking the capability whitelist, including whitespace,
+case variants and the policy's empty/None normalization behavior.
+
+Regression coverage: `tests/test_remote_probe_payload_boundary.py`, existing
+egress, policy and router suites. Mock HTTP and injected policy snapshots prove
+adapter contracts, not live provider delivery or all browser/PWA paths. The
+intent of the existing policy is unchanged; `redacted` remains caller-declared.
+
 **Snapshot:** 2026-09-23  
 **Live main at this reconciliation:** `main@c877f1e177dc21687884f73b378213fdd9ef1dbe`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
