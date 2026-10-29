@@ -437,3 +437,7 @@ Phase 3B                                     NOT ADMITTED / NOT STARTED
 Any later wiring, semantic-quality benchmark, CSM Stage D or activation requires a separate
 bounded admission, fresh owner audit, exact-head tests/CI, protected merge and synchronized
 GitHub/Notion evidence.
+
+## 2026-10-29 — branch-local CoreMemoryBlocks repair (pending merge)
+
+This branch proposes cache publication after successful SQLite commit in `core/sleep_time_worker.py`. Verified locally against base `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`: 4 new regressions + 37 existing sleep worker tests = 41 PASS; the 4 new tests fail on the unmodified base. This entry describes the proposal only, not merged main or hosted CI. See `KNOWN_RISKS.md` for scope limits. No runtime enablement, Canon admission or production authorization is asserted.

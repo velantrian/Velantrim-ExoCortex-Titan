@@ -143,7 +143,6 @@ class CoreMemoryBlocks:
         """Явное обновление блока. Не auto-overwrite."""
         now = datetime.now(UTC).isoformat()
         block = CoreMemoryBlock(name=name, content=content, last_updated=now)
-        self.blocks[name] = block
         conn = sqlite3.connect(self.db_path)
         try:
             conn.execute("""
@@ -154,6 +153,8 @@ class CoreMemoryBlocks:
                     last_updated = excluded.last_updated
             """, (name, content, now))
             conn.commit()
+            # Publish only a committed value; failed writes leave the cache unchanged.
+            self.blocks[name] = block
         finally:
             conn.close()
         logger.debug("CoreMemoryBlocks: обновлён блок '%s'", name)
