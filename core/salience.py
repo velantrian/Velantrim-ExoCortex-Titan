@@ -198,6 +198,7 @@ _detector: SalienceDetector | None = None
 
 
 def get_salience_detector() -> SalienceDetector:
+    """Explicit legacy process singleton; not isolated between independent owners."""
     global _detector
     if _detector is None:
         _detector = SalienceDetector()
@@ -218,8 +219,16 @@ def analyze_episode_salience(
     episode_id: str,
     *,
     now: datetime | None = None,
+    detector: SalienceDetector | None = None,
 ) -> SalienceResult:
-    return get_salience_detector().analyze(text, episode_id, now=now)
+    """Never borrow unrelated process history without an explicitly owned detector.
+
+    An unscoped call retains lexical signals but cannot accumulate topic streak
+    or return signals across calls. Callers needing temporal history must retain
+    and pass a SalienceDetector whose lifecycle they own.
+    """
+    active_detector = detector if detector is not None else SalienceDetector()
+    return active_detector.analyze(text, episode_id, now=now)
 
 
 async def persist_salience_metadata(
