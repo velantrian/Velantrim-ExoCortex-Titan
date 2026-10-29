@@ -19,9 +19,13 @@ can award `topic_streak_3d` after a gap, and separately constructed detectors sh
 topic history. The proposed correction is focused-tested; it is not a main closure
 until merged. See [contract and evidence](../SALIENCE_HISTORY_CONTRACT.md).
 
-The convenience singleton remains process-wide without a user/scope key, and history
-does not survive restart. Instance isolation does not prove real-tenant isolation.
-Feature activation and Canon/trust authority remain unchanged.
+The explicit legacy singleton remains process-wide without a user/scope key; do
+not share it across independent owners. The unscoped salience helper is proposed
+to become one-shot (no cross-call temporal signals) to prevent borrowed history.
+The existing ingest bridge has no trusted scope to inject and consequently
+cannot accumulate temporal salience until separately wired. The Velum singleton
+itself remains process-wide. History is lost on restart; none of this proves
+tenant isolation. Feature activation and Canon/trust authority remain unchanged.
 
 ## Reduced risk — World Skills admission is fail-closed; legacy corpus remains unreviewed
 
