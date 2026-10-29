@@ -3,15 +3,23 @@
 
 - Base: `main@f44216656673b2a49e64f8cc7c8bca6d32e44d3f`.
 - Count the calendar streak ending on the current observation; historical best runs
-  no longer grant the bonus after a gap. Each explicit detector owns its tracker;
-  the default singleton still retains history until explicit reset.
+  no longer grant the bonus after a gap. Each explicit detector owns its tracker.
+- Independent A/B synthetic callers demonstrated false streak and return signals
+  through the implicit singleton (3.2 vs 1.0 weight). Proposed follow-up hardening:
+  the public helper without an explicit detector uses one-shot history;
+  persistent temporal signals require a caller-owned detector. The explicit legacy
+  process singleton remains opt-in and unsafe for independent owners.
+- The ingest bridge has no proven scope and will not accumulate temporal salience
+  without a later explicit injection; Velum itself is still process-wide.
 - Nine regressions: unchanged baseline 2 failed / 7 passed; correction 9 passed.
   Related salience / experience-replay / decay smoke run: 31 passed locally.
 - Contract, paired controls and remaining process-wide singleton / restart limitations:
   [`../SALIENCE_HISTORY_CONTRACT.md`](../SALIENCE_HISTORY_CONTRACT.md).
 - Documentation impact: `GITHUB_ONLY`; focused correction of existing behavior, no
   new provider, memory subsystem, Canon admission or activation. Notion is `NOT_REQUIRED`.
-- Status: proposed branch, locally focused-tested, hosted exact-head CI pending.
+- At initial head `a07d8e8941fc`, hosted CI/Docker/CodeQL/Stage 9/Stage 10:
+  all success; CI pytest 4778 passed, 17 skipped, 1 xfailed. Follow-up changes
+  require fresh exact-head CI and owner review. No production authorization.
 
 ## 2026-09-23 — PR #461 R1 Validated admission boundary · MERGED
 
