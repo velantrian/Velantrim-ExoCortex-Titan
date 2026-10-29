@@ -62,22 +62,66 @@ def test_new_topic_does_not_inherit_another_topic_streak():
     assert "topic_streak_3d" in observe(detector, [4])[-1].signals
 
 
-def test_default_detector_retains_history_until_explicit_reset():
-    salience.reset_salience_detector()
-    try:
-        initial = salience.get_salience_detector()
-        for day in [1, 2, 3]:
-            result = salience.analyze_episode_salience(
-                TEXT, f"default-{day}", now=datetime(2026, 10, day, tzinfo=UTC)
-            )
-        assert salience.get_salience_detector() is initial
-        assert "topic_streak_3d" in result.signals
+def test_explicit_legacy_singleton_retains_history_until_reset():
+    initial = salience.get_salience_detector()
+    results = observe(initial, [1, 2, 3])
+    assert salience.get_salience_detector() is initial
+    assert "topic_streak_3d" in results[-1].signals
 
-        salience.reset_salience_detector()
-        assert salience.get_salience_detector() is not initial
-        assert observe(salience.get_salience_detector(), [3])[-1].signals == []
-    finally:
-        salience.reset_salience_detector()
+    salience.reset_salience_detector()
+    assert salience.get_salience_detector() is not initial
+    assert observe(salience.get_salience_detector(), [3])[-1].signals == []
+
+
+def test_unscoped_api_does_not_borrow_another_callers_history():
+    # A uses the legacy singleton, while B calls the public helper with no
+    # trustworthy scope. A's observations must not affect B's first episode.
+    a = salience.get_salience_detector()
+    observe(a, [1, 2])
+    b = salience.analyze_episode_salience(
+        TEXT, "B-first", now=datetime(2026, 10, 3, tzinfo=UTC)
+    )
+    assert b.signals == []
+    assert b.weight == 1.0
+    assert salience.get_salience_detector() is a
+
+    # Two anonymous calls also cannot combine into a false third-day streak.
+    for day in [1, 2, 3]:
+        anonymous = salience.analyze_episode_salience(
+            TEXT, f"anonymous-{day}", now=datetime(2026, 10, day, tzinfo=UTC)
+        )
+        assert "topic_streak_3d" not in anonymous.signals
+        assert "topic_return_24h" not in anonymous.signals
+
+
+def test_explicit_callers_keep_independent_temporal_history():
+    first = salience.SalienceDetector()
+    second = salience.SalienceDetector()
+    for day in [1, 2]:
+        salience.analyze_episode_salience(
+            TEXT, f"A-{day}", now=datetime(2026, 10, day, tzinfo=UTC),
+            detector=first,
+        )
+    b = salience.analyze_episode_salience(
+        TEXT, "B-3", now=datetime(2026, 10, 3, tzinfo=UTC), detector=second
+    )
+    a = salience.analyze_episode_salience(
+        TEXT, "A-3", now=datetime(2026, 10, 3, tzinfo=UTC), detector=first
+    )
+    assert b.signals == []
+    assert b.weight == 1.0
+    assert "topic_streak_3d" in a.signals
+    assert "topic_return_24h" in a.signals
+    assert a.weight == 3.2
+
+
+def test_unscoped_api_keeps_text_signals_without_temporal_history():
+    result = salience.analyze_episode_salience(
+        "ВАЖНО! clarify bridge inspection", "B-text",
+        now=datetime(2026, 10, 3, tzinfo=UTC),
+    )
+    assert result.signals == ["caps_lock", "exclamation", "priority_words", "clarification"]
+    assert result.weight == pytest.approx(1.5 * 1.3 * 1.4 * 1.2)
 
 
 def test_existing_text_signals_and_weight_cap_are_preserved():
