@@ -12,6 +12,17 @@ A green CI run, manifest, config, historical canary, archive payload, audit reco
 Notion update is evidence only. None of them grants current permission, runtime authority
 or production authority.
 
+## Draft correction — salience topic history
+
+At baseline `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`, an old three-day series
+can award `topic_streak_3d` after a gap, and separately constructed detectors share
+topic history. The proposed correction is focused-tested; it is not a main closure
+until merged. See [contract and evidence](../SALIENCE_HISTORY_CONTRACT.md).
+
+The convenience singleton remains process-wide without a user/scope key, and history
+does not survive restart. Instance isolation does not prove real-tenant isolation.
+Feature activation and Canon/trust authority remain unchanged.
+
 ## Reduced risk — World Skills admission is fail-closed; legacy corpus remains unreviewed
 
 C9 for parent #52 is **CLOSED** through protected-merged PR #320 at signed
