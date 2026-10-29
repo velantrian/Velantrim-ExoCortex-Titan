@@ -436,3 +436,9 @@ PRODUCTION-READY
 Never infer a later state from an earlier one. In particular, historical observation,
 Phase 3A's tested compatibility contract and 12/12 Continuity never imply current
 permission or production authority.
+
+## 2026-10-29 proposed fix: failed CoreMemoryBlocks write
+
+On base `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`, `update()` published a new block in RAM before SQLite committed. A failed insert/update, connection or commit could expose an undurable value through `get()` and `get_system_context()` while a fresh instance read the prior disk state.
+
+This branch moves cache publication after successful commit. Four new regressions fail on the base and pass with this fix; the existing 37 sleep worker tests pass locally. This is a focused consistency repair, not new TruthGate admission, worker activation or a claim of production model exposure. Separate instances still load snapshots once; this patch adds no cross-instance cache coherence, concurrency serialization or power-loss guarantee.

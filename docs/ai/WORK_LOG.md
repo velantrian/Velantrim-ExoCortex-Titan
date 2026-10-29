@@ -703,3 +703,9 @@ multilingual retrieval wrapper. Neither grants runtime or production authority.
 ## 2026-10-18 — PR #474 local manifest review
 
 Reviewed the unwired local World Skills resolver, fixed-source/hash/span validation, revocation handling and the distinction between reference resolution and unverified review attestation. Added a public technical boundary and component route. Focused resolver/MemoryOps tests: 16 passed locally. Runtime wiring, authenticated owner identity, Canon admission and action authority remain absent. Documentation impact: GITHUB_ONLY; no architecture/owner or runtime authorization change. Exact published-head CI remains the merge gate.
+
+## 2026-10-29 — proposed CoreMemoryBlocks commit-before-publication fix
+
+Base: `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED` (focused failure-consistency repair, no authority/wiring/roadmap change).
+
+Changed `CoreMemoryBlocks.update()` to publish RAM only after SQLite commit. Regression coverage: rejected existing/custom block writes with successful retry; failed connection; failed commit. Four regressions fail on unmodified base; corrected branch runs 41/41 including the existing sleep-time-worker suite. Command: `python -m pytest tests/test_core_blocks_failed_commit.py tests/test_sleep_time_worker.py -q -o addopts=''` with pytest-asyncio installed. No live LLM calls or CI/full-suite claim. Existing opt-in/disabled runtime and admission boundaries remain as documented.
