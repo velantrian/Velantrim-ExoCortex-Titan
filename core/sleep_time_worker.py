@@ -129,21 +129,33 @@ class CoreMemoryBlocks:
             rows = conn.execute(
                 "SELECT name, content, last_updated FROM core_blocks"
             ).fetchall()
+            present = {name for name, _, _ in rows}
+            missing = [
+                (name, content) for name, content in self._DEFAULT_BLOCKS.items()
+                if name not in present
+            ]
+            if missing:
+                now = datetime.now(UTC).isoformat()
+                # Another instance may have populated a missing slot since our read.
+                conn.executemany("""
+                    INSERT INTO core_blocks (name, content, last_updated)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(name) DO NOTHING
+                """, [(name, content, now) for name, content in missing])
+                rows = conn.execute(
+                    "SELECT name, content, last_updated FROM core_blocks"
+                ).fetchall()
+                conn.commit()
+            # Publish the actual stored rows only after default creation commits.
             for name, content, last_updated in rows:
                 self.blocks[name] = CoreMemoryBlock(name, content, last_updated)
         finally:
             conn.close()
 
-        # Создать дефолтные блоки если нет
-        for name, content in self._DEFAULT_BLOCKS.items():
-            if name not in self.blocks:
-                self.update(name, content)
-
     def update(self, name: str, content: str) -> None:
         """Явное обновление блока. Не auto-overwrite."""
         now = datetime.now(UTC).isoformat()
         block = CoreMemoryBlock(name=name, content=content, last_updated=now)
-        self.blocks[name] = block
         conn = sqlite3.connect(self.db_path)
         try:
             conn.execute("""
@@ -154,6 +166,8 @@ class CoreMemoryBlocks:
                     last_updated = excluded.last_updated
             """, (name, content, now))
             conn.commit()
+            # Publish only a committed value; failed writes leave the cache unchanged.
+            self.blocks[name] = block
         finally:
             conn.close()
         logger.debug("CoreMemoryBlocks: обновлён блок '%s'", name)

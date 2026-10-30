@@ -436,3 +436,22 @@ PRODUCTION-READY
 Never infer a later state from an earlier one. In particular, historical observation,
 Phase 3A's tested compatibility contract and 12/12 Continuity never imply current
 permission or production authority.
+
+## 2026-10-29 proposed fix: failed CoreMemoryBlocks write
+
+On base `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`, `update()` published a new block in RAM before SQLite committed. A failed insert/update, connection or commit could expose an undurable value through `get()` and `get_system_context()` while a fresh instance read the prior disk state.
+
+This branch moves cache publication after successful commit. Four new regressions fail on the base and pass with this fix; the existing 37 sleep worker tests pass locally. This is a focused consistency repair, not new TruthGate admission, worker activation or a claim of production model exposure. Separate instances still load snapshots once; this patch adds no cross-instance cache coherence, concurrency serialization or power-loss guarantee.
+
+## 2026-10-30 PR #490 review: default creation and remaining concurrency limits
+
+**Pre-existing destructive initialization race, repaired in this draft follow-up:** constructor B reads an empty snapshot; instance A then seeds defaults and commits an explicit goal; B resumes and formerly used unconditional `update()` to replace A's accepted goal with a default. The new regression reproduces that schedule. Missing-default initialization now uses targeted `ON CONFLICT(name) DO NOTHING`, reads the winning stored values and timestamps, and publishes only after commit. This protects existing rows; it does not turn instance caches into coherent shared state.
+
+The independent base/head comparison also confirmed these remaining limits, which this focused repair does not claim to close:
+
+- Two updates on one instance can commit and publish in different orders. If A pauses after committing, B commits/publishes, then A publishes, the local cache/context can show A while SQLite and a fresh instance show B. A complementary pre-connect interleaving reproduces the same inconsistency class on the pre-PR base.
+- Existing separate instances retain their own snapshots after another instance writes. A newly constructed instance reads the persisted state; existing ones are not invalidated.
+- Concurrent insertion of a custom block while `get_system_context()` iterates the cache can raise `RuntimeError: dictionary changed size during iteration`; this predates the PR.
+- An explicit retry is a fresh unconditional UPSERT, with no expected-version/CAS or idempotency token. Retrying an older candidate after another writer succeeds can overwrite that newer value. Failure rollback does not imply freshness-safe retry.
+
+Real SQLite writer contention (`SQLITE_BUSY`) and a deferred foreign-key failure at `commit()` preserved the prior content, timestamps and context, with successful retry after removal of the injected fault. The existing synthetic commit test raises before the real commit. Neither those probes nor this patch certify commit-then-error ambiguity, power-loss behavior, arbitrary external schema changes, or actual live-model delivery of `get_system_context()`.
