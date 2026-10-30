@@ -709,3 +709,23 @@ Reviewed the unwired local World Skills resolver, fixed-source/hash/span validat
 Base: `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED` (focused failure-consistency repair, no authority/wiring/roadmap change).
 
 Changed `CoreMemoryBlocks.update()` to publish RAM only after SQLite commit. Regression coverage: rejected existing/custom block writes with successful retry; failed connection; failed commit. Four regressions fail on unmodified base; corrected branch runs 41/41 including the existing sleep-time-worker suite. Command: `python -m pytest tests/test_core_blocks_failed_commit.py tests/test_sleep_time_worker.py -q -o addopts=''` with pytest-asyncio installed. No live LLM calls or CI/full-suite claim. Existing opt-in/disabled runtime and admission boundaries remain as documented.
+
+## 2026-10-30 — independent PR #490 review and default-initialization fix
+
+Incoming head: `ef248811373acaf04afb6b5d157d26a6a6ab73a3`; base: `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`. The four original negative cases independently fail on the base and pass on the incoming head. All 41 focused tests pass in an isolated module run. Direct fault probes additionally cover real `SQLITE_BUSY`, a deferred-constraint failure during actual commit (including rollback of trigger side effects), and connection failure; `get()`, cache, timestamps, context, fresh-instance reads and successful retries agree.
+
+Deterministic concurrency probes found a separate pre-existing data-loss defect: a delayed constructor can seed a default over a goal already committed by another instance. Added `test_concurrent_default_initialization_preserves_committed_value`; it fails on the incoming head. Fixed `_load()` with conditional insert-if-absent default creation and transactional readback, preserving no-write reconstruction when defaults are present. Explicit updates, authority and activation settings are unchanged. The focused suite is now 42 PASS. Local runs used `--noconftest` with Python 3.12.14, pytest 9.1.1 and the unchanged upstream pytest-asyncio 1.4.0 plugin; they do not claim the repository-wide autouse fixtures or full suite were executed locally.
+
+Incoming-head hosted evidence (the merge and head trees are identical):
+
+| Workflow | Run | Verified result and scope |
+|---|---|---|
+| CI — Velantrim Titan 9.0 | [40965646082](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646082) | 4773 passed, 17 skipped, 1 xfailed; all four new and 37 existing focused cases executed. Lint/type/guard jobs succeeded. |
+| Docker | [40965646056](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646056) | Build and runtime hardening checks succeeded. |
+| CodeQL | [40965646214](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646214) | Python analysis succeeded; not a transactional/concurrency proof. |
+| Stage 9 | [40965646066](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646066) | Browser acceptance PASS, with LLM and Sleep Worker disabled. |
+| Stage 10 | [40965646010](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646010) | Bounded pilot PASS, with LLM and Sleep Worker disabled; no production authorization. |
+
+The above runs precede this follow-up; resolve its hosted checks separately. Remaining reproduced limits are recorded in `KNOWN_RISKS.md`: publication-order races, stale existing instances, concurrent context iteration and retries without CAS. They do not negate the sequential failed-write repair, and no broader coherence guarantee is introduced. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED` (focused consistency fix and evidence, no deeper architecture or roadmap change). Keep PR #490 Draft; no automatic merge or runtime activation.
+
+Additional fault probes on the changed initialization path also passed: a real SQLite trigger abort on the second default insert, and a deferred foreign-key failure at commit. Both rolled back pending defaults and trigger side effects, left the failed constructor cache unpublished, preserved a pre-existing accepted goal and its timestamp, and allowed a later constructor retry. These probes are separate from the 42-case pytest result.
