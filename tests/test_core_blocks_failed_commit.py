@@ -1,5 +1,8 @@
-"""Rejected durable writes must never enter the prompt-facing cache."""
+"""Core-block failures and initialization must preserve committed values."""
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event, current_thread
+
 import pytest
 from core.sleep_time_worker import CoreMemoryBlocks
 
@@ -59,3 +62,49 @@ def test_commit_failure_keeps_original_value(monkeypatch, tmp_path):
     assert blocks.all_as_dict() == old
     assert blocks.get_system_context() == context
     assert CoreMemoryBlocks(path).all_as_dict() == old
+
+
+def test_concurrent_default_initialization_preserves_committed_value(monkeypatch, tmp_path):
+    path = str(tmp_path / 'blocks.db')
+    snapshot_loaded, resume = Event(), Event()
+    owner_thread = current_thread()
+    connect = sqlite3.connect
+
+    class PausedSnapshotCursor(sqlite3.Cursor):
+        def fetchall(self):
+            rows = super().fetchall()
+            if not snapshot_loaded.is_set():
+                snapshot_loaded.set()
+                assert resume.wait(5), 'default initialization was not resumed'
+            return rows
+
+    class PausedSnapshotConnection(sqlite3.Connection):
+        def execute(self, *args, **kwargs):
+            return self.cursor(factory=PausedSnapshotCursor).execute(*args, **kwargs)
+
+    def connect_with_paused_reader(*args, **kwargs):
+        if current_thread() is not owner_thread:
+            kwargs['factory'] = PausedSnapshotConnection
+        return connect(*args, **kwargs)
+
+    monkeypatch.setattr(sqlite3, 'connect', connect_with_paused_reader)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        pending = executor.submit(CoreMemoryBlocks, path)
+        try:
+            assert snapshot_loaded.wait(5), 'initial database snapshot was not read'
+            writer = CoreMemoryBlocks(path)
+            writer.update('current_goals', 'explicitly accepted goal')
+            expected = writer.all_as_dict()
+            timestamps = {k: v.last_updated for k, v in writer.blocks.items()}
+            context = writer.get_system_context()
+        finally:
+            resume.set()
+        delayed = pending.result(timeout=5)
+
+    assert delayed.get('current_goals') == 'explicitly accepted goal'
+    assert delayed.all_as_dict() == expected
+    assert {k: v.last_updated for k, v in delayed.blocks.items()} == timestamps
+    assert delayed.get_system_context() == context
+    restored = CoreMemoryBlocks(path)
+    assert restored.all_as_dict() == expected
+    assert {k: v.last_updated for k, v in restored.blocks.items()} == timestamps

@@ -441,3 +441,11 @@ GitHub/Notion evidence.
 ## 2026-10-29 — branch-local CoreMemoryBlocks repair (pending merge)
 
 This branch proposes cache publication after successful SQLite commit in `core/sleep_time_worker.py`. Verified locally against base `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`: 4 new regressions + 37 existing sleep worker tests = 41 PASS; the 4 new tests fail on the unmodified base. This entry describes the proposal only, not merged main or hosted CI. See `KNOWN_RISKS.md` for scope limits. No runtime enablement, Canon admission or production authorization is asserted.
+
+## 2026-10-30 — independent PR #490 review and constructor repair (pending merge)
+
+Reviewed incoming head `ef248811373acaf04afb6b5d157d26a6a6ab73a3`. Its four failure regressions and 37 existing sleep-worker tests pass independently in an isolated module run. All five hosted workflows succeeded; CI's synthetic merge `f091f5287ed46e64732cf4ec98086695d7fc8dac` has the same tree (`a6ba7ff6c587f4faa3ebe6068e1fa6f5806e520c`) as that head. The main test job reports 4773 passed, 17 skipped and 1 xfailed. These are incoming-head results, not evidence for a later commit.
+
+The multi-instance review also reproduced a pre-existing destructive initialization race: a constructor using an earlier empty snapshot could overwrite a subsequently committed explicit goal with its default. This branch now seeds only missing defaults using `ON CONFLICT(name) DO NOTHING`, rereads the stored rows in that transaction, and publishes them after commit. Opening a database whose defaults already exist still performs no seed writes. Explicit `update()` retains commit-before-cache publication.
+
+The deterministic constructor regression fails on the incoming head and passes with this follow-up; the isolated focused suite is now 42 PASS (`--noconftest`, Python 3.12.14, pytest 9.1.1, upstream pytest-asyncio 1.4.0). The full repository suite was not run locally; hosted checks must be resolved at the follow-up commit. See `WORK_LOG.md` and `KNOWN_RISKS.md` for evidence and remaining concurrency limits. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED`. Status remains proposed in Draft PR #490, with no runtime, Canon or authority change.
