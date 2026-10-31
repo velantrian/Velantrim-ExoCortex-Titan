@@ -455,3 +455,16 @@ The independent base/head comparison also confirmed these remaining limits, whic
 - An explicit retry is a fresh unconditional UPSERT, with no expected-version/CAS or idempotency token. Retrying an older candidate after another writer succeeds can overwrite that newer value. Failure rollback does not imply freshness-safe retry.
 
 Real SQLite writer contention (`SQLITE_BUSY`) and a deferred foreign-key failure at `commit()` preserved the prior content, timestamps and context, with successful retry after removal of the injected fault. The existing synthetic commit test raises before the real commit. Neither those probes nor this patch certify commit-then-error ambiguity, power-loss behavior, arbitrary external schema changes, or actual live-model delivery of `get_system_context()`.
+
+
+## 2026-10-31 stacked Draft: CoreMemoryBlocks instance-local publication ordering
+
+This separate, stacked change starts from PR #490 head `120ef55591662d102062688565aafdcd521c5b1e`; it does not rewrite that PR or its historical evidence. Its local synchronization is limited to **one Python `CoreMemoryBlocks` object**:
+
+- The same per-instance `threading.Lock` spans the `update()` SQLite write, successful `commit()`, and RAM publication. Concurrent explicit `update()` calls on that object cannot publish out of their own SQLite commit order.
+- `get()`, `all_as_dict()`, and `get_system_context()` take that lock. They do not observe the object's commit-to-publication gap. Iteration in `get_system_context()` cannot race with a custom-block insertion through the same object's `update()`.
+- The regression test pauses writer A **after a real SQLite commit**, then starts writer B and checks that B cannot publish before A. Its inverse negative schedule reproduced RAM/SQLite divergence against the exact PR #490 core-block logic in an isolated local harness. Separate reader-gate and two-instance characterization tests describe the boundary.
+
+**Not guaranteed:** a lock on one object does not synchronize different `CoreMemoryBlocks` objects, Python processes, direct external SQLite writers, or direct mutation/access of the public `blocks` dictionary. A cached snapshot can remain stale after a different instance writes. Cross-instance write ordering and cache invalidation, retry freshness (CAS/version), commit-then-error ambiguity, process/power-loss durability, distributed consistency, live-model use, and TruthGate/runtime/Canon authorization remain outside this fix.
+
+This is a code/test-only consistency improvement with no new authority. Hosted verification applies only to the final branch SHA reported by CI, not to this prose or the earlier PR #490 SHA.
