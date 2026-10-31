@@ -45,6 +45,7 @@ import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
+from threading import Lock
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,7 @@ class CoreMemoryBlocks:
     def __init__(self, db_path: str = CORE_BLOCKS_DB_PATH) -> None:
         self.db_path = db_path
         self.blocks: dict[str, CoreMemoryBlock] = {}
+        self._block_lock = Lock()
         self._init_db()
         self._load()
 
@@ -154,41 +156,48 @@ class CoreMemoryBlocks:
 
     def update(self, name: str, content: str) -> None:
         """Явное обновление блока. Не auto-overwrite."""
-        now = datetime.now(UTC).isoformat()
-        block = CoreMemoryBlock(name=name, content=content, last_updated=now)
-        conn = sqlite3.connect(self.db_path)
-        try:
-            conn.execute("""
-                INSERT INTO core_blocks (name, content, last_updated)
-                VALUES (?, ?, ?)
-                ON CONFLICT(name) DO UPDATE SET
-                    content      = excluded.content,
-                    last_updated = excluded.last_updated
-            """, (name, content, now))
-            conn.commit()
-            # Publish only a committed value; failed writes leave the cache unchanged.
-            self.blocks[name] = block
-        finally:
-            conn.close()
+        # One instance must publish updates in SQLite commit order.
+        # This lock does not synchronize other CoreMemoryBlocks instances.
+        with self._block_lock:
+            now = datetime.now(UTC).isoformat()
+            block = CoreMemoryBlock(name=name, content=content, last_updated=now)
+            conn = sqlite3.connect(self.db_path)
+            try:
+                conn.execute("""
+                    INSERT INTO core_blocks (name, content, last_updated)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(name) DO UPDATE SET
+                        content      = excluded.content,
+                        last_updated = excluded.last_updated
+                """, (name, content, now))
+                conn.commit()
+                # Publish only the successfully committed value while holding the lock.
+                self.blocks[name] = block
+            finally:
+                conn.close()
         logger.debug("CoreMemoryBlocks: обновлён блок '%s'", name)
 
     def get(self, name: str) -> str | None:
         """Получить содержимое блока по имени."""
-        block = self.blocks.get(name)
-        return block.content if block else None
+        with self._block_lock:
+            block = self.blocks.get(name)
+            return block.content if block else None
 
     def get_system_context(self) -> str:
         """
         Собрать все блоки для system prompt.
         Результат всегда ~500 токенов — не зависит от размера графа.
         """
-        parts = []
-        for name, block in self.blocks.items():
-            parts.append(f"## {name}\n{block.content}")
+        with self._block_lock:
+            parts = [
+                f"## {name}\n{block.content}"
+                for name, block in self.blocks.items()
+            ]
         return "\n\n".join(parts)
 
     def all_as_dict(self) -> dict[str, str]:
-        return {name: b.content for name, b in self.blocks.items()}
+        with self._block_lock:
+            return {name: b.content for name, b in self.blocks.items()}
 
 
 # ─── Research Notebook (блокнот проекта) ──────────────────────────────────────
