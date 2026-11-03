@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import tomllib
 import types
 import unittest
 from unittest.mock import patch
@@ -165,6 +166,17 @@ def frozen_bytes():
 
 
 class Pilot0HarnessTests(unittest.TestCase):
+    def test_parser_pin_matches_security_lock(self):
+        lock_path = Path(__file__).resolve().parents[1] / "uv.lock"
+        locked = tomllib.loads(lock_path.read_text(encoding="utf-8"))
+        versions = [
+            package["version"]
+            for package in locked["package"]
+            if package["name"] == PARSER_NAME
+        ]
+        self.assertEqual(versions, [PINNED_PARSER_VERSION])
+        self.assertEqual(PINNED_PARSER_VERSION, "6.21.4")
+
     def test_pinned_parser_extracts_only_synthetic_local_pdf(self):
         installed = metadata.version(PARSER_NAME)
         self.assertEqual(installed, PINNED_PARSER_VERSION)

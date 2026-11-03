@@ -3,7 +3,7 @@
 > **Role:** architecture/navigation map for users, engineers, operators, reviewers, and AI agents.
 >
 > **Product version:** <!-- SYNC:VERSION -->v9.0.0<!-- /SYNC:VERSION -->
-> **Audited base:** `main@70bc34fecdcf0bae15bc2264445e31b87b79bf08` on 2026-09-08.
+> **Audited base:** `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` on 2026-11-03.
 > This is a dated verification checkpoint, not an evergreen remote-head claim.
 >
 > Code at the exact SHA, tests/CI, selected configuration, and observed runtime evidence
@@ -207,6 +207,25 @@ Canon/ESM write authority or answer authority.
 ---
 
 <a id="engineer"></a>
+
+## ⏹️ LLM call cancel ≠ transport timeout
+
+`core/llm_router.chat_complete(..., cancel_event=asyncio.Event | None)`:
+
+| Outcome | Exception | Meaning |
+|---|---|---|
+| caller/session set `cancel_event` | `LlmCallCancelledError` (not `TimeoutError`) | caller decision; in-flight provider HTTP is aborted; if cancel wins before start, the request is not sent |
+| provider did not answer within `LlmCallConfig.timeout` | `LlmTransportTimeoutError` (`TimeoutError`) | transport outcome; the provider may still have processed a response |
+
+Both exceptions carry `provider_outcome`: `NOT_SENT` — cancel before start, or
+`httpx.ConnectTimeout` / `PoolTimeout`; `UNKNOWN` — in-flight cancel, or Read/WriteTimeout.
+`UNKNOWN` means a local cancel does **not** prove the provider did nothing or did not
+bill. The router does not retry on its own; if a response and a cancel race in the same
+tick, the response wins. Continuum mapping: `UNKNOWN` ≈ `UNKNOWN_OUTCOME`, `NOT_SENT` ≈
+adapter-pre-start refusal; the enums are intentionally not unified.
+
+Without `cancel_event`, behavior is unchanged. Tests: `tests/test_llm_router_cancellation.py`.
+Not yet plumbed from API/Telegram and does not cover STT/TTS.
 
 ## 🧑‍💻 Engineering boundaries
 

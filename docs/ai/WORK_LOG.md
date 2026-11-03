@@ -1,3 +1,87 @@
+## 2026-11-03 — PR #473 Draft integration with main security lock · NOT MERGED
+
+- Reconciled historical #473 head `4831944440f90159b28862d14e6abfc61d9c9a96`
+  against `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754`.
+- Kept main's changed LLM payload/egress guards; retained Draft Pilot-0's exact
+  `off|high|max` low-level DeepSeek validation.
+- Exact offline PDF parser pin raised from 6.20.1 to locked `pypdf==6.21.4`
+  without altering `uv.lock`, the audit gate, the general runtime route,
+  synthetic PDF scope or the frozen-source/evaluator no-execution contract.
+- Added a regression that compares the local exact pin with the checked-in lock.
+  Hosted exact-head CI and security evidence are required, not pre-claimed.
+- No real model, paid model, frozen external content, Canon, production activation,
+  or Operator GO. This remains Draft PR review code.
+
+## 2026-11-03 — Bilingual docs + status reconciliation
+
+- Base: live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` (#482).
+- Restored section/claim parity: `README.md` ↔ `README.ru.md`,
+  `SYSTEM_OVERVIEW.en.md` ↔ `SYSTEM_OVERVIEW.md` (including LLM cancel ≠ timeout
+  with `provider_outcome` on the English atlas).
+- Refreshed `docs/ai/CURRENT_STATE.md` and `docs/project_status/FOR_AI.json` to the
+  dated main head; Continuity canary SHA in `docs/state/project_state.json`
+  intentionally unchanged (`39ba28db…`).
+- Closed stale “draft” risk wording for merged #489/#495 salience and #490
+  CoreMemoryBlocks cache publish-after-commit.
+- Open residual (verify live): #473 pilot0 harness remains CONFLICTING vs main
+  and still needs rebase / pypdf pin alignment to 6.21.4.
+- Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED` (status/language
+  parity refresh; no architecture owner, runtime activation, or roadmap change).
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
+## 2026-11-03 — Salience ingest owner-scope audit guards
+
+- Base: post-merge `main` after #489 salience history fix.
+- Adds offline synthetic guards proving unscoped ingest cannot mix temporal
+  history across callers, while lexical one-shot weights still apply.
+- Documentation impact: `GITHUB_ONLY` (audit note + tests). No runtime owner,
+  Canon, or activation change. Notion: `NOT_REQUIRED`.
+
+
+## 2026-10-29 — Salience current streak and detector history · DRAFT
+
+- Base: `main@f44216656673b2a49e64f8cc7c8bca6d32e44d3f`.
+- Count the calendar streak ending on the current observation; historical best runs
+  no longer grant the bonus after a gap. Each explicit detector owns its tracker.
+- Independent A/B synthetic callers demonstrated false streak and return signals
+  through the implicit singleton (3.2 vs 1.0 weight). Proposed follow-up hardening:
+  the public helper without an explicit detector uses one-shot history;
+  persistent temporal signals require a caller-owned detector. The explicit legacy
+  process singleton remains opt-in and unsafe for independent owners.
+- The ingest bridge has no proven scope and will not accumulate temporal salience
+  without a later explicit injection; Velum itself is still process-wide.
+- Nine regressions: unchanged baseline 2 failed / 7 passed; correction 9 passed.
+  Related salience / experience-replay / decay smoke run: 31 passed locally.
+- Contract, paired controls and remaining process-wide singleton / restart limitations:
+  [`../SALIENCE_HISTORY_CONTRACT.md`](../SALIENCE_HISTORY_CONTRACT.md).
+- Documentation impact: `GITHUB_ONLY`; focused correction of existing behavior, no
+  new provider, memory subsystem, Canon admission or activation. Notion is `NOT_REQUIRED`.
+- At initial head `a07d8e8941fc`, hosted CI/Docker/CodeQL/Stage 9/Stage 10:
+  all success; CI pytest 4778 passed, 17 skipped, 1 xfailed. Follow-up changes
+  require fresh exact-head CI and owner review. No production authorization.
+
+## 2026-10-28 — Fixed-payload metadata probe hardening
+
+- Base: `main@f44216656673b2a49e64f8cc7c8bca6d32e44d3f`.
+- General `chat_complete` rejects metadata-only modes. `test_connection` owns
+  the fixed synthetic probe; each provider adapter checks the payload before
+  allowing `none`. Egress normalizes modes before applying the whitelist.
+- Focused regressions cover all five providers, normalized mode variants,
+  adapters, fixed-probe compatibility, and the missing-key failure path.
+- Documentation impact: `GITHUB_ONLY`, enforcement of the existing metadata-only
+  contract, with no new policy owner, provider, dependency or activation. Mock
+  transport tests do not prove real provider delivery or browser/PWA coverage.
+- Historical checkpoints below are preserved; review the actual PR head and CI
+  for merge readiness.
+- Hosted CI on the initial proposed head found a collection-time test-module
+  reference surviving the core.* purge in earlier API tests. The probe fixture
+  now patches the live PolicyKernel module. The same network_denied failure
+  was reproduced with an isolated module-reload harness before the fixture fix;
+  production enforcement is unchanged. Full CI on the revised head is required.
+
+## 2026-10-18 — PR #473 compatibility review
+
+Kept the Pilot0 Reader/evaluator harness offline and unexecuted against real models or the external frozen source. Updated the exact local PDF parser pin to `pypdf==6.20.1`, matching the reviewed dependency lock from #478; this prevents an integration failure caused by the earlier 6.19.0 pin. Focused harness/DeepSeek request tests: 28 passed / 31 subtests passed with the pinned parser. Changed-code Ruff and diff checks passed. Existing evidence, activation and production gates remain separate. Exact-head hosted checks remain required.
 
 ## 2026-10-04 — Pilot-0 reproducible harness · DRAFT / NOT RUN
 
@@ -719,10 +803,32 @@ not enabled and non-canonical. PR #341 hardens only the ownership lifecycle of t
 multilingual retrieval wrapper. Neither grants runtime or production authority.
 
 
-## 2026-10-18 — PR #473 compatibility review
-
-Kept the Pilot0 Reader/evaluator harness offline and unexecuted against real models or the external frozen source. Updated the exact local PDF parser pin to `pypdf==6.20.1`, matching the reviewed dependency lock from #478; this prevents an integration failure caused by the earlier 6.19.0 pin. Focused harness/DeepSeek request tests: 28 passed / 31 subtests passed with the pinned parser. Changed-code Ruff and diff checks passed. Existing evidence, activation and production gates remain separate. Exact-head hosted checks remain required.
-
 ## 2026-10-18 — PR #474 local manifest review
 
 Reviewed the unwired local World Skills resolver, fixed-source/hash/span validation, revocation handling and the distinction between reference resolution and unverified review attestation. Added a public technical boundary and component route. Focused resolver/MemoryOps tests: 16 passed locally. Runtime wiring, authenticated owner identity, Canon admission and action authority remain absent. Documentation impact: GITHUB_ONLY; no architecture/owner or runtime authorization change. Exact published-head CI remains the merge gate.
+
+## 2026-10-29 — proposed CoreMemoryBlocks commit-before-publication fix
+
+Base: `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED` (focused failure-consistency repair, no authority/wiring/roadmap change).
+
+Changed `CoreMemoryBlocks.update()` to publish RAM only after SQLite commit. Regression coverage: rejected existing/custom block writes with successful retry; failed connection; failed commit. Four regressions fail on unmodified base; corrected branch runs 41/41 including the existing sleep-time-worker suite. Command: `python -m pytest tests/test_core_blocks_failed_commit.py tests/test_sleep_time_worker.py -q -o addopts=''` with pytest-asyncio installed. No live LLM calls or CI/full-suite claim. Existing opt-in/disabled runtime and admission boundaries remain as documented.
+
+## 2026-10-30 — independent PR #490 review and default-initialization fix
+
+Incoming head: `ef248811373acaf04afb6b5d157d26a6a6ab73a3`; base: `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`. The four original negative cases independently fail on the base and pass on the incoming head. All 41 focused tests pass in an isolated module run. Direct fault probes additionally cover real `SQLITE_BUSY`, a deferred-constraint failure during actual commit (including rollback of trigger side effects), and connection failure; `get()`, cache, timestamps, context, fresh-instance reads and successful retries agree.
+
+Deterministic concurrency probes found a separate pre-existing data-loss defect: a delayed constructor can seed a default over a goal already committed by another instance. Added `test_concurrent_default_initialization_preserves_committed_value`; it fails on the incoming head. Fixed `_load()` with conditional insert-if-absent default creation and transactional readback, preserving no-write reconstruction when defaults are present. Explicit updates, authority and activation settings are unchanged. The focused suite is now 42 PASS. Local runs used `--noconftest` with Python 3.12.14, pytest 9.1.1 and the unchanged upstream pytest-asyncio 1.4.0 plugin; they do not claim the repository-wide autouse fixtures or full suite were executed locally.
+
+Incoming-head hosted evidence (the merge and head trees are identical):
+
+| Workflow | Run | Verified result and scope |
+|---|---|---|
+| CI — Velantrim Titan 9.0 | [40965646082](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646082) | 4773 passed, 17 skipped, 1 xfailed; all four new and 37 existing focused cases executed. Lint/type/guard jobs succeeded. |
+| Docker | [40965646056](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646056) | Build and runtime hardening checks succeeded. |
+| CodeQL | [40965646214](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646214) | Python analysis succeeded; not a transactional/concurrency proof. |
+| Stage 9 | [40965646066](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646066) | Browser acceptance PASS, with LLM and Sleep Worker disabled. |
+| Stage 10 | [40965646010](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/40965646010) | Bounded pilot PASS, with LLM and Sleep Worker disabled; no production authorization. |
+
+The above runs precede this follow-up; resolve its hosted checks separately. Remaining reproduced limits are recorded in `KNOWN_RISKS.md`: publication-order races, stale existing instances, concurrent context iteration and retries without CAS. They do not negate the sequential failed-write repair, and no broader coherence guarantee is introduced. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED` (focused consistency fix and evidence, no deeper architecture or roadmap change). Keep PR #490 Draft; no automatic merge or runtime activation.
+
+Additional fault probes on the changed initialization path also passed: a real SQLite trigger abort on the second default insert, and a deferred foreign-key failure at commit. Both rolled back pending defaults and trigger side effects, left the failed constructor cache unpublished, preserved a pre-existing accepted goal and its timestamp, and allowed a later constructor retry. These probes are separate from the 42-case pytest result.

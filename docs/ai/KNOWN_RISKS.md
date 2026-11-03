@@ -1,7 +1,20 @@
 # ⚠️ Known Risks and Required Proof
 
-**Snapshot:** 2026-09-23  
-**Live main at this reconciliation:** `main@c877f1e177dc21687884f73b378213fdd9ef1dbe`  
+## 2026-10-28 — Fixed-payload connectivity probe boundary
+
+The general chat API rejects metadata-only `data_mode="none"`. Connectivity
+probes use `test_connection(cfg)` and provider adapters require the fixed
+repository-owned prompt/system before accepting that exception. Egress checks
+normalize modes before checking the capability whitelist, including whitespace,
+case variants and the policy's empty/None normalization behavior.
+
+Regression coverage: `tests/test_remote_probe_payload_boundary.py`, existing
+egress, policy and router suites. Mock HTTP and injected policy snapshots prove
+adapter contracts, not live provider delivery or all browser/PWA paths. The
+intent of the existing policy is unchanged; `redacted` remains caller-declared.
+
+**Snapshot:** 2026-11-03  
+**Live main at this reconciliation:** `main@eb08e9392fe18025b562d66f118fb0d29fb3401c`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
 **C11 lifecycle rule:** this snapshot preserves the reconciled #52 risk record; resolve current issue/PR lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
@@ -11,6 +24,24 @@
 A green CI run, manifest, config, historical canary, archive payload, audit record or
 Notion update is evidence only. None of them grants current permission, runtime authority
 or production authority.
+
+## Reduced risk — salience current streak / per-detector history (MERGED #489 / #495)
+
+Merged on `main` via #489 (current calendar streak + per-detector history) and
+#495 (unscoped ingest owner-boundary audit guards). See
+[contract and evidence](../SALIENCE_HISTORY_CONTRACT.md).
+
+Remaining limits (not closed by those merges):
+
+- The explicit legacy singleton remains process-wide without a user/scope key; do
+  not share it across independent owners.
+- Unscoped salience helpers stay one-shot for temporal signals; persistent temporal
+  history requires an explicit caller-owned detector.
+- The existing ingest bridge has no trusted scope to inject and consequently
+  cannot accumulate temporal salience until separately wired.
+- The Velum singleton itself remains process-wide. History is lost on restart;
+  none of this proves tenant isolation.
+- Feature activation and Canon/trust authority remain unchanged.
 
 ## Reduced risk — World Skills admission is fail-closed; legacy corpus remains unreviewed
 
@@ -397,28 +428,33 @@ schema, Operator GO, runtime-authority or production-authority semantics.
 
 ## Proposed Pilot-0 harness — unresolved pre-run gates · DRAFT ONLY
 
-This section records the owner-authorized, non-merged implementation proposal only; it
-does not describe a live `main` runtime, an experiment, or accepted production risk.
+The implementation in Draft PR #473 is offline preparation on a review branch only:
+no runtime route, real-model call, frozen-corpus extraction, Canon write, Operator GO
+or production authorization follows from this reconciliation.
 
-- The local harness pins the already-present `pypdf==6.18.1`, while the existing
-  `parsers` extra requires `pypdf>=6.19.0,<7`. The package/version contract must be
-  reconciled under separate authorization before relying on the standard extra.
-- `SECRET_INTAKE_SAFE=NO`; there is no safe API-key injection path in this proposal.
-- The model is still `OWNER_SELECTED`; no model was selected or confirmed.
-- Current remote policy is not asserted to be host-bounded or DeepSeek-exclusive. Any
-  future DeepSeek call requires a separate capability/egress review.
-- Frozen-corpus rights/publication limits remain unresolved. The PDF and blind-question
-  bytes were hash-checked only; the sealed key was not opened/read/hashed, and no Reader,
-  extraction, Q&A, benchmark, or annotation ran on frozen inputs.
-- The Markdown question parser was tested only on synthetic Q1–Q15 content; the frozen
-  question content was not read, so syntax compatibility remains unverified.
-- The evaluator callable is injected and is not sandboxed by Python; a future execution
-  requires an explicit offline/capability-controlled caller.
+- The local Pilot-0 parser is pinned exactly to `pypdf==6.21.4`, matching
+  `main@5f8bb8c` and its authoritative `uv.lock`. Earlier 6.20.1 and 6.21.2
+  pins are not accepted. The general `parsers` extra still specifies
+  `pypdf>=6.19.0,<7`; an install without the audited lock is a separately
+  unresolved security-floor risk and must not be treated as equivalent.
+- The previously reported 28 focused tests and 31 subtests used 6.20.1.
+  Compatibility with 6.21.4 and exact-head hosted CI must be established
+  separately before any merge consideration; tests are not weakened.
+- `SECRET_INTAKE_SAFE=NO`; no credential lifecycle or safe injection is established.
+- The model remains `OWNER_SELECTED`; neither model nor budget is authorized.
+- Remote egress is not asserted to be host-bounded or DeepSeek-exclusive;
+  a future provider call needs a separate capability and egress decision.
+- Frozen-source rights and publication limits are unresolved; no real Reader
+  extraction, Q&A, benchmark, annotation, or evaluation has run.
+- The evaluator callback is not a sandbox; evaluation stays fail-closed until
+  a separately verified capability-controlled caller is established.
+- File-size, page-count, text-length, regular-file, PDF signature, encrypted-input,
+  parser-version and deterministic artifact constraints remain in the harness.
+  These controls alone do not establish process-wide network denial.
 
-Reality status: `IMPLEMENTED ON REVIEW BRANCH / 15 SYNTHETIC OFFLINE TESTS PASS / NOT
-MERGED / NOT WIRED / NOT ENABLED / NOT OBSERVED / NO OPERATOR GO / NO PRODUCTION
-AUTHORITY`. This proposal remains draft-only while the task's explicit permission
-boundary prohibits the required Notion synchronization.
+Reality status: `IMPLEMENTED ON DRAFT BRANCH / PREVIOUS SYNTHETIC TESTS ONLY /
+NEW EXACT-HEAD CI NOT YET VERIFIED / NOT MERGED / NOT WIRED / NOT ENABLED /
+NOT OBSERVED / NO OPERATOR GO / NO PRODUCTION AUTHORITY`.
 
 ## Operational residuals
 
@@ -461,3 +497,24 @@ PRODUCTION-READY
 Never infer a later state from an earlier one. In particular, historical observation,
 Phase 3A's tested compatibility contract and 12/12 Continuity never imply current
 permission or production authority.
+
+## Reduced risk — CoreMemoryBlocks commit-before-cache (MERGED #490)
+
+Merged on `main` via #490. Cache publication now happens only after a successful
+SQLite commit, closing the undurable RAM publish path from base
+`f44216656673b2a49e64f8cc7c8bca6d32e44d3f`. Default-seed initialization uses
+targeted `ON CONFLICT(name) DO NOTHING` so a late constructor cannot overwrite an
+accepted goal with a default. This is a focused consistency repair, not new
+TruthGate admission, worker activation or a claim of production model exposure.
+
+## Remaining limits — CoreMemoryBlocks concurrency / cache coherence
+
+The independent base/head comparison for #490 confirmed these remaining limits,
+which that focused repair does not claim to close:
+
+- Two updates on one instance can commit and publish in different orders. If A pauses after committing, B commits/publishes, then A publishes, the local cache/context can show A while SQLite and a fresh instance show B. A complementary pre-connect interleaving reproduces the same inconsistency class on the pre-PR base.
+- Existing separate instances retain their own snapshots after another instance writes. A newly constructed instance reads the persisted state; existing ones are not invalidated.
+- Concurrent insertion of a custom block while `get_system_context()` iterates the cache can raise `RuntimeError: dictionary changed size during iteration`; this predates the PR.
+- An explicit retry is a fresh unconditional UPSERT, with no expected-version/CAS or idempotency token. Retrying an older candidate after another writer succeeds can overwrite that newer value. Failure rollback does not imply freshness-safe retry.
+
+Real SQLite writer contention (`SQLITE_BUSY`) and a deferred foreign-key failure at `commit()` preserved the prior content, timestamps and context, with successful retry after removal of the injected fault. The existing synthetic commit test raises before the real commit. Neither those probes nor this patch certify commit-then-error ambiguity, power-loss behavior, arbitrary external schema changes, or actual live-model delivery of `get_system_context()`.

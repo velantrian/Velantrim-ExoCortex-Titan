@@ -2,11 +2,13 @@
 
 **Status:** implemented in the review branch and unit-tested on synthetic fixtures only. No corpus run, Reader extraction, model inference, Q&A evaluation, benchmark, annotation, or operational authorization was performed. This is not wired into a runtime command, enabled, observed, or a production path.
 
-**Base:** `ef134c324ef08c1a5f7f011433b8e2424e40ecea` (`main`, verified at task start).
+**Original base:** `ef134c324ef08c1a5f7f011433b8e2424e40ecea` (`main`, verified at task start).
+
+**2026-11-03 integration target:** `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754`; dependency lock remains from main; compatibility and CI are not claimed until executed.
 
 ## Implemented boundaries
 
-- `core/pilot0/pdf_input.py` accepts a regular local `.pdf` file only and pins the repository baseline parser: `pypdf==6.20.1` (`pypdf>=6.19.0,<7` in the existing optional dependency; lock `6.20.1`). It enforces file/page/extracted-character limits, records a SHA-256 source revision, and fails closed on missing/mismatched parser, encrypted/invalid input, or bounds. The local pinned parser path contains no fallback, cascade, installer, download, URL input, or remote client.
+- `core/pilot0/pdf_input.py` accepts a regular local `.pdf` file only and pins the repository baseline parser: `pypdf==6.21.4` (`pypdf>=6.19.0,<7` in the existing optional dependency; lock `6.21.4`). It enforces file/page/extracted-character limits, records a SHA-256 source revision, and fails closed on missing/mismatched parser, encrypted/invalid input, or bounds. The local pinned parser path contains no fallback, cascade, installer, download, URL input, or remote client.
 - `core/pilot0/artifact.py` canonicalizes an already-produced `SemanticReader` result; it does **not** call `extract`. It requires an exact source revision and validates every claim against its source spans. The canonical JSON uses a fixed allowlist, deterministic UTF-8 encoding, a payload digest, and a digest over the exact serialized envelope bytes. Timestamps, arbitrary environment data, a separate raw-source field, full source maps, credentials, and unapproved receipt fields are excluded; Reader claims remain by design, while secret-shaped claim text is refused rather than persisted.
 - The artifact records Reader identity/version, capsule and prompt versions, source identity/revision, parser identity/version, mode, budget, allowlisted Reader settings, claims and spans, coverage, synthesis/essence, warnings, and bounded reproducibility metadata. The current `SemanticReader`/`KnowledgeCapsule` contract has no section-card or relation output and no ReaderCore coverage axes; those collections/axes are represented as empty, not inferred.
 - `core/pilot0/evaluator.py` accepts already-loaded Reader JSON and blind-question bytes; it does not open filesystem paths or treat filename patterns as a security boundary. It requires the trusted `expected_reader_artifact_sha256` and compares the exact serialized Reader bytes before parsing either input. Markdown supports both `Q1.` markers and the frozen source syntax `**1.**` through `**15.**`; strict question schemas reject extra answer/source fields. An in-process Python callback is not a sandbox: the callback is never invoked, and evaluator execution fails closed until a separately verified restricted runtime is integrated.
@@ -33,7 +35,7 @@ Focused synthetic command (offline, using an already available exact-version env
 PYTHONPATH=. python3 -m unittest discover -s tests -p 'test_pilot0_harness.py' -v
 ```
 
-The focused synthetic suite asserts the installed parser version exactly; version mismatch is a test failure, not a skip. Its synthetic PDF test runs only with `pypdf==6.20.1`. The real frozen Markdown file is never passed to the evaluator or parser; only its marker syntax is inspected after its hash matches.
+The focused synthetic suite asserts the installed parser version exactly; version mismatch is a test failure, not a skip. Its synthetic PDF test runs only with `pypdf==6.21.4`. The real frozen Markdown file is never passed to the evaluator or parser; only its marker syntax is inspected after its hash matches.
 
 ## Blockers before any real Pilot-0 run
 
