@@ -1,7 +1,7 @@
 # 📍 Current System State
 
-**Verified:** 2026-09-23  
-**Current repository head at this reconciliation:** `main@c877f1e177dc21687884f73b378213fdd9ef1dbe` · parent `54c975a3b19ebf5526d4a95416aeb1e12c92e1d1` · PR #461  
+**Verified:** 2026-11-03  
+**Current repository head at this reconciliation:** `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` · Dependabot github-actions group · PR #482  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
 **Continuity canary machine checkpoint:** `docs/state/project_state.json` remains `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` (schema v7). That SHA is the bounded Continuity observation checkpoint, not today's repository head.  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
@@ -13,6 +13,53 @@
 > This document separates the **current repository checkpoint** from older implementation
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
+
+## 2026-11-03 — Docs/status bilingual reconciliation + recent main merges
+
+Docs/status reconciliation against live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c`.
+No runtime, Canon, policy, Continuity, Operator GO or production-authority change.
+
+Confirmed merged on `main` since the prior CURRENT_STATE head `c877f1e1…` (non-exhaustive;
+verify live GitHub for the full graph), including:
+
+```text
+#482  MERGED  github-actions Dependabot group pin refresh → main@eb08e93
+#494  MERGED  uv-lock-refresh Dependabot group
+#495  MERGED  salience unscoped ingest owner-boundary audit tests/docs
+#481  MERGED  RU source-link fixes + historical v8.5 architecture banner
+#490  MERGED  CoreMemoryBlocks: publish cache only after successful SQLite commit
+#489  MERGED  salience: current streak + per-detector history
+#488  MERGED  fixed-payload metadata-only LLM probe enforcement
+#493  MERGED  pypdf 6.21.2 → 6.21.4 (uv.lock security bump)
+#487  MERGED  llm_router provider_outcome NOT_SENT/UNKNOWN on cancel/timeout
+```
+
+Public bilingual landing/atlas parity:
+
+```text
+README.md ↔ README.ru.md                 section/claim parity required
+SYSTEM_OVERVIEW.en.md ↔ SYSTEM_OVERVIEW.md  section/claim parity required
+README.en.md                             compatibility pointer only
+```
+
+Open at this reconciliation (resolve live; not evergreen):
+
+```text
+#473  OPEN / CONFLICTING  pilot0 offline frozen Reader harness (not run);
+                          rebase + pypdf pin vs main 6.21.4 still required
+```
+
+Authority facts unchanged:
+
+```text
+Operator GO:                 false
+runtime currently enabled:   false
+runtime authority:           false
+production authority:        false
+Continuity canary SHA:       docs/state/project_state.json → 39ba28db… (unchanged)
+```
+
+**PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
 
 ## 2026-09-23 — R1 Validated admission boundary (MERGED #461 · main@c877f1e1)
 

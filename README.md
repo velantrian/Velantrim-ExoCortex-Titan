@@ -304,12 +304,15 @@ python -m pytest tests/ -v --tb=short
 
 ## 🌐 Language strategy
 
-The repository landing page is English by default:
+The repository landing page is English by default. Section parity is required between
+language pairs:
 
 ```text
-README.md       English canonical landing README
-README.ru.md    Russian companion
-README.en.md    compatibility pointer to README.md
+README.md             English canonical landing README
+README.ru.md          Russian companion (same sections / claims)
+README.en.md          compatibility pointer to README.md
+SYSTEM_OVERVIEW.en.md English atlas
+SYSTEM_OVERVIEW.md    Russian atlas (same sections / claims)
 ```
 
 ---
