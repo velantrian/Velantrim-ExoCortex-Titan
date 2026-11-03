@@ -1,3 +1,11 @@
+## 2026-11-03 — Salience ingest owner-scope audit guards
+
+- Base: post-merge `main` after #489 salience history fix.
+- Adds offline synthetic guards proving unscoped ingest cannot mix temporal
+  history across callers, while lexical one-shot weights still apply.
+- Documentation impact: `GITHUB_ONLY` (audit note + tests). No runtime owner,
+  Canon, or activation change. Notion: `NOT_REQUIRED`.
+
 
 ## 2026-10-29 — Salience current streak and detector history · DRAFT
 
