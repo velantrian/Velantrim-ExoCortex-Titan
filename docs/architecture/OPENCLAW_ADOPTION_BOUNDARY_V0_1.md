@@ -67,15 +67,15 @@ The first implementation slice is deliberately smaller than an OpenClaw-style pr
 
 ### Required
 
-- `CapabilityManifest` or equivalent manifest projection over existing Titan tool/capability metadata.
-- manifest-first discovery without executing provider/plugin code.
-- typed local gateway contract using existing Titan transport surfaces where possible.
-- per-session serialization for side-effecting/competing runs.
-- idempotency for side-effecting gateway operations.
-- closed-world capability allow/deny behavior where an allowlist is active; deny wins.
-- explicit execution/sandbox boundary metadata.
-- operator diagnostics equivalent to `titan doctor`.
-- operator explanation equivalent to `titan capability explain <name>`.
+- `CapabilityManifest` or equivalent manifest projection over existing Titan tool/capability metadata. ✅ `core/capability_plane.py`
+- manifest-first discovery without executing provider/plugin code. ✅
+- typed local gateway contract using existing Titan transport surfaces where possible. ✅ MCP gateway / `McpHandler`
+- per-session serialization for side-effecting/competing runs. ✅ process-local MCP scope locks (`docs/ai/MCP_SESSION_SERIALIZATION_V0_1.md`)
+- idempotency for side-effecting gateway operations. ✅ MCP transport + durable `forget_all` (`docs/ai/MCP_SIDE_EFFECT_IDEMPOTENCY_V0_1.md`)
+- closed-world capability allow/deny behavior where an allowlist is active; deny wins. ✅ existing registry/policy path
+- explicit execution/sandbox boundary metadata. 🟡 contracts/tested in `core/sandbox/`; runtime not wired
+- operator diagnostics equivalent to `titan doctor`. ✅ local capability-plane doctor CLI
+- operator explanation equivalent to `titan capability explain <name>`. ✅ local capability-plane explain CLI
 
 ### Deferred
 

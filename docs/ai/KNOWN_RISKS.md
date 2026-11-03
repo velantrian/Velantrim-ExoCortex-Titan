@@ -1,5 +1,15 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — MCP same-session side-effect interleaving (process-local)
+
+Competing side-effecting MCP `tools/call` runs that share an explicit
+`Mcp-Session-Id` (or the anonymous caller+capability fallback) are now
+serialized by a process-local lock. Idempotency remains a separate retry
+shield. Remaining limits: no cross-worker/multi-process lock, no
+cancel-on-supersede generation tokens, and sandbox runtime
+policy/elevated split still unwired. See
+[`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md).
+
 ## 2026-10-28 — Fixed-payload connectivity probe boundary
 
 The general chat API rejects metadata-only `data_mode="none"`. Connectivity

@@ -1,3 +1,19 @@
+## 2026-11-03 — MCP session serialization for side-effecting tools
+
+- Base: `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` (#496 docs reconcile).
+- Closes the remaining OpenClaw-adoption invariant for process-local
+  per-session serialization of competing side-effecting MCP `tools/call`
+  runs. Read-only tools stay unlocked. Anonymous calls fall back to
+  `anon:<credential>:<capability>`.
+- Complements existing MCP idempotency; does not claim multi-worker,
+  cancel-on-supersede, sandbox runtime wiring, or Canon authority.
+- Contract: [`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md).
+- Focused tests: `tests/test_mcp_session_serialization.py`.
+- Docs: refresh stale capability-plane “idempotency/session not yet”
+  wording; update OpenClaw adoption required checklist.
+- Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
 ## 2026-11-03 — Bilingual docs + status reconciliation
 
 - Base: live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` (#482).

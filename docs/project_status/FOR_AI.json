@@ -12,8 +12,8 @@
   "current_verification": {
     "date": "2026-11-03",
     "repository": "velantrian/Velantrim-ExoCortex-Titan",
-    "verified_main_sha": "eb08e9392fe18025b562d66f118fb0d29fb3401c",
-    "verification_role": "DATED_DOCUMENTATION_RECONCILIATION_BASE_NOT_EVERGREEN_REMOTE_HEAD",
+    "verified_main_sha": "5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754",
+    "verification_role": "DATED_DOCUMENTATION_AND_MCP_SESSION_SERIALIZATION_BASE_NOT_EVERGREEN_REMOTE_HEAD",
     "runtime_authority": false,
     "production_authorized": false,
     "operator_go": false,
@@ -26,7 +26,8 @@
       "llm_cancel_vs_timeout": "CANCEL_EVENT_RAISES_LLM_CALL_CANCELLED; TRANSPORT_TIMEOUT_SEPARATE; PROVIDER_OUTCOME_NOT_SENT_OR_UNKNOWN",
       "salience_history": "CURRENT_STREAK_AND_PER_DETECTOR_HISTORY_ON_MAIN; UNSCOPED_INGEST_WITHOUT_OWNER_SCOPE",
       "core_memory_blocks_cache": "CACHE_PUBLISH_AFTER_SUCCESSFUL_SQLITE_COMMIT_ON_MAIN",
-      "public_docs_languages": "README_EN_DEFAULT_WITH_RU_COMPANION; SYSTEM_OVERVIEW_EN_AND_RU; SECTION_PARITY_REQUIRED"
+      "public_docs_languages": "README_EN_DEFAULT_WITH_RU_COMPANION; SYSTEM_OVERVIEW_EN_AND_RU; SECTION_PARITY_REQUIRED",
+      "mcp_side_effect_controls": "IDEMPOTENCY_V0_1_PLUS_PROCESS_LOCAL_SESSION_SERIALIZATION_V0_1; NO_CROSS_WORKER_CLAIM"
     },
     "federated_role": {
       "titan": ["orchestration", "execution", "providers_models", "tools", "retrieval", "integration_host"],

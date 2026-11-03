@@ -14,9 +14,18 @@
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
 
+## 2026-11-03 — MCP session serialization for side-effecting tools (proposed/PR)
+
+Bounded process-local serialization for competing side-effecting MCP
+`tools/call` runs on the same session scope. Complements MCP idempotency.
+Sandbox runtime wiring and cancel-on-supersede remain deferred. No Canon,
+Operator GO, or production-authority change. See
+[`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md).
+
 ## 2026-11-03 — Docs/status bilingual reconciliation + recent main merges
 
-Docs/status reconciliation against live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c`.
+Docs/status reconciliation against live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c`
+(later squash-merged as `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` · PR #496).
 No runtime, Canon, policy, Continuity, Operator GO or production-authority change.
 
 Confirmed merged on `main` since the prior CURRENT_STATE head `c877f1e1…` (non-exhaustive;
