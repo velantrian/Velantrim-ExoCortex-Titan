@@ -92,3 +92,16 @@ Those remain independent #52 residuals.
 | `setuptools==84.0.0` | GHSA-xmj3-9gf7-h52w | `setuptools==84.1.0` (build constraint test updated) |
 
 Local `uv audit --frozen`: 121 packages, 0 vulnerabilities, 0 adverse statuses. No ignore/allow-list entry added.
+
+## 2026-11-03 security lock refresh — pypdf
+
+`uv audit --frozen` reported 7 vulnerability records against locked `pypdf==6.21.2`
+(GHSA-42gh-23hr-vphw, GHSA-4vqv-7265-gm2w, GHSA-5849-834g-hvw5, GHSA-62m5-6wh8-28x7,
+GHSA-cggf-277g-3q54, GHSA-mfr5-77xh-9j7h, GHSA-x3rh-gjgm-fmqc). Targeted
+`uv lock --upgrade-package pypdf` resolves `pypdf==6.21.4` (covers fixes through
+6.21.3 and 6.21.4). Open Dependabot #491 only reaches 6.21.3 and remains insufficient
+for the infinite-loop advisories fixed in 6.21.4.
+
+Local `uv audit --frozen` after refresh: 121 packages, 0 vulnerabilities, 0 adverse
+statuses. No ignore/allow-list entry added. No runtime activation, Operator GO, or
+production authority change.
