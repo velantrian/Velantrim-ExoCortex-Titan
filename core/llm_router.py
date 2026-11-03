@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx
 
+from core.deepseek_config import validate_deepseek_thinking_mode
 from core.policy_kernel import _normalize_data_mode
 
 from core.remote_egress import (
@@ -320,7 +321,9 @@ def _deepseek_request_body(
         "max_tokens": cap,
         "stream": stream,
     }
-    thinking = normalize_deepseek_thinking(getattr(cfg, "deepseek_thinking", "off"))
+    thinking = validate_deepseek_thinking_mode(
+        getattr(cfg, "deepseek_thinking", "off")
+    )
     if quick_ping or thinking == "off":
         body["thinking"] = {"type": "disabled"}
     else:

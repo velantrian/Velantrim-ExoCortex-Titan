@@ -1,3 +1,17 @@
+## 2026-11-03 — PR #473 Draft integration with main security lock · NOT MERGED
+
+- Reconciled historical #473 head `4831944440f90159b28862d14e6abfc61d9c9a96`
+  against `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754`.
+- Kept main's changed LLM payload/egress guards; retained Draft Pilot-0's exact
+  `off|high|max` low-level DeepSeek validation.
+- Exact offline PDF parser pin raised from 6.20.1 to locked `pypdf==6.21.4`
+  without altering `uv.lock`, the audit gate, the general runtime route,
+  synthetic PDF scope or the frozen-source/evaluator no-execution contract.
+- Added a regression that compares the local exact pin with the checked-in lock.
+  Hosted exact-head CI and security evidence are required, not pre-claimed.
+- No real model, paid model, frozen external content, Canon, production activation,
+  or Operator GO. This remains Draft PR review code.
+
 ## 2026-11-03 — Bilingual docs + status reconciliation
 
 - Base: live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` (#482).
@@ -64,6 +78,29 @@
   now patches the live PolicyKernel module. The same network_denied failure
   was reproduced with an isolated module-reload harness before the fixture fix;
   production enforcement is unchanged. Full CI on the revised head is required.
+
+## 2026-10-18 — PR #473 compatibility review
+
+Kept the Pilot0 Reader/evaluator harness offline and unexecuted against real models or the external frozen source. Updated the exact local PDF parser pin to `pypdf==6.20.1`, matching the reviewed dependency lock from #478; this prevents an integration failure caused by the earlier 6.19.0 pin. Focused harness/DeepSeek request tests: 28 passed / 31 subtests passed with the pinned parser. Changed-code Ruff and diff checks passed. Existing evidence, activation and production gates remain separate. Exact-head hosted checks remain required.
+
+## 2026-10-04 — Pilot-0 reproducible harness · DRAFT / NOT RUN
+
+> **Reality status:** `IMPLEMENTED ON feat/pilot0-frozen-reader-harness FROM main@ef134c324ef08c1a5f7f011433b8e2424e40ecea / 15 SYNTHETIC OFFLINE TESTS PASS / NO READER OR MODEL RUN / NO FROZEN-CORPUS PARSE / NOT MERGED / NOT WIRED / NOT ENABLED / NOT OBSERVED / NO OPERATOR GO / NO PRODUCTION AUTHORITY`.
+
+Bounded preparation only: one local pypdf pin; deterministic allowlisted frozen
+SemanticReader artifact; strict Q1–Q15 JSON/Markdown input and offline fake evaluator;
+strict DeepSeek thinking setting on the existing adapter. Frozen PDF and question hashes
+matched the owner-provided values. The sealed key was left completely untouched. No API
+key intake/use, parser/evaluator/provider network calls, frozen-source extraction, Q&A run,
+benchmark, or annotation. GitHub was used only for the authorized feature branch and draft PR.
+
+Before a real Pilot-0: resolve the pypdf pin vs `parsers` extra mismatch; establish a safe
+secret-injection path; select a model separately; review egress/capability; resolve
+rights/publication; verify frozen Markdown syntax only in a separately authorized step.
+Notion synchronization is blocked by the task's explicit no-Notion instruction; keep the
+PR draft and do not change Notion/Drive/issues.
+
+---
 
 ## 2026-09-23 — PR #461 R1 Validated admission boundary · MERGED
 

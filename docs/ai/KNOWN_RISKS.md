@@ -426,6 +426,36 @@ default-branch code, so the new workflow entrypoint is proven in real Actions ex
 This governance hardening changes no runtime, Canon, capability, provider, Continuity,
 schema, Operator GO, runtime-authority or production-authority semantics.
 
+## Proposed Pilot-0 harness — unresolved pre-run gates · DRAFT ONLY
+
+The implementation in Draft PR #473 is offline preparation on a review branch only:
+no runtime route, real-model call, frozen-corpus extraction, Canon write, Operator GO
+or production authorization follows from this reconciliation.
+
+- The local Pilot-0 parser is pinned exactly to `pypdf==6.21.4`, matching
+  `main@5f8bb8c` and its authoritative `uv.lock`. Earlier 6.20.1 and 6.21.2
+  pins are not accepted. The general `parsers` extra still specifies
+  `pypdf>=6.19.0,<7`; an install without the audited lock is a separately
+  unresolved security-floor risk and must not be treated as equivalent.
+- The previously reported 28 focused tests and 31 subtests used 6.20.1.
+  Compatibility with 6.21.4 and exact-head hosted CI must be established
+  separately before any merge consideration; tests are not weakened.
+- `SECRET_INTAKE_SAFE=NO`; no credential lifecycle or safe injection is established.
+- The model remains `OWNER_SELECTED`; neither model nor budget is authorized.
+- Remote egress is not asserted to be host-bounded or DeepSeek-exclusive;
+  a future provider call needs a separate capability and egress decision.
+- Frozen-source rights and publication limits are unresolved; no real Reader
+  extraction, Q&A, benchmark, annotation, or evaluation has run.
+- The evaluator callback is not a sandbox; evaluation stays fail-closed until
+  a separately verified capability-controlled caller is established.
+- File-size, page-count, text-length, regular-file, PDF signature, encrypted-input,
+  parser-version and deterministic artifact constraints remain in the harness.
+  These controls alone do not establish process-wide network denial.
+
+Reality status: `IMPLEMENTED ON DRAFT BRANCH / PREVIOUS SYNTHETIC TESTS ONLY /
+NEW EXACT-HEAD CI NOT YET VERIFIED / NOT MERGED / NOT WIRED / NOT ENABLED /
+NOT OBSERVED / NO OPERATOR GO / NO PRODUCTION AUTHORITY`.
+
 ## Operational residuals
 
 Still not proved:
