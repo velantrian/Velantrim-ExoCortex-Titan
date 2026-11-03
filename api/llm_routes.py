@@ -129,7 +129,9 @@ async def _run_llm_test(req: LlmTestBody):
                         "Используйте gemini-3.5-flash, gemini-3.1-flash-lite или gemini-2.5-flash."
                     ),
                 )
-            # Любой gemini-* ID допустим — проверка на стороне Google API (не устаревший каталог в памяти)
+            # Эта проверка отсекает устаревшие IDs. test_connection()
+            # дополнительно допускает только локальный каталог: произвольное
+            # имя модели не должно становиться egress-каналом под data_mode=none.
         else:
             info = get_provider_info(provider)
             allowed = set((info or {}).get("models") or [])
