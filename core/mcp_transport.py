@@ -204,7 +204,7 @@ class _IdempotencyCache:
 class McpSessionManager:
     def __init__(self) -> None:
         self._sessions: dict[str, str] = {}
-        self._side_effect_gate = _SideEffectSessionGate()
+        self._side_effect_locks = _SideEffectSessionLocks()
 
     def create(self, capability: str) -> str:
         sid = str(uuid.uuid4())
@@ -219,7 +219,7 @@ class McpSessionManager:
 
     def delete(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
-        self._side_effect_gate.discard(f"session:{session_id}")
+        self._side_effect_locks.discard(f"session:{session_id}")
 
     def side_effect_lock(
         self,
@@ -229,7 +229,7 @@ class McpSessionManager:
         capability: str,
     ) -> threading.RLock:
         """Return the process-local lock for one side-effect serialization scope."""
-        return self._side_effect_gate.lock_for(
+        return self._side_effect_locks.lock_for(
             _side_effect_scope(
                 session_id,
                 credential_fingerprint=credential_fingerprint,
@@ -238,11 +238,12 @@ class McpSessionManager:
         )
 
 
-class _SideEffectSessionGate:
-    """Process-local per-scope mutex for side-effecting MCP tool calls.
+class _SideEffectSessionLocks:
+    """Process-local per-scope mutex map for side-effecting MCP tool calls.
 
     This serializes competing side-effecting runs that share a session (or the
-    anonymous caller+capability fallback). It does not claim cross-process,
+    anonymous caller+capability fallback). It is a concurrency shield only: it
+    does not admit Canon writes, grant permission, or claim cross-process,
     multi-worker, or cancel-on-supersede semantics.
     """
 
