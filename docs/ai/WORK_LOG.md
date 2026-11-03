@@ -1,3 +1,20 @@
+## 2026-11-03 — Bilingual docs + status reconciliation
+
+- Base: live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` (#482).
+- Restored section/claim parity: `README.md` ↔ `README.ru.md`,
+  `SYSTEM_OVERVIEW.en.md` ↔ `SYSTEM_OVERVIEW.md` (including LLM cancel ≠ timeout
+  with `provider_outcome` on the English atlas).
+- Refreshed `docs/ai/CURRENT_STATE.md` and `docs/project_status/FOR_AI.json` to the
+  dated main head; Continuity canary SHA in `docs/state/project_state.json`
+  intentionally unchanged (`39ba28db…`).
+- Closed stale “draft” risk wording for merged #489/#495 salience and #490
+  CoreMemoryBlocks cache publish-after-commit.
+- Open residual (verify live): #473 pilot0 harness remains CONFLICTING vs main
+  and still needs rebase / pypdf pin alignment to 6.21.4.
+- Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED` (status/language
+  parity refresh; no architecture owner, runtime activation, or roadmap change).
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
 ## 2026-11-03 — Salience ingest owner-scope audit guards
 
 - Base: post-merge `main` after #489 salience history fix.

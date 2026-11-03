@@ -13,8 +13,8 @@ egress, policy and router suites. Mock HTTP and injected policy snapshots prove
 adapter contracts, not live provider delivery or all browser/PWA paths. The
 intent of the existing policy is unchanged; `redacted` remains caller-declared.
 
-**Snapshot:** 2026-09-23  
-**Live main at this reconciliation:** `main@c877f1e177dc21687884f73b378213fdd9ef1dbe`  
+**Snapshot:** 2026-11-03  
+**Live main at this reconciliation:** `main@eb08e9392fe18025b562d66f118fb0d29fb3401c`  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · signature `VERIFIED / valid`  
 **C11 lifecycle rule:** this snapshot preserves the reconciled #52 risk record; resolve current issue/PR lifecycle from live GitHub  
 **Continuity:** `12/12 = 100%` — complete  
@@ -25,20 +25,23 @@ A green CI run, manifest, config, historical canary, archive payload, audit reco
 Notion update is evidence only. None of them grants current permission, runtime authority
 or production authority.
 
-## Draft correction — salience topic history
+## Reduced risk — salience current streak / per-detector history (MERGED #489 / #495)
 
-At baseline `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`, an old three-day series
-can award `topic_streak_3d` after a gap, and separately constructed detectors share
-topic history. The proposed correction is focused-tested; it is not a main closure
-until merged. See [contract and evidence](../SALIENCE_HISTORY_CONTRACT.md).
+Merged on `main` via #489 (current calendar streak + per-detector history) and
+#495 (unscoped ingest owner-boundary audit guards). See
+[contract and evidence](../SALIENCE_HISTORY_CONTRACT.md).
 
-The explicit legacy singleton remains process-wide without a user/scope key; do
-not share it across independent owners. The unscoped salience helper is proposed
-to become one-shot (no cross-call temporal signals) to prevent borrowed history.
-The existing ingest bridge has no trusted scope to inject and consequently
-cannot accumulate temporal salience until separately wired. The Velum singleton
-itself remains process-wide. History is lost on restart; none of this proves
-tenant isolation. Feature activation and Canon/trust authority remain unchanged.
+Remaining limits (not closed by those merges):
+
+- The explicit legacy singleton remains process-wide without a user/scope key; do
+  not share it across independent owners.
+- Unscoped salience helpers stay one-shot for temporal signals; persistent temporal
+  history requires an explicit caller-owned detector.
+- The existing ingest bridge has no trusted scope to inject and consequently
+  cannot accumulate temporal salience until separately wired.
+- The Velum singleton itself remains process-wide. History is lost on restart;
+  none of this proves tenant isolation.
+- Feature activation and Canon/trust authority remain unchanged.
 
 ## Reduced risk — World Skills admission is fail-closed; legacy corpus remains unreviewed
 
@@ -465,17 +468,19 @@ Never infer a later state from an earlier one. In particular, historical observa
 Phase 3A's tested compatibility contract and 12/12 Continuity never imply current
 permission or production authority.
 
-## 2026-10-29 proposed fix: failed CoreMemoryBlocks write
+## Reduced risk — CoreMemoryBlocks commit-before-cache (MERGED #490)
 
-On base `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`, `update()` published a new block in RAM before SQLite committed. A failed insert/update, connection or commit could expose an undurable value through `get()` and `get_system_context()` while a fresh instance read the prior disk state.
+Merged on `main` via #490. Cache publication now happens only after a successful
+SQLite commit, closing the undurable RAM publish path from base
+`f44216656673b2a49e64f8cc7c8bca6d32e44d3f`. Default-seed initialization uses
+targeted `ON CONFLICT(name) DO NOTHING` so a late constructor cannot overwrite an
+accepted goal with a default. This is a focused consistency repair, not new
+TruthGate admission, worker activation or a claim of production model exposure.
 
-This branch moves cache publication after successful commit. Four new regressions fail on the base and pass with this fix; the existing 37 sleep worker tests pass locally. This is a focused consistency repair, not new TruthGate admission, worker activation or a claim of production model exposure. Separate instances still load snapshots once; this patch adds no cross-instance cache coherence, concurrency serialization or power-loss guarantee.
+## Remaining limits — CoreMemoryBlocks concurrency / cache coherence
 
-## 2026-10-30 PR #490 review: default creation and remaining concurrency limits
-
-**Pre-existing destructive initialization race, repaired in this draft follow-up:** constructor B reads an empty snapshot; instance A then seeds defaults and commits an explicit goal; B resumes and formerly used unconditional `update()` to replace A's accepted goal with a default. The new regression reproduces that schedule. Missing-default initialization now uses targeted `ON CONFLICT(name) DO NOTHING`, reads the winning stored values and timestamps, and publishes only after commit. This protects existing rows; it does not turn instance caches into coherent shared state.
-
-The independent base/head comparison also confirmed these remaining limits, which this focused repair does not claim to close:
+The independent base/head comparison for #490 confirmed these remaining limits,
+which that focused repair does not claim to close:
 
 - Two updates on one instance can commit and publish in different orders. If A pauses after committing, B commits/publishes, then A publishes, the local cache/context can show A while SQLite and a fresh instance show B. A complementary pre-connect interleaving reproduces the same inconsistency class on the pre-PR base.
 - Existing separate instances retain their own snapshots after another instance writes. A newly constructed instance reads the persisted state; existing ones are not invalidated.

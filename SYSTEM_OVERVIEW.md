@@ -4,7 +4,7 @@
 > оператора, аудитора и AI-агента.
 >
 > **Версия:** <!-- SYNC:VERSION -->v9.0.0<!-- /SYNC:VERSION -->
-> **Проверенная база:** `main@70bc34fecdcf0bae15bc2264445e31b87b79bf08` на 2026-09-08.
+> **Проверенная база:** `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` на 2026-11-03.
 > Это датированный checkpoint, а не вечный claim о remote head.
 >
 > При конфликте приоритет: exact code → tests/CI → selected config/runtime evidence → docs.
