@@ -102,20 +102,32 @@ def test_ingest_does_not_borrow_explicit_legacy_singleton(
         salience.reset_salience_detector()
 
 
-def test_ingest_preserves_text_signals_without_temporal_inheritance(
+def test_ingest_forwards_analyze_weight_without_shared_temporal_owner(
     ingest_spy: _VelumSpy,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Lexical weights work on each independent call, with no hidden state."""
+    """Bridge must apply analyze_episode_salience weight; lexical details live in test_salience."""
+
+    calls: list[str] = []
+
+    def _fake_analyze(text: str, episode_id: str, **kwargs: object) -> salience.SalienceResult:
+        calls.append(episode_id)
+        return salience.SalienceResult(
+            episode_id=episode_id,
+            weight=2.5,
+            signals=["caps_lock"],
+            topic_key="synthetic",
+        )
+
+    monkeypatch.setattr(salience, "analyze_episode_salience", _fake_analyze)
 
     async def run() -> None:
-        await _ingest("caller-A-1", 1, text="ВАЖНО! clarify bridge inspection")
-        await _ingest("caller-B-3", 3, text="ВАЖНО! clarify bridge inspection")
+        await _ingest("caller-A-1", 1, text="synthetic lexical probe")
+        await _ingest("caller-B-3", 3, text="synthetic lexical probe")
 
     asyncio.run(run())
-    expected = 1.5 * 1.3 * 1.4 * 1.2
-    assert [value for _, value in ingest_spy.weights] == pytest.approx(
-        [expected, expected]
-    )
+    assert calls == ["caller-A-1", "caller-B-3"]
+    assert ingest_spy.weights == [("caller-A-1", 2.5), ("caller-B-3", 2.5)]
 
 
 def test_explicit_synthetic_owners_accumulate_their_own_streaks() -> None:
