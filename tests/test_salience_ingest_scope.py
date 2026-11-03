@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from core import salience, velum_bridge
+from core.feature_config import clear_config_cache
 
 
 TOPIC = "bridge inspection schedule"
@@ -44,8 +45,12 @@ def ingest_spy(monkeypatch: pytest.MonkeyPatch) -> _VelumSpy:
     """Keep the real salience analyzer but prohibit external/persistent calls."""
     spy = _VelumSpy()
     _Clock.current = datetime(2026, 10, 1, 10, tzinfo=UTC)
+    # CI defaults enable_salience=False; force the real flag path (coverage-safe).
+    monkeypatch.setenv("ENABLE_SALIENCE", "true")
+    clear_config_cache()
     monkeypatch.setattr(salience, "datetime", _Clock)
-    monkeypatch.setattr(salience, "is_salience_enabled", lambda: True)
+    monkeypatch.setattr("core.salience.is_salience_enabled", lambda: True)
+    monkeypatch.setattr("core.salience.datetime", _Clock)
     monkeypatch.setattr(velum_bridge, "get_velum", lambda: spy)
     return spy
 
@@ -119,7 +124,7 @@ def test_ingest_forwards_analyze_weight_without_shared_temporal_owner(
             topic_key="synthetic",
         )
 
-    monkeypatch.setattr(salience, "analyze_episode_salience", _fake_analyze)
+    monkeypatch.setattr("core.salience.analyze_episode_salience", _fake_analyze)
 
     async def run() -> None:
         await _ingest("caller-A-1", 1, text="synthetic lexical probe")
