@@ -78,7 +78,7 @@ class SalienceResult:
 
 
 class _TopicTracker:
-    """In-memory трекер тем для streak / return (Velum.I4-style)."""
+    """Detector-owned, process-local history for streak / return; not durable."""
 
     def __init__(self) -> None:
         self._last_seen: dict[str, datetime] = {}
@@ -96,7 +96,7 @@ class _TopicTracker:
         cutoff = today - timedelta(days=14)
         self._day_sets[topic_key] = {d for d in days if d >= cutoff}
 
-        streak = _consecutive_days_count(self._day_sets[topic_key]) >= 3
+        streak = _consecutive_days_count(self._day_sets[topic_key], today) >= 3
 
         return_after_pause = False
         prev = self._last_seen.get(topic_key)
@@ -108,22 +108,14 @@ class _TopicTracker:
         return streak, return_after_pause
 
 
-_topic_tracker = _TopicTracker()
-
-
-def _consecutive_days_count(days: set[date]) -> int:
-    if not days:
-        return 0
-    sorted_days = sorted(days)
-    best = 1
-    cur = 1
-    for i in range(1, len(sorted_days)):
-        if (sorted_days[i] - sorted_days[i - 1]).days == 1:
-            cur += 1
-            best = max(best, cur)
-        else:
-            cur = 1
-    return best
+def _consecutive_days_count(days: set[date], ending_on: date) -> int:
+    """Count the contiguous run ending on this observation, not a past record."""
+    count = 0
+    cursor = ending_on
+    while cursor in days:
+        count += 1
+        cursor -= timedelta(days=1)
+    return count
 
 
 def _topic_key_from_text(text: str) -> str:
@@ -138,7 +130,7 @@ def _topic_key_from_text(text: str) -> str:
 class SalienceDetector:
     def __init__(self, params: SalienceParams | None = None) -> None:
         self._params = params or SalienceParams()
-        self._tracker = _topic_tracker
+        self._tracker = _TopicTracker()
 
     def analyze(
         self,
@@ -206,6 +198,7 @@ _detector: SalienceDetector | None = None
 
 
 def get_salience_detector() -> SalienceDetector:
+    """Explicit legacy process singleton; not isolated between independent owners."""
     global _detector
     if _detector is None:
         _detector = SalienceDetector()
@@ -213,9 +206,8 @@ def get_salience_detector() -> SalienceDetector:
 
 
 def reset_salience_detector() -> None:
-    global _detector, _topic_tracker
+    global _detector
     _detector = None
-    _topic_tracker = _TopicTracker()
 
 
 def is_salience_enabled() -> bool:
@@ -227,8 +219,16 @@ def analyze_episode_salience(
     episode_id: str,
     *,
     now: datetime | None = None,
+    detector: SalienceDetector | None = None,
 ) -> SalienceResult:
-    return get_salience_detector().analyze(text, episode_id, now=now)
+    """Never borrow unrelated process history without an explicitly owned detector.
+
+    An unscoped call retains lexical signals but cannot accumulate topic streak
+    or return signals across calls. Callers needing temporal history must retain
+    and pass a SalienceDetector whose lifecycle they own.
+    """
+    active_detector = detector if detector is not None else SalienceDetector()
+    return active_detector.analyze(text, episode_id, now=now)
 
 
 async def persist_salience_metadata(
