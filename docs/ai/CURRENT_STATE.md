@@ -71,10 +71,10 @@ README.en.md                             compatibility pointer only
 Open at this reconciliation (resolve live; not evergreen):
 
 ```text
-#473  OPEN / DRAFT / MERGEABLE  pilot0 offline frozen Reader harness (not run);
-                                still not in main; verify live before acting
-#497  OPEN / MERGEABLE          MCP same-session side-effect serialization;
-                                not in main; verify live checks before acting
+#473  OPEN / DRAFT / CONFLICTING  pilot0 offline frozen Reader harness (not run);
+                                  still not in main; rebase required after #498
+#497  OPEN / CONFLICTING          MCP same-session side-effect serialization;
+                                  still not in main; rebase required after #498
 ```
 
 Authority facts unchanged:
