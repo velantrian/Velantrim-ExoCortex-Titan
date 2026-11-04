@@ -1,7 +1,7 @@
 # 📍 Current System State
 
 **Verified:** 2026-11-04  
-**Current repository head at this reconciliation:** live `main` was `5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` before this contract fix; re-query GitHub for the post-merge head  
+**Current repository head at this reconciliation:** live `main` was `fd7793a43967fdbc3640443a9e9a57589efd925b` (#498) before the contradict fail-closed repair; re-query GitHub for the post-merge head  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
 **Continuity canary machine checkpoint:** `docs/state/project_state.json` remains `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` (schema v7). That SHA is the bounded Continuity observation checkpoint, not today's repository head.  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
@@ -14,16 +14,29 @@
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
 
+## 2026-11-04 — TruthMaintenance.contradict fail-closed on False ESM
+
+Bounded contract repair on top of `main@fd7793a…` (#498). `contradict()` now treats
+`transition_esm(..., "Contradicted") == False` as non-mutation: no `changed=True`, no
+CONTRADICTS edge, no contradiction-registry row. Illegal transitions remain exception-
+skipped. No feature enablement, Operator GO or production-authority change.
+
+Live open-PR refresh (not evergreen): after #498, `#473` and `#497` report CONFLICTING
+and remain outside `main` — re-query GitHub before acting.
+
+**PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
 ## 2026-11-04 — Concept promote persist fail-closed + open-PR status refresh
 
 Bounded contract repair on top of `main@5f8bb8c4…`. `promote_proto_to_l3` now fails
 closed when `persist_promoted_concept` returns `None` (`passed=False`,
 `reason=persist_failed`). Default feature flags remain off. No enablement, runtime
-wiring, Operator GO or production-authority change.
+wiring, Operator GO or production-authority change. **MERGED** as
+`main@fd7793a43967fdbc3640443a9e9a57589efd925b` (#498).
 
-Live open-PR refresh (not evergreen): `#473` DRAFT/MERGEABLE and still not in `main`;
-`#497` OPEN/MERGEABLE and still not in `main`. Historical Draft PR #490 paragraphs below
-are marked MERGED.
+Historical note from that reconciliation: `#473` / `#497` were then MERGEABLE; after
+#498 they report CONFLICTING (see entry above). Historical Draft PR #490 paragraphs
+below remain marked MERGED.
 
 **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
 
@@ -58,10 +71,10 @@ README.en.md                             compatibility pointer only
 Open at this reconciliation (resolve live; not evergreen):
 
 ```text
-#473  OPEN / DRAFT / MERGEABLE  pilot0 offline frozen Reader harness (not run);
-                                still not in main; verify live before acting
-#497  OPEN / MERGEABLE          MCP same-session side-effect serialization;
-                                not in main; verify live checks before acting
+#473  OPEN / DRAFT / CONFLICTING  pilot0 offline frozen Reader harness (not run);
+                                  still not in main; rebase required after #498
+#497  OPEN / CONFLICTING          MCP same-session side-effect serialization;
+                                  still not in main; rebase required after #498
 ```
 
 Authority facts unchanged:

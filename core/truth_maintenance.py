@@ -384,12 +384,16 @@ def contradict(fact_id: str, source_id: str, reason: str = "") -> bool:
     changed = False
     for fid in (fact_id, source_id):
         try:
-            transition_esm(fid, "Contradicted")
-            changed = True
+            # transition_esm returns False for missing facts / failed CAS —
+            # that is not success. Only a True commit counts as a mutation.
+            if transition_esm(
+                fid, "Contradicted", by="truth_maintenance.contradict"
+            ):
+                changed = True
         except Exception:
             logger.debug("contradict: ESM skip for %s", fid)
 
-    # Ребро
+    # Ребро / registry only after at least one durable ESM transition.
     if changed:
         try:
             from core.causal_graph import get_causal_graph

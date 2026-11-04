@@ -1,3 +1,18 @@
+## 2026-11-04 — TruthMaintenance.contradict fail-closed on False ESM
+
+- Base: live `main@fd7793a43967fdbc3640443a9e9a57589efd925b` (#498).
+- Contract fix: `contradict()` only sets `changed=True` when
+  `transition_esm(..., "Contradicted")` returns True. Missing-fact `False`
+  and illegal transitions no longer mint CONTRADICTS edges / registry rows.
+- Audit actor set to `truth_maintenance.contradict`.
+- ADR: `docs/adr/ADR-2026-11-04-truth-maintenance-contradict-esm-fail-closed.md`
+  (architecture-freeze coverage for the rewritten existing ESM call).
+- Regression: `tests/test_truth_maintenance_contradict_fail_closed.py`.
+- Live open-PR note (not evergreen): after #498, #473 and #497 report
+  CONFLICTING — verify live before acting.
+- Documentation impact: GITHUB_ONLY. Notion: NOT_REQUIRED.
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
 ## 2026-11-04 — Concept promote persist fail-closed + status drift cleanup
 
 - Base: live `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754`.
