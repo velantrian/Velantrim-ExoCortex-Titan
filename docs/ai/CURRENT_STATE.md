@@ -1,7 +1,7 @@
 # 📍 Current System State
 
-**Verified:** 2026-11-03  
-**Current repository head at this reconciliation:** `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` · Dependabot github-actions group · PR #482  
+**Verified:** 2026-11-04  
+**Current repository head at this reconciliation:** live `main` was `5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` before this contract fix; re-query GitHub for the post-merge head  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
 **Continuity canary machine checkpoint:** `docs/state/project_state.json` remains `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` (schema v7). That SHA is the bounded Continuity observation checkpoint, not today's repository head.  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
@@ -13,6 +13,19 @@
 > This document separates the **current repository checkpoint** from older implementation
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
+
+## 2026-11-04 — Concept promote persist fail-closed + open-PR status refresh
+
+Bounded contract repair on top of `main@5f8bb8c4…`. `promote_proto_to_l3` now fails
+closed when `persist_promoted_concept` returns `None` (`passed=False`,
+`reason=persist_failed`). Default feature flags remain off. No enablement, runtime
+wiring, Operator GO or production-authority change.
+
+Live open-PR refresh (not evergreen): `#473` DRAFT/MERGEABLE and still not in `main`;
+`#497` OPEN/MERGEABLE and still not in `main`. Historical Draft PR #490 paragraphs below
+are marked MERGED.
+
+**PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
 
 ## 2026-11-03 — Docs/status bilingual reconciliation + recent main merges
 
@@ -45,8 +58,10 @@ README.en.md                             compatibility pointer only
 Open at this reconciliation (resolve live; not evergreen):
 
 ```text
-#473  OPEN / CONFLICTING  pilot0 offline frozen Reader harness (not run);
-                          rebase + pypdf pin vs main 6.21.4 still required
+#473  OPEN / DRAFT / MERGEABLE  pilot0 offline frozen Reader harness (not run);
+                                still not in main; verify live before acting
+#497  OPEN / MERGEABLE          MCP same-session side-effect serialization;
+                                not in main; verify live checks before acting
 ```
 
 Authority facts unchanged:
@@ -485,14 +500,22 @@ Any later wiring, semantic-quality benchmark, CSM Stage D or activation requires
 bounded admission, fresh owner audit, exact-head tests/CI, protected merge and synchronized
 GitHub/Notion evidence.
 
-## 2026-10-29 — branch-local CoreMemoryBlocks repair (pending merge)
+## 2026-10-29 / 2026-10-30 — CoreMemoryBlocks commit-before-cache (HISTORICAL · MERGED #490)
 
-This branch proposes cache publication after successful SQLite commit in `core/sleep_time_worker.py`. Verified locally against base `f44216656673b2a49e64f8cc7c8bca6d32e44d3f`: 4 new regressions + 37 existing sleep worker tests = 41 PASS; the 4 new tests fail on the unmodified base. This entry describes the proposal only, not merged main or hosted CI. See `KNOWN_RISKS.md` for scope limits. No runtime enablement, Canon admission or production authorization is asserted.
+These paragraphs retain pre-merge review evidence for Draft PR #490. The repair is
+**MERGED on main** (see the 2026-11-03 reconciliation and `KNOWN_RISKS.md` reduced-risk
+entry). Remaining concurrency / cache-coherence limits are unchanged and still open
+there. Do not treat the draft/pending wording below as current repository status.
 
-## 2026-10-30 — independent PR #490 review and constructor repair (pending merge)
+Historical proposal note (2026-10-29): cache publication after successful SQLite commit
+in `core/sleep_time_worker.py`, verified locally against base
+`f44216656673b2a49e64f8cc7c8bca6d32e44d3f` (4 new regressions + 37 existing sleep worker
+tests = 41 PASS on the branch; the 4 new tests failed on the unmodified base).
 
-Reviewed incoming head `ef248811373acaf04afb6b5d157d26a6a6ab73a3`. Its four failure regressions and 37 existing sleep-worker tests pass independently in an isolated module run. All five hosted workflows succeeded; CI's synthetic merge `f091f5287ed46e64732cf4ec98086695d7fc8dac` has the same tree (`a6ba7ff6c587f4faa3ebe6068e1fa6f5806e520c`) as that head. The main test job reports 4773 passed, 17 skipped and 1 xfailed. These are incoming-head results, not evidence for a later commit.
-
-The multi-instance review also reproduced a pre-existing destructive initialization race: a constructor using an earlier empty snapshot could overwrite a subsequently committed explicit goal with its default. This branch now seeds only missing defaults using `ON CONFLICT(name) DO NOTHING`, rereads the stored rows in that transaction, and publishes them after commit. Opening a database whose defaults already exist still performs no seed writes. Explicit `update()` retains commit-before-cache publication.
-
-The deterministic constructor regression fails on the incoming head and passes with this follow-up; the isolated focused suite is now 42 PASS (`--noconftest`, Python 3.12.14, pytest 9.1.1, upstream pytest-asyncio 1.4.0). The full repository suite was not run locally; hosted checks must be resolved at the follow-up commit. See `WORK_LOG.md` and `KNOWN_RISKS.md` for evidence and remaining concurrency limits. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED`. Status remains proposed in Draft PR #490, with no runtime, Canon or authority change.
+Historical review note (2026-10-30): incoming head
+`ef248811373acaf04afb6b5d157d26a6a6ab73a3` passed its four failure regressions and 37
+existing sleep-worker tests in an isolated module run; hosted workflows succeeded on
+that head. Constructor seed repair used `ON CONFLICT(name) DO NOTHING` so a late
+constructor cannot overwrite an accepted goal with a default. Documentation impact at
+the time was `GITHUB_ONLY`; Notion: `NOT_REQUIRED`. No runtime, Canon or production
+authority change was asserted then or by the later merge.

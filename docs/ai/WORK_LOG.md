@@ -1,3 +1,15 @@
+## 2026-11-04 — Concept promote persist fail-closed + status drift cleanup
+
+- Base: live `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754`.
+- Contract fix: `promote_proto_to_l3` now returns `passed=False` /
+  `reason=persist_failed` when `persist_promoted_concept` returns `None`.
+  Default flags remain off; no enablement, wiring, or Canon path change.
+- Regression: `tests/test_concept_promote_persist_fail_closed.py`.
+- Docs: mark historical #490 draft paragraphs as MERGED; live-refresh open PR
+  notes for #473 (DRAFT/MERGEABLE) and #497 (OPEN/MERGEABLE).
+- Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
 ## 2026-11-03 — Bilingual docs + status reconciliation
 
 - Base: live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` (#482).
@@ -9,8 +21,8 @@
   intentionally unchanged (`39ba28db…`).
 - Closed stale “draft” risk wording for merged #489/#495 salience and #490
   CoreMemoryBlocks cache publish-after-commit.
-- Open residual (verify live): #473 pilot0 harness remains CONFLICTING vs main
-  and still needs rebase / pypdf pin alignment to 6.21.4.
+- Open residual at that reconciliation said #473 CONFLICTING; later live check
+  (2026-11-04) shows #473 DRAFT/MERGEABLE and still not in main — see entry above.
 - Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED` (status/language
   parity refresh; no architecture owner, runtime activation, or roadmap change).
 - **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
