@@ -5,6 +5,8 @@
   `transition_esm(..., "Contradicted")` returns True. Missing-fact `False`
   and illegal transitions no longer mint CONTRADICTS edges / registry rows.
 - Audit actor set to `truth_maintenance.contradict`.
+- ADR: `docs/adr/ADR-2026-11-04-truth-maintenance-contradict-esm-fail-closed.md`
+  (architecture-freeze coverage for the rewritten existing ESM call).
 - Regression: `tests/test_truth_maintenance_contradict_fail_closed.py`.
 - Live open-PR note (not evergreen): after #498, #473 and #497 report
   CONFLICTING — verify live before acting.
