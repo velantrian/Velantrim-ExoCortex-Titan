@@ -219,6 +219,24 @@ async def promote_proto_to_l3(
         concept_name=proto.name,
     )
 
+    # Fail closed: TruthGate success is not promotion success. Missing graph
+    # driver, no-op persist, or a failed Neo4j write must not report passed.
+    if uuid is None:
+        logger.warning(
+            "ProtoConcept promote aborted after TruthGate: persist returned "
+            "None for %s (mode=%s)",
+            proto_id,
+            epistemic.mode,
+        )
+        return ProtoPromoteResult(
+            proto_id=proto_id,
+            passed=False,
+            reason="persist_failed",
+            concept_name=proto.name,
+            entity_uuid=None,
+            epistemic_state=epistemic.epistemic_state,
+        )
+
     logger.info(
         "ProtoConcept promoted: %s -> L3 uuid=%s mode=%s",
         proto_id,
