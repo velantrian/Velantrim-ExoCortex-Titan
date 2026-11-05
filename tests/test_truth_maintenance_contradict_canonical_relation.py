@@ -100,3 +100,33 @@ def test_contradict_supported_pair_writes_canonical_edge_and_registry(canonical_
     assert registry.spacer_count() == 1
     assert set(registry.known_contradictions("alpha")) == {"beta"}
     assert set(registry.known_contradictions("beta")) == {"alpha"}
+
+
+def test_contradict_partial_esm_keeps_canonical_pair_artifacts(canonical_runtime):
+    """One legal ESM commit still records the pair through canonical owners."""
+    from core.truth_maintenance import contradict
+
+    store, graph, registry = canonical_runtime
+    _seed_supported(store, "supported", "Claim A")
+    assert store.store_fact({
+        "fact_id": "observed",
+        "claim": "Claim B",
+        "source": "issue501-test",
+        "confidence": 0.5,
+        "metadata": {},
+    }) is True
+    assert store.get_fact_durable("observed")["epistemic_state"] == "Observed"
+
+    assert contradict("supported", "observed") is True
+    assert store.get_fact_durable("supported")["epistemic_state"] == "Contradicted"
+    assert store.get_fact_durable("observed")["epistemic_state"] == "Observed"
+
+    forward = graph.get_relations_from("supported", relation_type="contradicts")
+    inverse = graph.get_relations_from("observed", relation_type="contradicts")
+    assert len(forward) == len(inverse) == 1
+    assert forward[0].to_fact_id == "observed"
+    assert inverse[0].to_fact_id == "supported"
+
+    assert registry.spacer_count() == 1
+    assert set(registry.known_contradictions("supported")) == {"observed"}
+    assert set(registry.known_contradictions("observed")) == {"supported"}
