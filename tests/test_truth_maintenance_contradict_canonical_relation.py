@@ -21,9 +21,9 @@ def canonical_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH", None)
     monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_DB_PATH", "")
     registry = contradiction_registry.ContradictionRegistry()
-    monkeypatch.setattr(
-        contradiction_registry, "get_contradiction_registry", lambda: registry
-    )
+    # Install through the module's existing singleton so both the fixture and
+    # contradict()'s function-local import resolve the exact same registry.
+    monkeypatch.setattr(contradiction_registry, "_registry", registry)
     graph = get_causal_graph()
     try:
         yield store, graph, registry
