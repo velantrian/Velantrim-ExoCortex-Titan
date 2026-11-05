@@ -181,7 +181,7 @@ def test_contradict_partial_esm_with_both_existing_facts_keeps_pair_artifacts(
     assert fake_causal_graph.calls == [{
         "from_fact_id": "supported_fact",
         "to_fact_id": "observed_fact",
-        "relation_type": "CONTRADICTS",
+        "relation_type": REL_CONTRADICTS,
         "confidence": 0.95,
     }]
     assert len(fake_registry.records) == 1
