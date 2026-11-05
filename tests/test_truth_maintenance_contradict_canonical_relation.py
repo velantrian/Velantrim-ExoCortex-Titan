@@ -11,7 +11,8 @@ import pytest
 
 @pytest.fixture
 def canonical_runtime(tmp_path, monkeypatch):
-    from core import contradiction_registry, memory, pipeline
+    import core.contradiction_registry as contradiction_registry
+    from core import memory, pipeline
     from core.causal_graph import get_causal_graph
 
     store = memory.SQLiteGraphStore(str(tmp_path / "issue501.db"))
