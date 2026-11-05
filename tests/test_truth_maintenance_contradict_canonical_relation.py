@@ -52,8 +52,7 @@ def test_canonical_graph_rejects_legacy_uppercase_relation(canonical_runtime):
         graph.add_relation("alpha", "beta", "CONTRADICTS", confidence=0.95)
     assert graph.get_relations_from("alpha") == []
     assert graph.get_relations_from("beta") == []
-    registry = registry_mod.get_contradiction_registry()
-    assert registry.spacer_count() == 0
+    assert registry_mod.get_contradiction_registry().spacer_count() == 0
     assert store.get_fact_durable("alpha")["epistemic_state"] == "Supported"
     assert store.get_fact_durable("beta")["epistemic_state"] == "Supported"
 
@@ -66,9 +65,9 @@ def test_contradict_supported_pair_writes_canonical_edge_and_registry(canonical_
     _seed_supported(store, "alpha", "Claim A")
     _seed_supported(store, "beta", "Claim B")
     assert graph.get_relations_from("alpha") == []
-    registry = registry_mod.get_contradiction_registry()
 
     assert contradict("alpha", "beta") is True
+    registry = registry_mod.get_contradiction_registry()
     for fact_id in ("alpha", "beta"):
         fact = store.get_fact_durable(fact_id)
         assert fact["epistemic_state"] == "Contradicted"
@@ -115,9 +114,9 @@ def test_contradict_partial_esm_keeps_canonical_pair_artifacts(canonical_runtime
         "metadata": {},
     }) is True
     assert store.get_fact_durable("observed")["epistemic_state"] == "Observed"
-    registry = registry_mod.get_contradiction_registry()
 
     assert contradict("supported", "observed") is True
+    registry = registry_mod.get_contradiction_registry()
     assert store.get_fact_durable("supported")["epistemic_state"] == "Contradicted"
     assert store.get_fact_durable("observed")["epistemic_state"] == "Observed"
 
