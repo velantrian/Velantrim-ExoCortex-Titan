@@ -57,7 +57,7 @@ def test_canonical_graph_rejects_legacy_uppercase_relation(canonical_runtime):
     assert store.get_fact_durable("beta")["epistemic_state"] == "Supported"
 
 
-def test_contradict_supported_pair_writes_canonical_edge_and_registry(canonical_runtime):
+def test_contradict_supported_pair_writes_canonical_edge_and_registry(canonical_runtime, monkeypatch):
     """Both durable transitions, canonical bidirectional edge and registry exist."""
     from core.truth_maintenance import contradict
 
@@ -65,9 +65,19 @@ def test_contradict_supported_pair_writes_canonical_edge_and_registry(canonical_
     _seed_supported(store, "alpha", "Claim A")
     _seed_supported(store, "beta", "Claim B")
     assert graph.get_relations_from("alpha") == []
+    registry = registry_mod.ContradictionRegistry()
+    record_calls = []
+    original_record = registry.record
+
+    def record_spy(*args, **kwargs):
+        record_calls.append((args, kwargs))
+        return original_record(*args, **kwargs)
+
+    monkeypatch.setattr(registry, "record", record_spy)
+    monkeypatch.setattr(registry_mod, "get_contradiction_registry", lambda: registry)
 
     assert contradict("alpha", "beta") is True
-    registry = registry_mod.get_contradiction_registry()
+    assert len(record_calls) == 1
     for fact_id in ("alpha", "beta"):
         fact = store.get_fact_durable(fact_id)
         assert fact["epistemic_state"] == "Contradicted"
