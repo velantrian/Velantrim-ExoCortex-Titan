@@ -122,6 +122,8 @@ def test_contradict_supported_pair_succeeds(
         "confidence": 0.95,
     }]
     assert len(fake_registry.records) == 1
+
+
 @pytest.mark.parametrize("missing_first", [False, True])
 def test_contradict_supported_missing_partner_keeps_partial_esm_without_artifacts(
     store, fake_causal_graph, monkeypatch, missing_first,
