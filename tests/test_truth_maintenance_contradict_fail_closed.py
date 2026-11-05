@@ -122,3 +122,62 @@ def test_contradict_supported_pair_succeeds(
         "confidence": 0.95,
     }]
     assert len(fake_registry.records) == 1
+@pytest.mark.parametrize("missing_first", [False, True])
+def test_contradict_supported_missing_partner_keeps_partial_esm_without_artifacts(
+    store, fake_causal_graph, monkeypatch, missing_first,
+):
+    """A committed ESM side stays Contradicted; absent IDs get no pair records."""
+    from core import contradiction_registry as registry_mod
+    from core.truth_maintenance import contradict
+
+    registry = registry_mod.ContradictionRegistry()
+    monkeypatch.setattr(
+        registry_mod, "get_contradiction_registry", lambda: registry
+    )
+    _seed_supported(store, "existing_supported", "documented claim")
+
+    first = "absent_partner" if missing_first else "existing_supported"
+    second = "existing_supported" if missing_first else "absent_partner"
+    assert store.get_fact("absent_partner") is None
+
+    # ADR #499 explicitly preserves this partial-success return contract.
+    assert contradict(first, second) is True
+    assert store.get_fact("existing_supported")["epistemic_state"] == "Contradicted"
+    assert store.get_fact("existing_supported")["history"][-1]["by"] == (
+        "truth_maintenance.contradict"
+    )
+    assert store.get_fact("absent_partner") is None
+
+    # Neither an attempted graph edge nor an in-memory ghost spacer is valid.
+    assert fake_causal_graph.calls == []
+    assert registry.spacer_count() == 0
+    assert registry.known_contradictions("existing_supported") == []
+    assert registry.known_contradictions("absent_partner") == []
+
+
+def test_contradict_partial_esm_with_both_existing_facts_keeps_pair_artifacts(
+    store, fake_causal_graph, fake_registry,
+):
+    """The guard must not require two successful ESM transitions."""
+    from core.truth_maintenance import contradict
+
+    _seed_supported(store, "supported_fact", "claim a")
+    store.store_fact({
+        "fact_id": "observed_fact",
+        "claim": "claim b",
+        "source": "integration-test",
+        "confidence": 0.5,
+        "metadata": {},
+    })
+    assert store.get_fact("observed_fact")["epistemic_state"] == "Observed"
+
+    assert contradict("supported_fact", "observed_fact") is True
+    assert store.get_fact("supported_fact")["epistemic_state"] == "Contradicted"
+    assert store.get_fact("observed_fact")["epistemic_state"] == "Observed"
+    assert fake_causal_graph.calls == [{
+        "from_fact_id": "supported_fact",
+        "to_fact_id": "observed_fact",
+        "relation_type": "CONTRADICTS",
+        "confidence": 0.95,
+    }]
+    assert len(fake_registry.records) == 1
