@@ -20,13 +20,10 @@ def canonical_runtime(tmp_path, monkeypatch):
     # Isolate the pipeline singleton without replacing its canonical writer.
     monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH", None)
     monkeypatch.setattr(pipeline, "_CAUSAL_GRAPH_DB_PATH", "")
-    registry = contradiction_registry.ContradictionRegistry()
-    # Install through the module's existing singleton so both the fixture and
-    # contradict()'s function-local import resolve the exact same registry.
-    monkeypatch.setattr(contradiction_registry, "_registry", registry)
+    monkeypatch.setattr(contradiction_registry, "_registry", None)
     graph = get_causal_graph()
     try:
-        yield store, graph, registry
+        yield store, graph, contradiction_registry
     finally:
         graph._conn.close()
         store.close()
@@ -47,7 +44,7 @@ def _seed_supported(store, fact_id: str, claim: str) -> None:
 
 def test_canonical_graph_rejects_legacy_uppercase_relation(canonical_runtime):
     """The old caller value must not be silently accepted by a new writer."""
-    store, graph, registry = canonical_runtime
+    store, graph, registry_mod = canonical_runtime
     _seed_supported(store, "alpha", "Claim A")
     _seed_supported(store, "beta", "Claim B")
 
@@ -55,6 +52,7 @@ def test_canonical_graph_rejects_legacy_uppercase_relation(canonical_runtime):
         graph.add_relation("alpha", "beta", "CONTRADICTS", confidence=0.95)
     assert graph.get_relations_from("alpha") == []
     assert graph.get_relations_from("beta") == []
+    registry = registry_mod.get_contradiction_registry()
     assert registry.spacer_count() == 0
     assert store.get_fact_durable("alpha")["epistemic_state"] == "Supported"
     assert store.get_fact_durable("beta")["epistemic_state"] == "Supported"
@@ -64,10 +62,11 @@ def test_contradict_supported_pair_writes_canonical_edge_and_registry(canonical_
     """Both durable transitions, canonical bidirectional edge and registry exist."""
     from core.truth_maintenance import contradict
 
-    store, graph, registry = canonical_runtime
+    store, graph, registry_mod = canonical_runtime
     _seed_supported(store, "alpha", "Claim A")
     _seed_supported(store, "beta", "Claim B")
     assert graph.get_relations_from("alpha") == []
+    registry = registry_mod.get_contradiction_registry()
 
     assert contradict("alpha", "beta") is True
     for fact_id in ("alpha", "beta"):
@@ -106,7 +105,7 @@ def test_contradict_partial_esm_keeps_canonical_pair_artifacts(canonical_runtime
     """One legal ESM commit still records the pair through canonical owners."""
     from core.truth_maintenance import contradict
 
-    store, graph, registry = canonical_runtime
+    store, graph, registry_mod = canonical_runtime
     _seed_supported(store, "supported", "Claim A")
     assert store.store_fact({
         "fact_id": "observed",
@@ -116,6 +115,7 @@ def test_contradict_partial_esm_keeps_canonical_pair_artifacts(canonical_runtime
         "metadata": {},
     }) is True
     assert store.get_fact_durable("observed")["epistemic_state"] == "Observed"
+    registry = registry_mod.get_contradiction_registry()
 
     assert contradict("supported", "observed") is True
     assert store.get_fact_durable("supported")["epistemic_state"] == "Contradicted"
