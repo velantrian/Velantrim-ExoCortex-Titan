@@ -1,3 +1,14 @@
+## 2026-11-06 — MCP session serialization merge reconciliation
+
+- Live GitHub confirms [PR #497](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/497) **MERGED** at 08:13:18 UTC as `8ff943a7d154f1c1a185917b107e08f89bcc3892` and [PR #504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504) **MERGED** at 09:56:00 UTC as `109de7be18e5e023d0b7fb6ad43ed47b97af0676`.
+- Main code in `core/mcp_transport.py` tracks holders and waiters per process-local lock entry and defers discard until idle. The contract in `docs/ai/MCP_SESSION_SERIALIZATION_V0_1.md` now describes the behavior and authenticated HTTP regression coverage.
+- PR #504 reports deterministic handler/HTTP regression tests and 63 MCP gateway and related integration tests passing; Ruff and mypy clean. The combined GitHub commit-status endpoint returned no status entries for merge SHA `109de7b…`, so this note does not claim post-merge Actions results.
+- Scope remains process-local. No multi-process/multi-worker serialization, automatic cancellation, runtime activation, Canon mutation, Operator GO, or production authorization is established.
+- The dated #504 Draft / no-merge entry below remains historical evidence of the state when written; this entry supersedes it for current status.
+- Documentation impact: `GITHUB_ONLY`; docs-only reconciliation, no runtime or authority change.
+
+---
+
 ## 2026-11-03 — MCP session serialization for side-effecting tools
 
 - Base: `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` (#496 docs reconcile).
