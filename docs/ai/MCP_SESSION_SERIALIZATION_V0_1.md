@@ -39,8 +39,13 @@ behind a process-local per-scope `RLock`:
 Read-only tools do **not** take the lock and may proceed while a side-effecting
 call for the same session is in flight.
 
-Session delete discards the matching `session:<id>` lock object so scopes do not
-leak forever after `DELETE /mcp`.
+`DELETE /mcp` removes the session capability binding immediately. If a
+side-effecting request is already executing or waiting on that session lock,
+the lock entry is retained until all such requests leave; a later request with
+the same ID therefore cannot overlap the in-flight critical section. The
+entry is discarded once idle, avoiding permanent lock-map retention for deleted
+sessions. This is process-local and does not cancel an operation already in
+flight.
 
 ## Explicit non-claims
 
@@ -70,7 +75,9 @@ OpenClaw pattern != OpenClaw import
 - same-session side-effects do not interleave;
 - different sessions may overlap;
 - read-only calls are not blocked by a same-session side-effect;
-- session delete discards the lock object;
+- idle session delete discards the lock entry;
+- delete during an active side-effect preserves serialization, including through
+  the authenticated HTTP gateway;
 - scope key derivation for explicit vs anonymous sessions.
 
 ## Documentation impact

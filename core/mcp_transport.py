@@ -9,9 +9,10 @@ import threading
 import uuid
 from collections import OrderedDict
 from collections.abc import Mapping
+from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field as dataclass_field
+from typing import Any, ContextManager, Iterator
 
 from core.tool_registry import (
     CAPABILITY_CHAIN,
@@ -227,9 +228,9 @@ class McpSessionManager:
         session_id: str | None,
         credential_fingerprint: str | None,
         capability: str,
-    ) -> threading.RLock:
-        """Return the process-local lock for one side-effect serialization scope."""
-        return self._side_effect_locks.lock_for(
+    ) -> ContextManager[None]:
+        """Hold the process-local lock for one side-effect serialization scope."""
+        return self._side_effect_locks.hold(
             _side_effect_scope(
                 session_id,
                 credential_fingerprint=credential_fingerprint,
@@ -249,19 +250,46 @@ class _SideEffectSessionLocks:
 
     def __init__(self) -> None:
         self._guard = threading.Lock()
-        self._locks: dict[str, threading.RLock] = {}
+        self._locks: dict[str, _SideEffectLockEntry] = {}
 
-    def lock_for(self, scope: str) -> threading.RLock:
+    @contextmanager
+    def hold(self, scope: str) -> Iterator[None]:
         with self._guard:
-            lock = self._locks.get(scope)
-            if lock is None:
-                lock = threading.RLock()
-                self._locks[scope] = lock
-            return lock
+            entry = self._locks.get(scope)
+            if entry is None:
+                entry = _SideEffectLockEntry()
+                self._locks[scope] = entry
+            # Count waiters as well as the current holder so delete cannot
+            # replace the lock while an operation is queued behind it.
+            entry.users += 1
+
+        entry.lock.acquire()
+        try:
+            yield
+        finally:
+            entry.lock.release()
+            with self._guard:
+                entry.users -= 1
+                if entry.users == 0 and entry.discard_when_idle:
+                    if self._locks.get(scope) is entry:
+                        self._locks.pop(scope)
 
     def discard(self, scope: str) -> None:
         with self._guard:
-            self._locks.pop(scope, None)
+            entry = self._locks.get(scope)
+            if entry is None:
+                return
+            if entry.users:
+                entry.discard_when_idle = True
+            else:
+                self._locks.pop(scope, None)
+
+
+@dataclass
+class _SideEffectLockEntry:
+    lock: threading.RLock = dataclass_field(default_factory=threading.RLock)
+    users: int = 0
+    discard_when_idle: bool = False
 
 
 def _side_effect_scope(

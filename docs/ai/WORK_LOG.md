@@ -39,6 +39,29 @@
 - Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
 - **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
 
+## 2026-11-06 — MCP session delete / active side-effect race audit
+
+- Audited PR #497 at `c8d9e3d08bd410eb94305d1ce94d68f2225980ec`.
+- Deterministic offline reproduction confirmed that `DELETE /mcp` removed a
+  held session lock from the map, allowing operation B with the same ID to
+  overlap operation A. The authorized HTTP gateway also reaches this path:
+  API-key-authenticated DELETE clears the binding, and an authenticated POST
+  can resolve the same ID using its supplied capability header.
+- Proposed minimal fix: count holders and waiters; defer lock-map cleanup until
+  the last operation leaves. Session deletion and authorization semantics are
+  otherwise unchanged.
+- Added deterministic handler and HTTP tests. Initial focused run against the
+  unfixed transport failed on overlap; after the fix, serialization, session
+  deletion, and MCP idempotency regression tests passed.
+- Follow-up Draft PR: [#504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504),
+  code/test checkpoint `9f00f7aa1b472bf2431bd59b25bb99bbe54d3f5a`.
+- Hosted CI at that exact code/test SHA: CI `42182682140` SUCCESS, Docker
+  `42182682137` SUCCESS, Stage 9 `42182682105` SUCCESS, Stage 10 `42182682156`
+  SUCCESS. The work-log-only follow-up commit records these results; it does not
+  change the tested code or tests.
+- No merge, runtime activation, expanded authority, or Canon change.
+- Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
+
 ## 2026-11-03 — Bilingual docs + status reconciliation
 
 - Base: live `main@eb08e9392fe18025b562d66f118fb0d29fb3401c` (#482).

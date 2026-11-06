@@ -74,7 +74,7 @@ def _derive_batch_idempotency_key(base_key: str, message_id: Any) -> str:
         allow_nan=False,
     )
     digest = hashlib.sha256(
-        f"{normalized}\0{encoded_id}".encode("utf-8")
+        f"{normalized}\0{encoded_id}".encode()
     ).hexdigest()
     return f"batch-{digest}"
 
