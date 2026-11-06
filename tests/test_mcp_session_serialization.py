@@ -5,6 +5,9 @@ from __future__ import annotations
 import threading
 import time
 
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.testclient import TestClient
+
 from core.mcp_transport import McpHandler, _side_effect_scope
 from core.tool_registry import ToolRegistry
 
@@ -222,15 +225,157 @@ def test_session_delete_discards_side_effect_lock(monkeypatch) -> None:
     )
     handler = McpHandler(registry=registry)
     sid = "to-delete"
-    first = handler.sessions.side_effect_lock(
-        session_id=sid,
-        credential_fingerprint="api:test",
-        capability="ingester",
-    )
+    scope = f"session:{sid}"
+    with handler.sessions.side_effect_lock(
+        session_id=sid, credential_fingerprint="api:test", capability="ingester"
+    ):
+        first = handler.sessions._side_effect_locks._locks[scope].lock
     handler.sessions.delete(sid)
-    second = handler.sessions.side_effect_lock(
-        session_id=sid,
-        credential_fingerprint="api:test",
-        capability="ingester",
-    )
+    assert scope not in handler.sessions._side_effect_locks._locks
+    with handler.sessions.side_effect_lock(
+        session_id=sid, credential_fingerprint="api:test", capability="ingester"
+    ):
+        second = handler.sessions._side_effect_locks._locks[scope].lock
     assert first is not second
+
+
+def test_session_delete_during_side_effect_does_not_split_lock_scope(monkeypatch) -> None:
+    monkeypatch.setenv("VELANTRIM_MCP_MAX_CAPABILITY", "admin")
+    a_inside = threading.Event()
+    release_a = threading.Event()
+    b_inside = threading.Event()
+    active = {"count": 0}
+    max_active = {"count": 0}
+    guard = threading.Lock()
+
+    def mutate(label: str) -> dict[str, str]:
+        with guard:
+            active["count"] += 1
+            max_active["count"] = max(max_active["count"], active["count"])
+        if label == "a":
+            a_inside.set()
+            assert release_a.wait(timeout=3)
+        else:
+            b_inside.set()
+        with guard:
+            active["count"] -= 1
+        return {"label": label}
+
+    registry = ToolRegistry()
+    registry.register("mutate", mutate, capability="ingester", side_effecting=True)
+    handler = McpHandler(registry=registry)
+    session_id = "delete-during-call"
+    handler.sessions.bind(session_id, "ingester")
+    results: dict[str, dict] = {}
+
+    def run(label: str, msg_id: int) -> None:
+        results[label] = _call(
+            handler,
+            msg_id=msg_id,
+            name="mutate",
+            arguments={"label": label},
+            session_id=session_id,
+            capability="ingester",
+        )
+
+    operation_a = threading.Thread(target=run, args=("a", 1))
+    operation_a.start()
+    assert a_inside.wait(timeout=2)
+
+    handler.sessions.delete(session_id)
+
+    operation_b = threading.Thread(target=run, args=("b", 2))
+    operation_b.start()
+    try:
+        assert not b_inside.wait(timeout=0.2), "B entered while A still held the session scope"
+    finally:
+        release_a.set()
+    operation_a.join(timeout=3)
+    operation_b.join(timeout=3)
+
+    assert not operation_a.is_alive() and not operation_b.is_alive()
+    assert max_active["count"] == 1
+    assert results["a"]["result"]["isError"] is False
+    assert results["b"]["result"]["isError"] is False
+
+
+def test_http_delete_during_side_effect_preserves_lock_and_auth(monkeypatch) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    from api import mcp_gateway
+
+    monkeypatch.setenv("VELANTRIM_MCP_MAX_CAPABILITY", "admin")
+    a_inside = threading.Event()
+    release_a = threading.Event()
+    b_inside = threading.Event()
+
+    def mutate(label: str) -> dict[str, str]:
+        if label == "a":
+            a_inside.set()
+            assert release_a.wait(timeout=4)
+        else:
+            b_inside.set()
+        return {"label": label}
+
+    registry = ToolRegistry()
+    registry.register("mutate", mutate, capability="ingester", side_effecting=True)
+    handler = McpHandler(registry=registry)
+    session_id = "http-delete-during-call"
+    handler.sessions.bind(session_id, "ingester")
+    monkeypatch.setattr(mcp_gateway, "_handler", handler)
+
+    def require_api_key(request: Request) -> None:
+        if request.headers.get("Authorization") != "Bearer test-key":
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+    app = FastAPI()
+    mcp_gateway.register_mcp_routes(app, auth_dependency=require_api_key)
+    client = TestClient(app)
+    headers = {
+        "Authorization": "Bearer test-key",
+        "Mcp-Session-Id": session_id,
+        "X-MCP-Capability": "reader",
+    }
+
+    denied = client.delete("/mcp", headers={"Mcp-Session-Id": session_id})
+    assert denied.status_code == 401
+    assert handler.sessions.get_capability(session_id) == "ingester"
+
+    def post(label: str, message_id: int):
+        request_headers = dict(headers)
+        if label == "b":
+            # Once DELETE removes the session binding, POST resolves the
+            # capability from this authorized request header.
+            request_headers["X-MCP-Capability"] = "ingester"
+        return client.post(
+            "/mcp",
+            headers=request_headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": message_id,
+                "method": "tools/call",
+                "params": {"name": "mutate", "arguments": {"label": label}},
+            },
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        request_a = pool.submit(post, "a", 1)
+        assert a_inside.wait(timeout=2)
+        deleted = client.delete(
+            "/mcp", headers={"Authorization": "Bearer test-key", "Mcp-Session-Id": session_id}
+        )
+        assert deleted.status_code == 200
+        assert handler.sessions.get_capability(session_id) is None
+
+        request_b = pool.submit(post, "b", 2)
+        try:
+            assert not b_inside.wait(timeout=0.2), "HTTP B entered while HTTP A held the session scope"
+        finally:
+            release_a.set()
+
+        response_a = request_a.result(timeout=5)
+        response_b = request_b.result(timeout=5)
+
+    assert response_a.status_code == response_b.status_code == 200
+    assert response_a.json()["result"]["isError"] is False
+    assert response_b.json()["result"]["isError"] is False
