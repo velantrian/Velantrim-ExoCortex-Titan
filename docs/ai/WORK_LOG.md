@@ -1,3 +1,17 @@
+## 2026-11-03 — MCP session serialization for side-effecting tools
+
+- Base: `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` (#496 docs reconcile).
+- Closes the remaining OpenClaw-adoption invariant for process-local
+  per-session serialization of competing side-effecting MCP `tools/call`
+  runs. Read-only tools stay unlocked. Anonymous calls fall back to
+  `anon:<credential>:<capability>`.
+- Complements existing MCP idempotency; does not claim multi-worker,
+  cancel-on-supersede, sandbox runtime wiring, or Canon authority.
+- Contract: [`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md).
+- Focused tests: `tests/test_mcp_session_serialization.py`.
+- Docs: refresh stale capability-plane “idempotency/session not yet”
+  wording; update OpenClaw adoption required checklist.
+
 ## 2026-11-04 — TruthMaintenance.contradict fail-closed on False ESM
 
 - Base: live `main@fd7793a43967fdbc3640443a9e9a57589efd925b` (#498).
