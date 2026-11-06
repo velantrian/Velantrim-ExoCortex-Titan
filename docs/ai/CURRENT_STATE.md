@@ -1,7 +1,7 @@
 # 📍 Current System State
 
-**Verified:** 2026-11-04  
-**Current repository head at this reconciliation:** live `main` was `fd7793a43967fdbc3640443a9e9a57589efd925b` (#498) before the contradict fail-closed repair; re-query GitHub for the post-merge head  
+**Verified:** 2026-11-06 (MCP serialization status rechecked against merged PRs and main code)  
+**Historical repository head at the 2026-11-04 reconciliation:** live `main` was `fd7793a43967fdbc3640443a9e9a57589efd925b` (#498) before the contradict fail-closed repair; this is not the 2026-11-06 head  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
 **Continuity canary machine checkpoint:** `docs/state/project_state.json` remains `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` (schema v7). That SHA is the bounded Continuity observation checkpoint, not today's repository head.  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
@@ -13,6 +13,14 @@
 > This document separates the **current repository checkpoint** from older implementation
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
+
+## 2026-11-06 — MCP session serialization status refresh
+
+PR [#497](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/497) merged at 08:13 UTC as `8ff943a7d154f1c1a185917b107e08f89bcc3892`, implementing process-local per-session serialization for competing side-effecting MCP calls. Follow-up [#504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504) merged at 09:56 UTC as `109de7be18e5e023d0b7fb6ad43ed47b97af0676`. Its lock-entry user counting retains the same lock while holders or waiters remain, even when `DELETE /mcp` removes the session binding.
+
+The merged behavior is covered by deterministic handler tests and an authenticated HTTP gateway regression test; PR #504 reports 63 MCP gateway and related integration tests passing, with Ruff and mypy clean. This is evidence for the tested code path, not production authorization. The guarantee is process-local only: no multi-process/multi-worker serialization or automatic cancellation is established. No Canon, runtime activation, Operator GO, or production authority was added. See [the contract](MCP_SESSION_SERIALIZATION_V0_1.md).
+
+Historical PR status notes below reflect their dated checkpoints and are not current queue state.
 
 ## 2026-11-03 — MCP session serialization for side-effecting tools (proposed/PR)
 
