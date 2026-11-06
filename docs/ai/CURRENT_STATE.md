@@ -1,7 +1,7 @@
 # 📍 Current System State
 
 **Verified:** 2026-11-06 (MCP serialization status rechecked against merged PRs and main code)  
-**Current repository head at this reconciliation:** live `main` was `fd7793a43967fdbc3640443a9e9a57589efd925b` (#498) before the contradict fail-closed repair; re-query GitHub for the post-merge head  
+**Historical repository head at the 2026-11-04 reconciliation:** live `main` was `fd7793a43967fdbc3640443a9e9a57589efd925b` (#498) before the contradict fail-closed repair; this is not the 2026-11-06 head  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
 **Continuity canary machine checkpoint:** `docs/state/project_state.json` remains `39ba28dbf6bce4da1e18d6726ae4f4f79dc5f24e` (schema v7). That SHA is the bounded Continuity observation checkpoint, not today's repository head.  
 **C11 lifecycle rule:** resolve the current #52 lifecycle from live GitHub; the C11 paragraphs below remain historical repository evidence  
