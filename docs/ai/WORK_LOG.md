@@ -53,8 +53,13 @@
 - Added deterministic handler and HTTP tests. Initial focused run against the
   unfixed transport failed on overlap; after the fix, serialization, session
   deletion, and MCP idempotency regression tests passed.
-- Follow-up PR/commit and hosted CI are pending. No merge, runtime activation,
-  expanded authority, or Canon change.
+- Follow-up Draft PR: [#504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504),
+  code/test checkpoint `9f00f7aa1b472bf2431bd59b25bb99bbe54d3f5a`.
+- Hosted CI at that exact code/test SHA: CI `42182682140` SUCCESS, Docker
+  `42182682137` SUCCESS, Stage 9 `42182682105` SUCCESS, Stage 10 `42182682156`
+  SUCCESS. The work-log-only follow-up commit records these results; it does not
+  change the tested code or tests.
+- No merge, runtime activation, expanded authority, or Canon change.
 - Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
 
 ## 2026-11-03 — Bilingual docs + status reconciliation
