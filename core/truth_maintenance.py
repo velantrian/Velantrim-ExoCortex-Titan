@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger("velantrim.truth_maintenance")
 
 REL_SUPERSEDED_BY = "SUPERSEDED_BY"
-REL_CONTRADICTS = "CONTRADICTS"
+REL_CONTRADICTS = "contradicts"
 
 
 def _now() -> str:

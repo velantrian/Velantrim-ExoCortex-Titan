@@ -118,7 +118,7 @@ def test_contradict_supported_pair_succeeds(
     assert fake_causal_graph.calls == [{
         "from_fact_id": "a1",
         "to_fact_id": "b1",
-        "relation_type": "CONTRADICTS",
+        "relation_type": "contradicts",
         "confidence": 0.95,
     }]
     assert len(fake_registry.records) == 1
