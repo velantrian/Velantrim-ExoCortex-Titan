@@ -1,3 +1,28 @@
+## 2026-11-06 — MCP session serialization merge reconciliation
+
+- Live GitHub confirms [PR #497](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/497) **MERGED** at 08:13:18 UTC as `8ff943a7d154f1c1a185917b107e08f89bcc3892` and [PR #504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504) **MERGED** at 09:56:00 UTC as `109de7be18e5e023d0b7fb6ad43ed47b97af0676`.
+- Main code in `core/mcp_transport.py` tracks holders and waiters per process-local lock entry and defers discard until idle. The contract in `docs/ai/MCP_SESSION_SERIALIZATION_V0_1.md` now describes the behavior and authenticated HTTP regression coverage.
+- PR #504 reports deterministic handler/HTTP regression tests and 63 MCP gateway and related integration tests passing; Ruff and mypy clean. The combined GitHub commit-status endpoint returned no status entries for merge SHA `109de7b…`, so this note does not claim post-merge Actions results.
+- Scope remains process-local. No multi-process/multi-worker serialization, automatic cancellation, runtime activation, Canon mutation, Operator GO, or production authorization is established.
+- The dated #504 Draft / no-merge entry below remains historical evidence of the state when written; this entry supersedes it for current status.
+- Documentation impact: `GITHUB_ONLY`; docs-only reconciliation, no runtime or authority change.
+
+---
+
+## 2026-11-03 — MCP session serialization for side-effecting tools
+
+- Base: `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` (#496 docs reconcile).
+- Closes the remaining OpenClaw-adoption invariant for process-local
+  per-session serialization of competing side-effecting MCP `tools/call`
+  runs. Read-only tools stay unlocked. Anonymous calls fall back to
+  `anon:<credential>:<capability>`.
+- Complements existing MCP idempotency; does not claim multi-worker,
+  cancel-on-supersede, sandbox runtime wiring, or Canon authority.
+- Contract: [`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md).
+- Focused tests: `tests/test_mcp_session_serialization.py`.
+- Docs: refresh stale capability-plane “idempotency/session not yet”
+  wording; update OpenClaw adoption required checklist.
+
 ## 2026-11-04 — TruthMaintenance.contradict fail-closed on False ESM
 
 - Base: live `main@fd7793a43967fdbc3640443a9e9a57589efd925b` (#498).
@@ -24,6 +49,29 @@
   notes for #473 (DRAFT/MERGEABLE) and #497 (OPEN/MERGEABLE).
 - Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
 - **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
+## 2026-11-06 — MCP session delete / active side-effect race audit
+
+- Audited PR #497 at `c8d9e3d08bd410eb94305d1ce94d68f2225980ec`.
+- Deterministic offline reproduction confirmed that `DELETE /mcp` removed a
+  held session lock from the map, allowing operation B with the same ID to
+  overlap operation A. The authorized HTTP gateway also reaches this path:
+  API-key-authenticated DELETE clears the binding, and an authenticated POST
+  can resolve the same ID using its supplied capability header.
+- Proposed minimal fix: count holders and waiters; defer lock-map cleanup until
+  the last operation leaves. Session deletion and authorization semantics are
+  otherwise unchanged.
+- Added deterministic handler and HTTP tests. Initial focused run against the
+  unfixed transport failed on overlap; after the fix, serialization, session
+  deletion, and MCP idempotency regression tests passed.
+- Follow-up Draft PR: [#504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504),
+  code/test checkpoint `9f00f7aa1b472bf2431bd59b25bb99bbe54d3f5a`.
+- Hosted CI at that exact code/test SHA: CI `42182682140` SUCCESS, Docker
+  `42182682137` SUCCESS, Stage 9 `42182682105` SUCCESS, Stage 10 `42182682156`
+  SUCCESS. The work-log-only follow-up commit records these results; it does not
+  change the tested code or tests.
+- No merge, runtime activation, expanded authority, or Canon change.
+- Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
 
 ## 2026-11-03 — Bilingual docs + status reconciliation
 
