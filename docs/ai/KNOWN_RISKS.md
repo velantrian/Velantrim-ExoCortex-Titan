@@ -1,5 +1,63 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — FactsPack silently dropped distinct records (branch `ccr-21271488-mmapps`, not merged)
+
+Base `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. `FactsPackBuilder._dedup_semantic`
+(always on, `/query` → `pipeline.run` → `build_facts_pack`) removed a record when its
+whitespace-token overlap with another exceeded 0.7, keeping the higher confidence.
+Records differing only by negation, condition, identifier (`L1`/`L2`), status, number or
+argument order were dropped before the LLM prompt, without an `excluded_facts` entry.
+Same text under different `fact_id`s lost separate provenance. The branch replaces it with
+`_dedup_exact_record_repeats`: only the same real `fact_id` with an identical packed
+payload collapses.
+
+Tests (fail on base, pass on the branch):
+`tests/test_facts_pack_distinct_records_preserved.py`,
+`tests/test_query_prompt_preserves_distinct_facts.py` (fake provider at
+`core.llm_router.chat_complete`; checks the provider-bound system prompt and the
+remote-egress sanitizer output).
+
+Remaining limits:
+- Prompt size can grow by the number of near-duplicate records retrieval returns (bounded by retrieval `k`).
+- Prompt serialization still omits `fact_id` and `epistemic_state` by the PR #453 contract
+  (`tests/test_prompt_epistemic_boundary.py`). Whether to add them is an open policy
+  decision, not a bug fix.
+- Other context paths still trim silently (`core/llm_stream.py` history `[-20:]`,
+  `core/console_memory.py` caps). `WorkingMemoryGate`/`ContextPack` remain shadow-only.
+
+## Reduced risk — Observer folded a failed check into a clean verdict (branch `ccr-21271488-mmapps`, not merged)
+
+`core/observer.py::observe` (default off, `ENABLE_OBSERVER`) turned a check exception into
+`res = None`, so a broken check looked like `allow` / `clean`. On the branch a raised check
+adds flag `check_unavailable` (decision at least `warn`) and
+`details["unavailable_checks"]` = check name + exception type. Exception text is not
+included. Test: `tests/test_observer_check_unavailable.py`. Observer stays passive and does
+not change the delivered answer.
+
+## Open risk — LLM answers are not checked claim-by-claim against evidence
+
+- `core/output_faithfulness.py` uses word-set overlap with tokens of 3+ characters. It
+  scores negation, `L1`↔`L2`, `7`↔`30` days, `принято`↔`отменено` and a dropped condition
+  as fully grounded (1.0). Its docstring says TF-IDF; the code is plain overlap.
+- The checker runs only on the pipeline template answer, as metadata after
+  `ResponseGuardian` (`core/pipeline.py`).
+- The LLM answer (`server.py` `/query`) gets no post-generation support check. It only
+  gets the passive Observer when that is enabled.
+- `ResponseGuardian` does not compare claims with evidence.
+- A claim-level support check is a separate proposed change: shadow-first, with distinct
+  `CHECK_UNAVAILABLE` and `INSUFFICIENT_EVIDENCE`, and never `SUPPORTED` merely because no
+  contradiction was found.
+
+## Open risk — prepared embedding batches can republish erased facts
+
+`EmbeddingProjectionStore.rebuild` (`core/embedding_projection.py`) and
+`EmbeddingStore.store` (`core/embedding_store.py`, unconditional `INSERT OR REPLACE`) write
+caller-prepared vectors. They do not re-check erasure in the same transaction.
+`ErasureCoordinator` generations detect residual data after the fact; they do not prevent
+the write. A fix needs an atomic conditional write: a revision/tombstone check and the
+publish in one transaction. A late task must not resurrect an erased record, and that must
+stay distinct from a new, explicitly admitted input.
+
 ## Reduced risk — MCP same-session side-effect interleaving (process-local)
 
 Competing side-effecting MCP `tools/call` runs that share an explicit
