@@ -1,3 +1,15 @@
+## 2026-11-09 — Safe LLM failure reporting; unsafe API keys rejected before the request
+
+- Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `fix/llm-error-safe-codes-20261109`, draft PR, not merged. Independent of PR #509; both add an entry at the top of this file and of `KNOWN_RISKS.md`, so the second to merge needs a trivial merge of those two headers. Issue: #511.
+- Change: new `core/llm_errors.py` (fixed codes by exception type, event id, header-safe key check). Handlers in `server.py`, `api/llm_routes.py`, `core/llm_stream.py`, `core/llm_router.py`, `core/tts_router.py`, `core/gemini_models.py`, `core/sleep_time_worker.py`, `core/cross_domain.py` return or log only a code, a static hint, an event id and the exception type. Keys outside visible ASCII are rejected before a request is built. Provider failures keep their type through STT/TTS/streaming. Reader adapter: key and not-configured errors are permanent.
+- Evidence: on `main` a synthetic marker in the exception text was present in `llm_answer`, `llm_meta`, logs, the trace kwargs and the event kwargs (probe with the real `server.query`). `tests/test_llm_error_redaction.py` (41 tests): 15 of the first 28 failed on `main` plus the new module, all pass on the branch; later tests cover the surfaces the leak audit found. Full suite on the branch: 4884 passed, 5 failed, 17 skipped, 1 xfailed, 4906 collected; the 5 failures are the same as on `main` (see #510).
+- Process notes: the first full run exposed four tests that were order-dependent (other tests reload `core.*`, so exception classes captured at collection or import no longer matched); fixed by resolving classes from the live modules. One existing test (`test_remote_egress_policy`) asserted the policy reason code in the stream message; the reason code is now carried in a strict-shape `detail_code`.
+- Not covered: see the remaining limits in `KNOWN_RISKS.md` (generic exception handler, other event sinks, coarse codes).
+- Documentation impact: `GITHUB_ONLY`. Notion: not updated by this change.
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
+---
+
 ## 2026-11-06 — MCP session serialization merge reconciliation
 
 - Live GitHub confirms [PR #497](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/497) **MERGED** at 08:13:18 UTC as `8ff943a7d154f1c1a185917b107e08f89bcc3892` and [PR #504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504) **MERGED** at 09:56:00 UTC as `109de7be18e5e023d0b7fb6ad43ed47b97af0676`.

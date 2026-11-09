@@ -1,5 +1,25 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — LLM provider exception text and unsafe API keys (draft PR, not merged)
+
+Base `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`; issue #511. On `main`, text built from an LLM provider exception reached the caller, the logs, the persisted reasoning trace and the completion event. With a synthetic marker in the exception, the marker was present in `llm_answer`, `llm_meta`, log records, the `save_trace` kwargs and the `on_query_completed` kwargs. Surfaces: `/query`, `/chat` (HTTP 400 detail), `/chat/stream` and `core/llm_stream.py`, `/llm/*`, `/stt/transcribe`, `/tts/speak`, `/tts/stream`, Gemini model discovery, Gemini STT logs, the sleep-time worker log, the cross-domain and Gemini-cache logs. A key with a character that cannot go into an HTTP header (CR/LF/NUL, space, non-ASCII) made the HTTP layer raise an error containing the whole header value; TTS and model discovery built the request anyway.
+
+On the branch:
+- `core/llm_errors.py` maps an exception to a fixed code from its type (and a provider status), adds a random event id, and logs only route, code, event id and the exception type (no message, no traceback). Handlers return the code, a static hint and the event id. The egress policy's own reason code (for example `network_denied`) is passed through when it has a strict shape.
+- A key outside visible ASCII is rejected before any request is built: `chat_complete`, `test_connection`, both transcribers, both entry points of `core/llm_stream.py`, TTS, Gemini model discovery and the `/tts/stream` route.
+- Provider failures keep their type (`LlmProviderRequestError`) through the STT, TTS and streaming paths, so 401/402/404/429 still select their codes and statuses. HTTP 403 has its own code (`llm_access_denied`) and keeps the historical status 400.
+- `/chat/stream` forwards the stream's own error code and event id instead of re-classifying it.
+- The reader adapter treats the key and not-configured errors as permanent. `LlmCallConfig.api_key` is excluded from `repr`.
+
+Tests: `tests/test_llm_error_redaction.py` (41 tests) plants a synthetic marker in the exception text, its chained cause and the provider body (a provider that echoes the key), and asserts it is absent from the response, `llm_meta`, every log record (message and formatted traceback), the trace sink and the event; unsafe keys never create an HTTP client. Classes and functions are resolved from the live modules, because other tests reload `core.*`. Found by an independent leak audit (five hunters; the skeptic round and the events hunter did not complete, so each fix is covered by a test instead).
+
+Remaining limits:
+- The exception text is not stored anywhere, so an operator cannot recover the raw cause from a log line; the event id only correlates a report with the code and the exception type. Provider-specific hints that were copied from a response body are replaced by static, code-keyed text.
+- Not changed: `server.py` generic handler (`logger.exception("Unhandled exception: %s", exc)`) still logs the text of any exception that escapes a route; no LLM call path is known to escape. Pipeline exceptions (`pipeline_error = str(exc)`) and the other `HTTPException(detail=str(exc))` for validation errors are not LLM provider text.
+- A key check is a character check; it does not prove the key is valid. The persisted trace was checked at the `save_trace` call seam, not read back from the database. Event consumers other than `on_query_completed` (response audit, welfare monitor, essence commit, console memory) were not audited.
+- Codes are coarse: a plain `ValueError` is `llm_request_invalid`, and a `HTTPException` raised while resolving the request's LLM config inside `/query` is reported as `llm_internal_error`.
+- Separate, pre-existing: `/tts/stream` with `provider=gemini` and no explicit model fails, because `gemini_tts_bytes` rejects an empty Gemini model id.
+
 ## Reduced risk — MCP same-session side-effect interleaving (process-local)
 
 Competing side-effecting MCP `tools/call` runs that share an explicit
