@@ -21,6 +21,7 @@ from typing import Any
 import httpx
 
 from core.llm_errors import (
+    LlmEmptyResponseError,
     describe_llm_failure,
     log_llm_failure,
     safe_llm_error_text,
@@ -334,7 +335,7 @@ async def chat_complete_messages(
             data = resp.json()
             text = _openai_message_text(data["choices"][0]["message"])
             if not text:
-                raise ValueError(f"{provider}: пустой ответ модели")
+                raise LlmEmptyResponseError(f"{provider}: пустой ответ модели")
             usage_meta = _usage_from_openai_payload(data)
             return text, usage_meta
 
@@ -423,7 +424,7 @@ async def _gemini_complete_messages(
     data = resp.json()
     candidates = data.get("candidates") or []
     if not candidates:
-        raise ValueError("Gemini: пустой ответ")
+        raise LlmEmptyResponseError("Gemini: пустой ответ")
     parts_out = candidates[0].get("content", {}).get("parts") or []
     texts = [part.get("text", "") for part in parts_out if part.get("text")]
     text = "\n".join(texts).strip() or "(пустой ответ Gemini)"

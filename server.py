@@ -163,26 +163,31 @@ def _env_llm_config():
     """Конфиг LLM из переменных окружения (без ключей в логах)."""
     from core.llm_router import LlmCallConfig
 
+    # Surrounding whitespace is removed, as for a key sent in a request (``.strip()`` there).
+    # A trailing space or CR from an env file is a formatting accident, not part of the key;
+    # a key with any other disallowed character is still rejected before a request is built.
     prov = LLM_PROVIDER
-    if prov == "anthropic" and ANTHROPIC_KEY:
-        return LlmCallConfig(provider="anthropic", api_key=ANTHROPIC_KEY, model=ANTHROPIC_MODEL)
-    if prov == "openai" and OPENAI_KEY:
-        return LlmCallConfig(provider="openai", api_key=OPENAI_KEY, model=OPENAI_MODEL)
-    deepseek = os.getenv("DEEPSEEK_API_KEY", "")
+    anthropic_key = ANTHROPIC_KEY.strip()
+    openai_key = OPENAI_KEY.strip()
+    if prov == "anthropic" and anthropic_key:
+        return LlmCallConfig(provider="anthropic", api_key=anthropic_key, model=ANTHROPIC_MODEL)
+    if prov == "openai" and openai_key:
+        return LlmCallConfig(provider="openai", api_key=openai_key, model=OPENAI_MODEL)
+    deepseek = os.getenv("DEEPSEEK_API_KEY", "").strip()
     if prov == "deepseek" and deepseek:
         return LlmCallConfig(
             provider="deepseek",
             api_key=deepseek,
             model=os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
         )
-    gemini = os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
+    gemini = (os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip())
     if prov == "gemini" and gemini:
         return LlmCallConfig(
             provider="gemini",
             api_key=gemini,
             model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         )
-    or_key = os.getenv("OPENROUTER_API_KEY", "")
+    or_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if prov == "openrouter" and or_key:
         return LlmCallConfig(
             provider="openrouter",

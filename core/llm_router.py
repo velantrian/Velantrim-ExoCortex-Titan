@@ -127,6 +127,7 @@ def _http_error(provider: str, resp: httpx.Response) -> LlmProviderRequestError:
 
 
 from core.llm_errors import (  # noqa: E402
+    LlmEmptyResponseError,
     LlmNotConfiguredError,
     describe_llm_failure,
     log_llm_failure,
@@ -451,7 +452,7 @@ async def _openai_compatible_chat(
         message = data["choices"][0]["message"]
         text = _openai_message_text(message)
         if not text:
-            raise ValueError(f"{cfg.provider}: пустой ответ модели")
+            raise LlmEmptyResponseError(f"{cfg.provider}: пустой ответ модели")
         return text
 
 
@@ -553,7 +554,7 @@ async def _gemini_chat(
     data = resp.json()
     candidates = data.get("candidates") or []
     if not candidates:
-        raise ValueError("Gemini: пустой ответ")
+        raise LlmEmptyResponseError("Gemini: пустой ответ")
     parts_out = candidates[0].get("content", {}).get("parts") or []
     texts = [p.get("text", "") for p in parts_out if p.get("text")]
     return "\n".join(texts).strip() or "(пустой ответ Gemini)"
@@ -797,7 +798,7 @@ async def transcribe_audio_gemini(
             data = resp.json()
             candidates = data.get("candidates") or []
             if not candidates:
-                raise ValueError("Gemini: пустой ответ транскрипции")
+                raise LlmEmptyResponseError("Gemini: пустой ответ транскрипции")
             parts_out = candidates[0].get("content", {}).get("parts") or []
             texts = [p.get("text", "") for p in parts_out if p.get("text")]
             text = "\n".join(texts).strip()
@@ -887,7 +888,7 @@ async def transcribe_audio_openai(
         payload = resp.json()
         text = (payload.get("text") or "").strip()
         if not text:
-            raise ValueError("OpenAI Whisper: пустой ответ")
+            raise LlmEmptyResponseError("OpenAI Whisper: пустой ответ")
         return text
 
 

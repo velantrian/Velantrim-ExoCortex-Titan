@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-from core.llm_errors import validate_llm_api_key
+from core.llm_errors import LlmEmptyResponseError, validate_llm_api_key
 from core.remote_egress import ensure_remote_egress_allowed
 
 logger = logging.getLogger(__name__)
@@ -324,7 +324,7 @@ async def gemini_tts_bytes(
 
     candidates = data.get("candidates") or []
     if not candidates:
-        raise ValueError("gemini TTS: пустой ответ")
+        raise LlmEmptyResponseError("gemini TTS: пустой ответ")
     parts_out = candidates[0].get("content", {}).get("parts") or []
     for part in parts_out:
         inline = part.get("inlineData") or part.get("inline_data")

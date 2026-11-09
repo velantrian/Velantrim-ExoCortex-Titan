@@ -15,6 +15,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import re
 from types import SimpleNamespace
 
 import httpx
@@ -568,3 +569,116 @@ def test_http_403_has_its_own_code_and_keeps_the_historical_status():
     info = _errors().describe_llm_failure(exc)
     assert info.code == "llm_access_denied" and info.http_status == 400
     assert "403" in info.hint and MARKER not in _errors().safe_llm_error_text(info)
+
+
+# ── structural guarantees of the report itself ───────────────────────────────
+
+def test_error_info_replaces_any_field_that_does_not_have_the_fixed_shape():
+    # Whoever builds the report (a stream event, a future caller), text that is not a code
+    # never passes through: it is replaced, so it cannot reach a response, a log or an event.
+    e = _errors()
+    info = e.LlmErrorInfo(code=f"boom {MARKER}", event_id=f"evt {MARKER}", detail=f"Bearer {MARKER}")
+    assert info.code == "llm_internal_error" and info.detail == ""
+    assert e._EVENT_ID_RE.fullmatch(info.event_id)
+    assert MARKER not in e.safe_llm_error_text(info) and MARKER not in repr(e.safe_llm_error_meta(info))
+    kept = e.LlmErrorInfo(code="llm_rate_limited", event_id="llm_evt_0123456789abcdef", detail="network_denied")
+    assert (kept.code, kept.event_id, kept.detail) == ("llm_rate_limited", "llm_evt_0123456789abcdef", "network_denied")
+    assert e.LlmErrorInfo(code="llm_timeout", event_id=e.new_event_id()).detail == ""
+    assert e.LlmErrorInfo(code=None, event_id=None, detail=None).code == "llm_internal_error"  # type: ignore[arg-type]
+
+
+def test_log_line_names_the_types_and_the_raising_location_but_never_the_text(caplog):
+    e = _errors()
+
+    def _raises_here():
+        try:
+            raise ConnectionError(f"inner {MARKER}")
+        except ConnectionError as inner:
+            raise RuntimeError(f"outer {MARKER}") from inner
+
+    try:
+        _raises_here()
+    except RuntimeError as exc:
+        caught = exc
+    info = e.describe_llm_failure(caught)
+    with caplog.at_level(logging.DEBUG):
+        e.log_llm_failure(logging.getLogger("probe.llm"), info, caught, route="/probe")
+
+    line = caplog.records[-1].getMessage()
+    assert "exc_type=RuntimeError<-ConnectionError" in line
+    assert re.search(r"origin=test_llm_error_redaction\.py:\d+:_raises_here", line), line
+    assert info.event_id in line and info.code in line
+    assert MARKER not in line and caplog.records[-1].exc_info is None
+    # no traceback available: still a line, still no text
+    with caplog.at_level(logging.DEBUG):
+        e.log_llm_failure(logging.getLogger("probe.llm"), info, RuntimeError(MARKER), route="/probe")
+    assert "origin=unknown" in caplog.records[-1].getMessage()
+    assert MARKER not in caplog.records[-1].getMessage()
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("sk-synthetic-key \r\n", "sk-synthetic-key"),     # CRLF env file / trailing space
+        ("  sk-synthetic-key", "sk-synthetic-key"),
+        ("sk-synthetic-key", "sk-synthetic-key"),
+    ],
+)
+def test_env_key_surrounding_whitespace_is_removed_like_for_a_request_key(monkeypatch, raw, expected):
+    srv = importlib.import_module("server")
+    monkeypatch.setattr(srv, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", raw)
+    cfg = srv._env_llm_config()
+    assert cfg is not None and cfg.api_key == expected
+    _errors().validate_llm_api_key(cfg.api_key)             # usable, not a false refusal
+
+
+def test_env_key_with_an_inner_disallowed_character_is_still_rejected(monkeypatch):
+    srv = importlib.import_module("server")
+    monkeypatch.setattr(srv, "LLM_PROVIDER", "deepseek")
+    monkeypatch.setenv("DEEPSEEK_API_KEY", f" {MARKER} tail\n")
+    cfg = srv._env_llm_config()
+    assert cfg is not None and cfg.api_key == f"{MARKER} tail"
+    with pytest.raises(_errors().LlmKeyInvalidError):
+        _errors().validate_llm_api_key(cfg.api_key)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", " \r\n")         # whitespace only: not configured
+    assert srv._env_llm_config() is None
+
+
+@pytest.mark.asyncio
+async def test_an_empty_provider_answer_has_its_own_code_not_request_invalid(monkeypatch):
+    # "The provider returned nothing" is not "your request is invalid": without the exception
+    # text, the code is the only thing that tells the two apart.
+    e = _errors()
+    router = importlib.import_module("core.llm_router")
+    assert e.classify_llm_error(e.LlmEmptyResponseError(f"empty {MARKER}")) == "llm_empty_response"
+    assert e.classify_llm_error(ValueError("bad argument")) == "llm_request_invalid"
+    assert issubclass(e.LlmEmptyResponseError, ValueError)        # existing ``except ValueError`` still works
+    info = e.describe_llm_failure(e.LlmEmptyResponseError(f"empty {MARKER}"))
+    assert "пустой ответ" in info.hint and MARKER not in e.safe_llm_error_text(info)
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {"choices": [{"message": {"content": ""}}]}
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **k):
+            return _Resp()
+
+    monkeypatch.setattr(router.httpx, "AsyncClient", _Client)
+    monkeypatch.setattr(router, "ensure_remote_egress_allowed", lambda *a, **k: None, raising=False)
+    cfg = router.LlmCallConfig(provider="openai", api_key="synthetic-valid-key", model="gpt-4o")
+    with pytest.raises(ValueError) as excinfo:
+        await router.chat_complete(cfg, "q", system="s")
+    assert e.classify_llm_error(excinfo.value) == "llm_empty_response"
