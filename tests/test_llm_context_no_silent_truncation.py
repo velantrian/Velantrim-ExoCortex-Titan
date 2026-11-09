@@ -643,15 +643,23 @@ def test_chat_stream_endpoint_emits_context_report_and_clear_refusal(
     assert events[-1]["context_report"]["memory_records_sent"] == 3
     assert fake.bodies[0]["stream"] is True
 
+    # An over-limit question is refused before the stream starts (HTTP 413).
     monkeypatch.setenv(DEEPSEEK_MESSAGE_CHAR_LIMIT_ENV, "4000")
-    refused = _sse_events(
+    with pytest.raises(Exception) as info:
         asyncio.run(server.chat_stream_endpoint(_chat_req(message="LONG " + "q" * 4500)))
-    )
-    assert refused[-1]["type"] == "error"
-    assert refused[-1]["message"].startswith("llm_context_limit")
-    assert "LONG" not in refused[-1]["message"]
-    assert not any(e["type"] == "token" for e in refused)  # no offline substitute
+    assert getattr(info.value, "status_code", None) == 413
+    assert str(info.value.detail).startswith("llm_context_limit")
+    assert "LONG" not in str(info.value.detail)
     assert len(fake.requests) == 1  # the refused request was never sent
+
+    # A provider context overflow mid-stream is a clear error event, not an offline answer.
+    monkeypatch.delenv(DEEPSEEK_MESSAGE_CHAR_LIMIT_ENV)
+    fake.error = (400, {"error": {"message": "This model's maximum context length is exceeded"}})
+    overflow = _sse_events(asyncio.run(server.chat_stream_endpoint(_chat_req())))
+    assert overflow[-1]["type"] == "error"
+    assert overflow[-1]["message"].startswith("llm_context_overflow")
+    assert overflow[-1]["context_report"]["memory_records_sent"] == 3
+    assert not any(e["type"] == "token" for e in overflow)  # no offline substitute
 
 
 # ── 8. /query surfaces the same report ───────────────────────────────────────

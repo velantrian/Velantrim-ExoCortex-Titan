@@ -21,6 +21,8 @@ from typing import Any
 import httpx
 
 from core.llm_context_budget import (
+    CONTEXT_LIMIT_CODE,
+    CONTEXT_OVERFLOW_CODE,
     HISTORY_MAX_TURNS_ENV,
     ContextReport,
     LlmContextLimitError,
@@ -160,11 +162,13 @@ def _usage_from_openai_payload(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _gemini_cache_key(cfg: LlmCallConfig, system: str) -> str:
-    # Hash the whole system text: a prefix-only key let two different system
+    # Digest of the whole system text: a prefix-only key let two different system
     # prompts with the same first 8000 characters share one cached context.
-    system_digest = hashlib.sha256(system.encode("utf-8")).hexdigest()
-    raw = f"{cfg.provider}:{_resolve_model(cfg)}:{cfg.api_key[-8:]}:{system_digest}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+    # The API key is not hashed here; a process-local hash() separates accounts
+    # in this in-memory map only.
+    content = f"{cfg.provider}:{_resolve_model(cfg)}:{system}"
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:32]
+    return f"{digest}:{hash(cfg.api_key):x}"
 
 
 async def _gemini_ensure_explicit_cache(
@@ -497,7 +501,11 @@ async def stream_chat_events(
         yield {"type": "token", "text": text}
         yield {"type": "done", "reply": text, "usage": usage}
     except Exception as exc:
-        yield {"type": "error", "message": str(exc)}
+        err_event: dict[str, Any] = {"type": "error", "message": str(exc)}
+        code = getattr(exc, "code", None)
+        if code in (CONTEXT_LIMIT_CODE, CONTEXT_OVERFLOW_CODE):
+            err_event["code"] = code
+        yield err_event
 
 
 async def _stream_openai_compatible(

@@ -307,10 +307,11 @@ def looks_like_context_overflow(status_code: int, detail: str) -> bool:
     return any(marker in text for marker in _OVERFLOW_MARKERS)
 
 
-def context_overflow_message(provider: str, status_code: int) -> str:
+def context_overflow_message(provider: str, status_code: int | None) -> str:
+    status = f" (HTTP {status_code})" if status_code is not None else ""
     return (
         f"{CONTEXT_OVERFLOW_CODE}: {provider} rejected the request as larger than "
-        f"the model context (HTTP {status_code}). Titan did not shorten the "
+        f"the model context{status}. Titan did not shorten the "
         "question, instructions, memory or history and does not count tokens; "
         "reduce history, memory or document size, or choose a model with a "
         "larger context."

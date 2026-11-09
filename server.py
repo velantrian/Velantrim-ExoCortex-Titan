@@ -1924,6 +1924,15 @@ async def _chat_prepare(req: ChatRequest):
             system = _build_system_prompt(
                 facts, lens_instructions=lens_extra, report=context_report
             )
+            # Refuse an over-limit question/system before the stream starts (HTTP 413),
+            # with a throwaway report so the stream records history only once.
+            from core.llm_context_budget import ContextReport
+            from core.llm_stream import build_openai_messages
+
+            build_openai_messages(
+                system, req.message, req.chat_history,
+                provider=cfg.provider, report=ContextReport.for_provider(cfg.provider),
+            )
         except Exception as exc:
             _raise_if_context_error(exc)
             raise
@@ -1952,8 +1961,19 @@ async def _chat_memory_side_effects(
     )
 
 
-class _StreamContextError(RuntimeError):
-    """A context-limit refusal inside the SSE stream (not replaced by offline text)."""
+_CONTEXT_ERROR_CODES = ("llm_context_limit", "llm_context_overflow")
+
+
+def _context_refusal_text(code: str, provider: str) -> str:
+    """User-facing refusal built from the error code only (no exception text)."""
+    from core.llm_context_budget import CONTEXT_OVERFLOW_CODE, context_overflow_message
+
+    if code == CONTEXT_OVERFLOW_CODE:
+        return context_overflow_message(provider, None)
+    return (
+        "llm_context_limit: a configured Titan context limit refused the request; "
+        "nothing was shortened or sent. See context_report and the limit settings."
+    )
 
 
 @app.post("/chat/stream", tags=["LLM"], dependencies=[Depends(require_api_key)])
@@ -1972,6 +1992,7 @@ async def chat_stream_endpoint(req: ChatRequest):
         reply = ""
         llm_usage: dict[str, Any] | None = None
         from_llm = False
+        context_refusal: str | None = None
         try:
             yield ": connected\n\n"
             for phase in ("read", "link"):
@@ -1993,15 +2014,15 @@ async def chat_stream_endpoint(req: ChatRequest):
                             reply = ev.get("reply") or ""
                             llm_usage = ev.get("usage")
                             yield f"data: {_json.dumps(ev, ensure_ascii=False)}\n\n"
+                        elif ev.get("type") == "error" and ev.get("code") in _CONTEXT_ERROR_CODES:
+                            # Clear refusal; never replaced by an offline answer.
+                            context_refusal = _context_refusal_text(
+                                str(ev.get("code")), llm_provider_out or "provider"
+                            )
+                            break
                         elif ev.get("type") == "error":
-                            message = ev.get("message") or "LLM stream error"
-                            if message.startswith(("llm_context_limit", "llm_context_overflow")):
-                                # Clear refusal; never replaced by an offline answer.
-                                raise _StreamContextError(message)
-                            raise RuntimeError(message)
-                    from_llm = True
-                except _StreamContextError:
-                    raise
+                            raise RuntimeError(ev.get("message") or "LLM stream error")
+                    from_llm = context_refusal is None
                 except Exception as exc:
                     offline = _console_offline_reply(req.message, facts, lang)
                     if not offline:
@@ -2011,6 +2032,16 @@ async def chat_stream_endpoint(req: ChatRequest):
                     pipeline_error = None
                     yield f"data: {_json.dumps({'type': 'token', 'text': reply}, ensure_ascii=False)}\n\n"
                     yield f"data: {_json.dumps({'type': 'done', 'reply': reply, 'usage': {'offline_fallback': True}}, ensure_ascii=False)}\n\n"
+                if context_refusal is not None:
+                    refusal = {
+                        "type": "error",
+                        "message": context_refusal,
+                        "context_report": (
+                            context_report.to_dict() if context_report is not None else None
+                        ),
+                    }
+                    yield f"data: {_json.dumps(refusal, ensure_ascii=False)}\n\n"
+                    return
             else:
                 reply = _format_console_memory_reply(req.message, facts, pipeline_error, lang)
                 yield f"data: {_json.dumps({'type': 'token', 'text': reply}, ensure_ascii=False)}\n\n"
@@ -2053,15 +2084,6 @@ async def chat_stream_endpoint(req: ChatRequest):
                 ),
             }
             yield f"data: {_json.dumps(final, ensure_ascii=False)}\n\n"
-        except _StreamContextError as exc:
-            err = {
-                "type": "error",
-                "message": str(exc),
-                "context_report": (
-                    context_report.to_dict() if context_report is not None else None
-                ),
-            }
-            yield f"data: {_json.dumps(err, ensure_ascii=False)}\n\n"
         except Exception as exc:
             yield f"data: {_json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
 
