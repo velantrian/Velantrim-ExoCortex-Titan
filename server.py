@@ -258,18 +258,33 @@ def _build_system_prompt(
     facts: list[dict],
     *,
     lens_instructions: str | None = None,
+    evidence_map: Any = None,
 ) -> str:
-    """Собрать system prompt из записей памяти без повышения их эпистемического статуса."""
+    """Собрать system prompt из записей памяти без повышения их эпистемического статуса.
+
+    ``evidence_map`` (opt-in, см. QueryRequest.evidence_labels): каждая запись с реальным
+    fact_id получает метку ``[ev_N]`` этого запроса; внутренние id и эпистемические поля в
+    prompt по-прежнему не попадают (контракт PR #453). Без карты вывод не меняется."""
     if not facts:
         base = "Ты — Velantrim ExoCortex. Отвечай честно. Если не знаешь — скажи."
         if lens_instructions:
             return f"{base}\n\n{lens_instructions}"
         return base
 
-    facts_text = "\n".join(
-        f"- [{f.get('source', '?')} | conf={f.get('confidence', 0):.2f}] {f.get('claim', '')}"
-        for f in facts
-    )
+    if evidence_map:
+        from core.evidence_labels import format_label, neutralize_label_like_text
+
+        def _line(f: dict) -> str:
+            label = evidence_map.label_for(str(f.get("fact_id") or "").strip())
+            tag = f"{format_label(label)} " if label else ""
+            claim = neutralize_label_like_text(str(f.get("claim", "")))
+            return f"- {tag}[{f.get('source', '?')} | conf={f.get('confidence', 0):.2f}] {claim}"
+    else:
+
+        def _line(f: dict) -> str:
+            return f"- [{f.get('source', '?')} | conf={f.get('confidence', 0):.2f}] {f.get('claim', '')}"
+
+    facts_text = "\n".join(_line(f) for f in facts)
     prompt = (
         "Ты — Velantrim ExoCortex, AI-агент с памятью, где записи могут "
         "иметь разный уровень подтверждения.\n"
@@ -278,6 +293,10 @@ def _build_system_prompt(
         "Если записи не содержат ответа — скажи об этом честно.\n\n"
         f"Записи памяти (часть может быть неподтверждённой):\n{facts_text}"
     )
+    if evidence_map:
+        from core.evidence_labels import PROMPT_INSTRUCTION
+
+        prompt += f"\n\n{PROMPT_INSTRUCTION}"
     if lens_instructions:
         prompt += f"\n\n{lens_instructions}"
     return prompt
@@ -594,6 +613,13 @@ class QueryRequest(BaseModel):
         None,
         description="Генерировать ответ через LLM (null = по профилю / да)",
     )
+    evidence_labels: bool = Field(
+        False,
+        description=(
+            "Opt-in: пометить записи в prompt метками [ev_N] (карта хранится на запрос) и "
+            "вернуть evidence_labels + reference_check (только существование ссылок)."
+        ),
+    )
     llm_provider:   str | None    = Field(
         None,
         description="LLM из консоли: openai|deepseek|gemini|openrouter|anthropic",
@@ -721,6 +747,17 @@ class QueryResponse(BaseModel):
     observer: dict[str, Any] | None = Field(
         None,
         description="Пассивный вердикт Observer: allow|warn|gap_notice|reject + flags (ENABLE_OBSERVER)",
+    )
+    evidence_labels: dict[str, str] | None = Field(
+        None,
+        description="Карта этого запроса: метка ev_N -> fact_id (только при evidence_labels=true)",
+    )
+    reference_check: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "Существуют ли метки [ev_N] из ответа LLM в карте этого запроса. Проверяется только "
+            "существование ссылки, не поддержка утверждения записью."
+        ),
     )
 
 
@@ -2179,14 +2216,24 @@ async def query(req: QueryRequest):
     # Шаг 5: LLM генерация
     llm_answer: str | None = None
     llm_meta: dict[str, Any] | None = None
+    evidence_map = None
+    reference_check: dict[str, Any] | None = None
+    if req.evidence_labels:
+        from core.evidence_labels import build_evidence_map
+
+        evidence_map = build_evidence_map(pipeline_facts)
     if eff_use_llm and not pipeline_error and not truth_rejects_answer:
         try:
             cfg = _resolve_llm_config_for_request(req)
             extra = routed.system_instructions if routed else None
             system = _build_system_prompt(
-                pipeline_facts, lens_instructions=extra
+                pipeline_facts, lens_instructions=extra, evidence_map=evidence_map
             )
             llm_answer = await _llm_generate(req.query, system=system, override=cfg)
+            if evidence_map:
+                from core.evidence_labels import check_references
+
+                reference_check = check_references(llm_answer, evidence_map)
             if cfg:
                 from core.llm_router import _resolve_model as _rm
 
@@ -2272,6 +2319,11 @@ async def query(req: QueryRequest):
                 "domain": eff_domain,
                 "use_llm": eff_use_llm,
                 "pipeline_error": pipeline_error,
+                **(
+                    {"evidence_labels": evidence_map.to_dict()}
+                    if evidence_map
+                    else {}
+                ),
             },
         )
         reasoning_trace_id = trace["trace_id"]
@@ -2318,6 +2370,8 @@ async def query(req: QueryRequest):
         reasoning_trace_id=reasoning_trace_id,
         truth=truth_block,
         observer=observer_block,
+        evidence_labels=evidence_map.to_dict() if evidence_map else None,
+        reference_check=reference_check,
     )
 
 
