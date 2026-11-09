@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VELANTRIM — Research App</title>
+  <link rel="manifest" href="../manifest.webmanifest" />
+  <link rel="icon" href="../icon.svg" type="image/svg+xml" />
+  <meta name="theme-color" content="#3d8bfd" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="VELANTRIM" />
+  <link rel="apple-touch-icon" href="../icon.svg" />
+  <style>
+    :root{--bg:#0f1419;--panel:#1a2332;--input:#0f1419;--border:#2d3a4f;--text:#e7ecf3;--muted:#8b9cb3;--accent:#3d8bfd;--ok:#3dd68c;--warn:#f5a524;--danger:#f56565}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,sans-serif}a{color:inherit;text-decoration:none}
+    header{min-height:3.1rem;padding:.45rem .9rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.7rem;background:var(--panel)}h1{margin:0;font-size:1.05rem}.sub{color:var(--muted);font-size:.72rem}.pill{display:inline-flex;gap:.25rem;border:1px solid var(--border);border-radius:999px;padding:.22rem .5rem;font-size:.68rem;background:var(--input);color:var(--muted)}.ok{color:var(--ok);border-color:var(--ok)}.warn{color:var(--warn);border-color:var(--warn)}
+    main{display:grid;grid-template-columns:minmax(250px,320px) minmax(0,1fr) minmax(250px,320px);min-height:calc(100vh - 3.1rem)}aside{background:var(--panel);border-right:1px solid var(--border);padding:1rem;overflow:auto}aside.r{border-right:0;border-left:1px solid var(--border)}section{display:flex;flex-direction:column}.bar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding:.5rem 1rem;border-bottom:1px solid var(--border);background:var(--panel)}
+    .box{border:1px solid var(--border);border-radius:12px;padding:.75rem;margin-bottom:1rem;background:var(--input)}.title{font-size:.8rem;font-weight:750;margin-bottom:.55rem}.hint{font-size:.72rem;line-height:1.45;color:var(--muted)}label{display:block;font-size:.7rem;color:var(--muted);margin:.45rem 0 .25rem}input,select,textarea,button,.btn{font:inherit;border:1px solid var(--border);border-radius:8px;background:var(--input);color:var(--text);padding:.48rem .6rem}textarea{width:100%;min-height:78px;resize:vertical}button,.btn{cursor:pointer;font-weight:650;display:inline-flex;gap:.3rem;align-items:center;justify-content:center}button.primary,.btn.primary{background:var(--accent);border-color:var(--accent);color:white}.btns{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.55rem}.btns>*{flex:1}.nav{display:grid;gap:.45rem}.nav .btn{justify-content:flex-start}
+    .chat{padding:1rem;overflow:auto}.msg{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:.8rem;margin-bottom:.8rem}.msg h2{font-size:.92rem;margin:.1rem 0 .45rem}.msg p{margin:.35rem 0;color:var(--muted);font-size:.8rem;line-height:1.5}.answer{white-space:pre-wrap;font-size:.84rem;line-height:1.55}.trace{font-family:Consolas,monospace;font-size:.72rem;color:#c8d8e8;white-space:pre-wrap;background:#0b111b;border:1px solid rgba(61,139,253,.22);border-radius:10px;padding:.65rem;overflow:auto}.fact{border:1px solid var(--border);border-radius:10px;padding:.55rem;margin:.5rem 0;background:var(--input);font-size:.76rem}.meta{color:var(--muted);font-size:.68rem;margin-top:.28rem}.row{display:grid;grid-template-columns:92px 1fr;gap:.4rem;border-top:1px solid rgba(128,140,160,.2);padding:.42rem 0;font-size:.72rem}.row:first-of-type{border-top:0}.key{color:var(--muted)}code{background:rgba(61,139,253,.12);border:1px solid rgba(61,139,253,.2);border-radius:5px;padding:.06rem .25rem;color:var(--accent)}
+    @media(max-width:980px){main{grid-template-columns:1fr}aside,aside.r{border:0;border-bottom:1px solid var(--border)}}
+  </style>
+</head>
+<body>
+  <header><div><h1>🔱 VELANTRIM · Research App</h1><div class="sub">Экспериментальная память в браузере: Pending, L3, TRACE, Truth Gate</div></div><div><span class="pill ok">🟢 active UI</span> <span class="pill warn">🧪 local sandbox</span></div></header>
+  <main>
+    <aside>
+      <div class="box"><div class="title">🧭 Навигация</div><div class="nav"><a class="btn primary" href="research-app.html">🧪 Research App</a><a class="btn" href="index.html">💬 Основная консоль</a><a class="btn" href="research-roadmap.html">🗺 Roadmap</a><a class="btn" href="research.html">📘 Overview</a></div></div>
+      <div class="box"><div class="title">➕ Добавить факт</div><textarea id="claim" placeholder="Например: Деревья производят кислород через фотосинтез."></textarea><label>Layer</label><select id="layer"><option>L1</option><option>L0</option><option>L2</option><option>L3</option></select><label>State</label><select id="state"><option>Observed</option><option>Hypothesized</option><option>Supported</option><option>Validated</option><option>ImmutableCore</option></select><label>Fractal level</label><select id="level"><option>concept</option><option>domain</option><option>mechanism</option><option>evidence</option><option>principle</option></select><label>Confidence</label><input id="conf" type="number" min="0" max="1" step=".05" value=".65"><div class="btns"><button id="save" class="primary">💾 Сохранить</button><button id="seed">🌱 Demo</button></div></div>
+      <div class="box"><div class="title">🗜 TextRank → L2</div><textarea id="bulk" placeholder="Вставь длинный текст. Кнопка ниже сохранит топ-предложения как L2 Hypothesized."></textarea><div class="btns"><button id="rank">Сжать в L2</button></div><div class="hint" id="rankOut"></div></div>
+    </aside>
+    <section>
+      <div class="bar"><button id="ask" class="primary">🔎 Спросить память</button><button id="audit">🔐 Audit</button><button id="wipe">🧹 Очистить sandbox</button><span class="hint">Запрос идёт через recursive retrieval + Truth Gate.</span></div>
+      <div class="chat">
+        <div class="msg"><h2>💬 Запрос</h2><textarea id="q" placeholder="Почему деревья важны?"></textarea></div>
+        <div class="msg"><h2>🧠 Ответ</h2><div id="answer" class="answer">Память пуста. Добавь факт или нажми Demo.</div></div>
+        <div class="msg"><h2>🧾 TRACE</h2><div id="trace" class="trace">TRACE появится после запроса.</div></div>
+      </div>
+    </section>
+    <aside class="r">
+      <div class="box"><div class="title">📊 Статус</div><div class="row"><div class="key">Facts</div><div id="cFacts">0</div></div><div class="row"><div class="key">Pending</div><div id="cPend">0</div></div><div class="row"><div class="key">L3</div><div id="cL3">0</div></div><div class="row"><div class="key">Audit</div><div id="cAudit">0</div></div></div>
+      <div class="box"><div class="title">🧠 Memory Viewer</div><div class="hint">Кнопки меняют ESM state и слой L3 только внутри браузерного sandbox.</div><div id="facts"></div></div>
+    </aside>
+  </main>
+  <script src="research-app.js?v=1" defer></script>
+  <script>if("serviceWorker"in navigator)navigator.serviceWorker.register("../sw.js").catch(function(){});</script>
+</body>
+</html>

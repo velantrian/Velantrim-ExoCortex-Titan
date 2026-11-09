@@ -1,0 +1,20 @@
+{
+  "name": "VELANTRIM Research PWA",
+  "short_name": "VELANTRIM",
+  "description": "Экспериментальная память Velantrim в браузере: ESM, TRACE, Truth Gate",
+  "start_url": "./console/research-app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1419",
+  "theme_color": "#3d8bfd",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
