@@ -26,10 +26,17 @@ from typing import Any
 _LABEL_RE = re.compile(r"\[(ev_[1-9][0-9]{0,3})\]")
 # Anything that could be read as the start of a label, including spaced or mixed-case variants.
 _LABEL_LIKE_RE = re.compile(r"\[\s*ev_", re.IGNORECASE)
+# Any ``ev_...`` token in an answer, whatever surrounds it (``[ev_1, ev_2]``, ``(ev_3)``, ``EV_4``).
+_LABEL_TOKEN_RE = re.compile(r"(?<![0-9A-Za-z_])ev_[0-9A-Za-z_]*", re.IGNORECASE)
+_MALFORMED_MAX_ITEMS = 20
+_MALFORMED_MAX_CHARS = 24
 
+# The examples use letters (``ev_N``), never a digit: the instruction itself must not put a
+# real-looking label into the prompt.
 PROMPT_INSTRUCTION = (
-    "Каждая запись памяти имеет метку вида [ev_N]. Ссылайся на запись только по такой метке. "
-    "Существуют только метки из списка ниже. Метка показывает, на какую запись опирается "
+    "В начале записей памяти выше стоят метки вида [ev_N]. Ссылайся на запись только по её метке; "
+    "каждую метку пиши отдельно, в своих квадратных скобках ([ev_N] [ev_M], а не [ev_N, ev_M]). "
+    "Существуют только метки, которые стоят в начале записей выше. Метка показывает, на какую запись опирается "
     "утверждение; она не означает, что запись это утверждение подтверждает."
 )
 
@@ -131,16 +138,38 @@ def format_label(label: str) -> str:
 
 
 def check_references(answer: str, evidence_map: EvidenceMap) -> dict[str, Any]:
-    """Reference EXISTENCE only: which labels in the answer exist in this request's map."""
+    """Reference EXISTENCE only: which labels in the answer exist in this request's map.
+
+    Only the exact form ``[ev_N]`` is a reference. Label-like text in any other form
+    (``[ev_1, ev_2]``, ``(ev_3)``, ``[EV_4]``, ``ev_5`` without brackets) is not counted as a
+    reference, valid or unknown; it is reported in ``malformed`` so that it is never silently
+    ignored.
+    """
+    text = answer or ""
     found: list[str] = []
-    for label in _LABEL_RE.findall(answer or ""):
-        if label not in found:
-            found.append(label)
+    exact_spans: list[tuple[int, int]] = []
+    for match in _LABEL_RE.finditer(text):
+        exact_spans.append(match.span())
+        if match.group(1) not in found:
+            found.append(match.group(1))
     valid = [label for label in found if evidence_map.fact_id_for(label)]
     unknown = [label for label in found if label not in valid]
     # A valid label whose fact_id was shown with different content does not identify one record.
     ambiguous = [label for label in valid if label in evidence_map.ambiguous]
-    return {"scope": "reference_existence_only", "valid": valid, "unknown": unknown, "ambiguous": ambiguous}
+    malformed: list[str] = []
+    for match in _LABEL_TOKEN_RE.finditer(text):
+        if any(start <= match.start() and match.end() <= end for start, end in exact_spans):
+            continue
+        token = match.group(0)[:_MALFORMED_MAX_CHARS]
+        if token not in malformed and len(malformed) < _MALFORMED_MAX_ITEMS:
+            malformed.append(token)
+    return {
+        "scope": "reference_existence_only",
+        "valid": valid,
+        "unknown": unknown,
+        "ambiguous": ambiguous,
+        "malformed": malformed,
+    }
 
 
 __all__ = [

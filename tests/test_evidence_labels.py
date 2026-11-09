@@ -69,15 +69,77 @@ def test_check_references_reports_existence_only():
     el = _el()
     emap = el.build_evidence_map(_facts(("a", "x"), ("b", "y")))
     res = el.check_references("Так [ev_2], снова [ev_2] и [ev_9].", emap)
-    assert res == {"scope": "reference_existence_only", "valid": ["ev_2"], "unknown": ["ev_9"], "ambiguous": []}
+    assert res == {"scope": "reference_existence_only", "valid": ["ev_2"], "unknown": ["ev_9"],
+                   "ambiguous": [], "malformed": []}
     for bad in ("[ev_0]", "[ev_01]", "[ev_2a]", "[ev_99999]", "[ ev_1]", "[ev_ 1]", "ev_1", "［ev_1］"):
         assert el.check_references(bad, emap)["valid"] == [] and el.check_references(bad, emap)["unknown"] == []
     assert el.check_references("", emap)["valid"] == []
 
 
+@pytest.mark.parametrize(
+    ("answer", "malformed"),
+    [
+        ("Так [ev_1, ev_9].", ["ev_1", "ev_9"]),            # grouped citation: a common model habit
+        ("Так [ev_9; ev_1]", ["ev_9", "ev_1"]),
+        ("Так (ev_9)", ["ev_9"]),
+        ("Так [EV_9]", ["EV_9"]),
+        ("Так [ ev_9 ]", ["ev_9"]),
+        ("см. ev_9 и ev_9", ["ev_9"]),                      # reported once
+        ("[ev_01] [ev_0] [ev_2a] [ev_99999]", ["ev_01", "ev_0", "ev_2a", "ev_99999"]),
+        ("［ev_1］", ["ev_1"]),                              # full-width brackets
+    ],
+)
+def test_label_like_text_that_is_not_an_exact_label_is_reported_not_ignored(answer, malformed):
+    el = _el()
+    emap = el.build_evidence_map(_facts(("a", "x"), ("b", "y")))
+    res = el.check_references(answer, emap)
+    assert res["valid"] == [] and res["unknown"] == []       # never counted as a reference
+    assert res["malformed"] == malformed
+
+
+def test_exact_labels_are_not_reported_as_malformed_and_ordinary_words_are_ignored():
+    el = _el()
+    emap = el.build_evidence_map(_facts(("a", "x"), ("b", "y")))
+    res = el.check_references("Так [ev_1][ev_9], dev_mode и prev_1 — обычные слова; ещё ev_3.", emap)
+    assert res["valid"] == ["ev_1"] and res["unknown"] == ["ev_9"]
+    assert res["malformed"] == ["ev_3"]
+    many = " ".join(f"ev_{n}x" for n in range(1, 40)) + " ev_" + "9" * 80
+    capped = el.check_references(many, emap)["malformed"]
+    assert len(capped) == 20 and all(len(item) <= 24 for item in capped)
+
+
+def test_opt_in_without_any_labelable_record_still_neutralizes_and_checks():
+    # No record has a real fact_id: the map is empty, but the opt-in is still in force.
+    srv = importlib.import_module("server")
+    el = _el()
+    facts = [{"fact_id": "", "claim": "в документе [ev_1]", "source": "import [ev_2]", "confidence": 0.9}]
+    emap = el.build_evidence_map(facts)
+    assert not emap and emap.to_dict() == {}
+    prompt = srv._build_system_prompt(facts, evidence_map=emap)
+    assert "- [import [ ev_2] | conf=0.90] в документе [ ev_1]" in prompt
+    assert "[ev_" not in prompt.replace(el.PROMPT_INSTRUCTION, "")
+    assert el.PROMPT_INSTRUCTION not in prompt                 # nothing to cite, no instruction
+    assert el.check_references("опираюсь на [ev_1]", emap)["unknown"] == ["ev_1"]
+    # default (no map at all) is a different thing: the record text is passed as is
+    assert "в документе [ev_1]" in srv._build_system_prompt(facts)
+
+
+def test_the_instruction_points_at_the_records_above_and_asks_for_one_label_per_bracket():
+    srv = importlib.import_module("server")
+    el = _el()
+    facts = _facts(("a", "x"))
+    prompt = srv._build_system_prompt(facts, evidence_map=el.build_evidence_map(facts))
+    assert prompt.index("- [ev_1] ") < prompt.index(el.PROMPT_INSTRUCTION)     # records come first
+    assert "выше" in el.PROMPT_INSTRUCTION and "ниже" not in el.PROMPT_INSTRUCTION
+    assert "[ev_N] [ev_M], а не [ev_N, ev_M]" in el.PROMPT_INSTRUCTION
+    # the instruction's own examples are not labels: it adds no real-looking label to the prompt
+    assert not el._LABEL_RE.search(el.PROMPT_INSTRUCTION)
+    assert prompt.count("[ev_1]") == 1
+
+
 # ── end to end: server.query ─────────────────────────────────────────────────
 
-def _harness(monkeypatch, facts, *, answer):
+def _harness(monkeypatch, facts, *, answer, provider="openai"):
     srv = importlib.import_module("server")
     pipeline_mod = importlib.import_module("core.pipeline")
     router = importlib.import_module("core.llm_router")
@@ -101,7 +163,7 @@ def _harness(monkeypatch, facts, *, answer):
         pass
 
     monkeypatch.setattr(events, "on_query_completed", done)
-    cfg = LlmCallConfig(provider="openai", api_key="synthetic-valid-key", model="gpt-4o")
+    cfg = LlmCallConfig(provider=provider, api_key="synthetic-valid-key", model="gpt-4o")
     monkeypatch.setattr(srv, "_resolve_llm_config_for_request", lambda req: cfg)
     prompts = []
 
@@ -154,7 +216,8 @@ async def test_opt_in_labels_map_checks_and_neutralization(monkeypatch):
     assert "Метка показывает, на какую запись опирается" in prompt
     # reference existence only
     valid_label = "ev_2"
-    assert resp.reference_check == {"scope": "reference_existence_only", "valid": [valid_label], "unknown": ["ev_9"], "ambiguous": []}
+    assert resp.reference_check == {"scope": "reference_existence_only", "valid": [valid_label],
+                                    "unknown": ["ev_9"], "ambiguous": [], "malformed": []}
     # the map is stored with this request's trace
     assert traces and traces[-1]["metadata"]["evidence_labels"] == resp.evidence_labels
 
@@ -181,6 +244,41 @@ async def test_a_forged_label_from_a_source_document_is_not_a_valid_reference(mo
     assert set(resp.evidence_labels) == {"ev_1", "ev_2"}
     assert resp.reference_check["valid"] == [] and resp.reference_check["unknown"] == ["ev_5"]
     assert "[ev_5]" not in prompts[0] and "[ ev_5]" in prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_query_drops_the_labels_of_records_omitted_by_a_message_size_limit(monkeypatch):
+    # The whole path: a configured per-message limit omits the oversized record from the
+    # prompt, so its label was never shown and must not be a valid reference.
+    facts = _facts(("small-1", "короткая запись один"), ("huge", "Ж" * 6000), ("small-2", "короткая запись два"))
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "4000")
+    srv, prompts, traces = _harness(monkeypatch, facts, answer="[ev_1] [ev_2] [ev_3]", provider="deepseek")
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
+
+    by_fact = {f["fact_id"]: i for i, f in enumerate(resp.facts)}
+    full = importlib.import_module("core.evidence_labels").build_evidence_map(resp.facts)
+    huge_label = next(lb for lb, fid in full.to_dict().items() if fid == "huge")
+    assert "huge" in by_fact and "Ж" * 100 not in prompts[0]             # retrieved, not sent
+    assert huge_label not in resp.evidence_labels
+    assert set(resp.evidence_labels.values()) == {"small-1", "small-2"}
+    assert resp.reference_check["unknown"] == [huge_label]
+    assert sorted(resp.reference_check["valid"]) == sorted(resp.evidence_labels)
+    assert f"[{huge_label}]" not in prompts[0]
+    assert traces[-1]["metadata"]["evidence_labels"] == resp.evidence_labels
+
+
+@pytest.mark.asyncio
+async def test_query_still_checks_references_when_every_labelled_record_was_omitted(monkeypatch):
+    # The only record does not fit: nothing labelled reaches the model, the map is empty,
+    # and a label in the answer is reported as unknown instead of not being checked at all.
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "4000")
+    srv, prompts, _ = _harness(monkeypatch, _facts(("huge", "Ж" * 6000)), answer="Опираюсь на [ev_1].",
+                               provider="deepseek")
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
+
+    assert "[ev_1]" not in prompts[0] and "Ж" * 100 not in prompts[0]
+    assert resp.evidence_labels == {}                           # opt-in answered, nothing citable
+    assert resp.reference_check["valid"] == [] and resp.reference_check["unknown"] == ["ev_1"]
 
 
 # ── source field and conflicting records ─────────────────────────────────────

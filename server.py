@@ -276,12 +276,13 @@ def _raise_if_context_error(exc: BaseException) -> None:
 
 
 def _memory_record_line(f: dict, evidence_map: Any = None) -> str:
-    if not evidence_map:
+    if evidence_map is None:
         return f"- [{f.get('source', '?')} | conf={f.get('confidence', 0):.2f}] {f.get('claim', '')}"
     from core.evidence_labels import format_label, neutralize_label_like_text
 
     # Opt-in labelled form (QueryRequest.evidence_labels). Every text field that is inserted
     # into the prompt is neutralized, not only the claim; internal ids stay out (PR #453).
+    # An empty map (no record has a real fact_id) still neutralizes: the opt-in is the switch.
     label = evidence_map.label_for_fact(f)
     tag = f"{format_label(label)} " if label else ""
     claim = neutralize_label_like_text(str(f.get("claim", "")))
@@ -2441,7 +2442,11 @@ async def query(req: QueryRequest):
                 evidence_map=evidence_map,
             )
             sent_positions = getattr(context_report, "sent_fact_positions", None)
-            if evidence_map and sent_positions is not None and len(sent_positions) < len(pipeline_facts):
+            if (
+                evidence_map is not None
+                and sent_positions is not None
+                and len(sent_positions) < len(pipeline_facts)
+            ):
                 # Records dropped by a message-size limit were never shown: no valid label.
                 evidence_map = evidence_map.restricted_to([pipeline_facts[i] for i in sent_positions])
             if context_report.message_char_limit is not None and (
@@ -2457,7 +2462,7 @@ async def query(req: QueryRequest):
                     part="current question",
                 )
             llm_answer = await _llm_generate(req.query, system=system, override=cfg)
-            if evidence_map:
+            if evidence_map is not None:
                 from core.evidence_labels import check_references
 
                 reference_check = check_references(llm_answer, evidence_map)
@@ -2548,7 +2553,7 @@ async def query(req: QueryRequest):
                 "pipeline_error": pipeline_error,
                 **(
                     {"evidence_labels": evidence_map.to_dict()}
-                    if evidence_map
+                    if evidence_map is not None
                     else {}
                 ),
             },
@@ -2597,7 +2602,7 @@ async def query(req: QueryRequest):
         reasoning_trace_id=reasoning_trace_id,
         truth=truth_block,
         observer=observer_block,
-        evidence_labels=evidence_map.to_dict() if evidence_map else None,
+        evidence_labels=evidence_map.to_dict() if evidence_map is not None else None,
         reference_check=reference_check,
         context_report=context_report.to_dict() if context_report is not None else None,
     )
