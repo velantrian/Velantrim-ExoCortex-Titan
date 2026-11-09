@@ -26,8 +26,20 @@ from core.llm_errors import (
     safe_llm_error_text,
     validate_llm_api_key,
 )
+from core.llm_context_budget import (
+    CONTEXT_LIMIT_CODE,
+    CONTEXT_OVERFLOW_CODE,
+    HISTORY_MAX_TURNS_ENV,
+    ContextReport,
+    LlmContextLimitError,
+    context_overflow_message,
+    history_max_turns,
+    looks_like_context_overflow,
+)
 from core.llm_router import (
     LlmCallConfig,
+    LlmContextOverflowError,
+    LlmProviderRequestError,
     _deepseek_request_body,
     _gemini_post,
     _http_error,
@@ -52,8 +64,15 @@ _gemini_explicit_cache: dict[str, str] = {}
 
 def normalize_chat_history(
     history: list[dict[str, str]] | None,
+    *,
+    report: ContextReport | None = None,
 ) -> list[dict[str, str]]:
-    """[{role: user|assistant, content}] → OpenAI-формат."""
+    """[{role: user|assistant, content}] → OpenAI-формат.
+
+    Keeps the most recent ``LLM_CHAT_HISTORY_MAX_TURNS`` turns (default 20,
+    ``off`` = all). Turns are kept or left out whole; when older turns are left
+    out this is recorded in ``report``.
+    """
     out: list[dict[str, str]] = []
     if not history:
         return out
@@ -68,20 +87,66 @@ def normalize_chat_history(
         content = (turn.get("content") or "").strip()
         if content:
             out.append({"role": role, "content": content})
-    return out[-20:]
+    cap = history_max_turns()
+    kept = out if cap is None or len(out) <= cap else out[-cap:]
+    if report is not None:
+        report.history_turns_total = len(out)
+        report.history_turns_sent = len(kept)
+        if len(kept) < len(out) and cap is not None:
+            report.record_applied(
+                setting=HISTORY_MAX_TURNS_ENV,
+                value=cap,
+                affected="history_turns",
+                omitted=len(out) - len(kept),
+            )
+    return kept
 
 
 def build_openai_messages(
     system: str,
     user_message: str,
     history: list[dict[str, str]] | None,
+    *,
+    provider: str | None = None,
+    report: ContextReport | None = None,
 ) -> list[dict[str, str]]:
-    """Build a stable and epistemically safe remote messages prefix."""
+    """Build a stable and epistemically safe remote messages prefix.
+
+    Nothing is truncated. With a configured per-message limit for ``provider``
+    (``DEEPSEEK_MESSAGE_CHAR_LIMIT``) the current question and the system
+    message must fit or ``LlmContextLimitError`` is raised; a history turn that
+    does not fit is left out whole and recorded in ``report``.
+    """
+    rep = report if report is not None else ContextReport.for_provider(provider)
+    limit = rep.message_char_limit
+    setting = rep.message_char_limit_setting or "message_char_limit"
     messages: list[dict[str, str]] = []
     safe_system = sanitize_remote_system_prompt(system)
+    if limit is not None and len(user_message) > limit:
+        raise LlmContextLimitError(
+            setting=setting, limit=limit, role="user",
+            length=len(user_message), part="current question",
+        )
+    if limit is not None and len(safe_system) > limit:
+        raise LlmContextLimitError(
+            setting=setting, limit=limit, role="system",
+            length=len(safe_system), part="system instructions and memory",
+        )
     if safe_system:
         messages.append({"role": "system", "content": safe_system})
-    messages.extend(normalize_chat_history(history))
+    history_msgs = normalize_chat_history(history, report=rep)
+    if limit is not None:
+        fitting = [turn for turn in history_msgs if len(turn["content"]) <= limit]
+        if len(fitting) < len(history_msgs):
+            rep.record_applied(
+                setting=setting,
+                value=limit,
+                affected="history_turns",
+                omitted=len(history_msgs) - len(fitting),
+            )
+            rep.history_turns_sent = len(fitting)
+        history_msgs = fitting
+    messages.extend(history_msgs)
     messages.append({"role": "user", "content": user_message})
     return messages
 
@@ -104,8 +169,13 @@ def _usage_from_openai_payload(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _gemini_cache_key(cfg: LlmCallConfig, system: str) -> str:
-    raw = f"{cfg.provider}:{_resolve_model(cfg)}:{cfg.api_key[-8:]}:{system[:8000]}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+    # Digest of the whole system text: a prefix-only key let two different system
+    # prompts with the same first 8000 characters share one cached context.
+    # The API key is not hashed here; a process-local hash() separates accounts
+    # in this in-memory map only.
+    content = f"{cfg.provider}:{_resolve_model(cfg)}:{system}"
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()[:32]
+    return f"{digest}:{hash(cfg.api_key):x}"
 
 
 async def _gemini_ensure_explicit_cache(
@@ -132,7 +202,9 @@ async def _gemini_ensure_explicit_cache(
 
     body = {
         "model": f"models/{model}",
-        "systemInstruction": {"parts": [{"text": system[:30000]}]},
+        # Whole system text: a cached context replaces systemInstruction in the
+        # request, so a cut here would silently drop the rest of the system.
+        "systemInstruction": {"parts": [{"text": system}]},
         "contents": [
             {
                 "role": "user",
@@ -203,8 +275,14 @@ async def chat_complete_messages(
     system: str,
     user_message: str,
     history: list[dict[str, str]] | None = None,
+    *,
+    report: ContextReport | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Нестриминговый remote-вызов с обязательным policy lease."""
+    """Нестриминговый remote-вызов с обязательным policy lease.
+
+    ``report`` (optional) is filled with what was actually sent and which
+    limits were applied; see ``core.llm_context_budget``.
+    """
     validate_llm_api_key(cfg.api_key)
     provider = (cfg.provider or "").strip().lower()
     assert_model_allowed(cfg)
@@ -214,7 +292,12 @@ async def chat_complete_messages(
         data_mode="raw",
     )
     safe_system = sanitize_remote_system_prompt(system)
-    messages = build_openai_messages(safe_system, user_message, history)
+    rep = report if report is not None else ContextReport.for_provider(provider)
+    messages = build_openai_messages(
+        safe_system, user_message, history, provider=provider, report=rep
+    )
+    # The exact history that went into ``messages`` (after whole-turn limits).
+    sent_history = [m for m in messages if m["role"] != "system"][:-1]
     usage_meta: dict[str, Any] = {}
 
     if provider in ("openai", "deepseek", "openrouter"):
@@ -260,14 +343,14 @@ async def chat_complete_messages(
             cfg,
             safe_system,
             user_message,
-            history,
+            sent_history,
         )
 
     if provider == "anthropic":
         from core.llm_router import _anthropic_chat
 
         hist_text = ""
-        for turn in normalize_chat_history(history):
+        for turn in sent_history:
             hist_text += f"\n{turn['role']}: {turn['content']}"
         prompt = user_message
         if hist_text:
@@ -369,14 +452,18 @@ async def stream_chat_events(
     system: str,
     user_message: str,
     history: list[dict[str, str]] | None = None,
+    *,
+    report: ContextReport | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """
     События SSE для консоли:
+      {"type":"context","report":{...}}   (before tokens: what is sent, limits applied)
       {"type":"token","text":"..."}
       {"type":"done","reply":"...","usage":{...}}
       {"type":"error","message":"..."}
     """
     provider = (cfg.provider or "").strip().lower()
+    rep = report if report is not None else ContextReport.for_provider(provider)
 
     try:
         validate_llm_api_key(cfg.api_key)
@@ -391,7 +478,11 @@ async def stream_chat_events(
             safe_system,
             user_message,
             history,
+            provider=provider,
+            report=rep,
         )
+        sent_history = [m for m in messages if m["role"] != "system"][:-1]
+        yield {"type": "context", "report": rep.to_dict()}
 
         if provider in ("openai", "deepseek", "openrouter"):
             async for event in _stream_openai_compatible(
@@ -406,7 +497,7 @@ async def stream_chat_events(
                 cfg,
                 safe_system,
                 user_message,
-                history,
+                sent_history,
             ):
                 yield event
             return
@@ -414,19 +505,31 @@ async def stream_chat_events(
             cfg,
             safe_system,
             user_message,
-            history,
+            sent_history,
         )
         yield {"type": "token", "text": text}
         yield {"type": "done", "reply": text, "usage": usage}
     except Exception as exc:
         info = describe_llm_failure(exc)
         log_llm_failure(logger, info, exc, route="llm_stream")
-        yield {
-            "type": "error",
-            "message": safe_llm_error_text(info),
-            "error_code": info.code,
-            "event_id": info.event_id,
-        }
+        code = getattr(exc, "code", None)
+        if code in (CONTEXT_LIMIT_CODE, CONTEXT_OVERFLOW_CODE):
+            # Context-limit refusals are built by this repository from setting names, sizes and
+            # provider/status only (never from provider text); the caller keys on "code".
+            yield {
+                "type": "error",
+                "message": str(exc),
+                "code": code,
+                "error_code": code,
+                "event_id": info.event_id,
+            }
+        else:
+            yield {
+                "type": "error",
+                "message": safe_llm_error_text(info),
+                "error_code": info.code,
+                "event_id": info.event_id,
+            }
 
 
 async def _stream_openai_compatible(
@@ -475,9 +578,25 @@ async def _stream_openai_compatible(
             json=body,
         ) as resp:
             if resp.status_code >= 400:
-                await resp.aread()
-                # Typed error: the status code selects the safe code (401/402/404/429/...).
-                raise _http_error(provider, resp)
+                err_body = await resp.aread()
+                detail = err_body.decode("utf-8", errors="replace")[:400]
+                if looks_like_context_overflow(resp.status_code, detail):
+                    # The provider's own text stays in ``detail``; the message is repo-owned.
+                    raise LlmContextOverflowError(
+                        provider=provider,
+                        status_code=resp.status_code,
+                        detail=detail,
+                        message=context_overflow_message(provider, resp.status_code),
+                    )
+                # Typed and body-free: the status code selects the safe code
+                # (401/402/404/429/...); the provider text stays in ``detail`` and is never
+                # returned or logged.
+                raise LlmProviderRequestError(
+                    provider=provider,
+                    status_code=resp.status_code,
+                    detail=detail,
+                    message=f"{provider}: HTTP {resp.status_code}",
+                )
             async for line in resp.aiter_lines():
                 if not line:
                     continue

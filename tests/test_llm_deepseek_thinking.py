@@ -34,13 +34,16 @@ def test_deepseek_thinking_body():
     assert body["reasoning_effort"] == "max"
 
 
-def test_deepseek_message_content_is_compacted_to_provider_limit():
+def test_deepseek_message_content_is_not_truncated_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """The former fixed 4000-character cut is gone (no Titan limit unless configured)."""
+    monkeypatch.delenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", raising=False)
     long_text = "x" * 5000
     messages = compact_messages_for_deepseek(
         [{"role": "system", "content": long_text}]
     )
-    assert len(messages[0]["content"]) <= 4000
-    assert "truncated by Velantrim" in messages[0]["content"]
+    assert messages == [{"role": "system", "content": long_text}]
 
     cfg = LlmCallConfig(provider="deepseek", api_key="sk-test")
     body = _deepseek_request_body(
@@ -48,7 +51,25 @@ def test_deepseek_message_content_is_compacted_to_provider_limit():
         [{"role": "user", "content": long_text}],
         quick_ping=False,
     )
-    assert len(body["messages"][0]["content"]) <= 4000
+    assert body["messages"][0]["content"] == long_text
+
+
+def test_configured_deepseek_message_limit_refuses_instead_of_truncating(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "4000")
+    cfg = LlmCallConfig(provider="deepseek", api_key="sk-test")
+    # ValueError base: other tests reload core.* modules mid-session.
+    with pytest.raises(ValueError, match="llm_context_limit: .*DEEPSEEK_MESSAGE_CHAR_LIMIT=4000"):
+        _deepseek_request_body(
+            cfg,
+            [{"role": "user", "content": "x" * 5000}],
+            quick_ping=False,
+        )
+    fits = _deepseek_request_body(
+        cfg, [{"role": "user", "content": "x" * 4000}], quick_ping=False
+    )
+    assert fits["messages"][0]["content"] == "x" * 4000
 
 
 def test_chat_complete_normalizes_httpx_timeout(monkeypatch: pytest.MonkeyPatch):

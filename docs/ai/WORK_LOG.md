@@ -8,6 +8,15 @@
 - Documentation impact: `GITHUB_ONLY`. Notion: not updated by this change.
 - **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
 
+## 2026-11-09 — No silent LLM context truncation (fixed 4000-character DeepSeek cut removed)
+
+- Base: `main@1a7141c` (#502). Branch `fix/llm-context-no-silent-truncation-20261109`.
+- Found: `core/llm_router.py` cut every DeepSeek message to 4000 characters for all DeepSeek models on `chat_complete` (`/query`, Reader, other callers), `chat_complete_messages` (`/chat`) and `stream_chat_events` (`/chat/stream`); the Reader shrank chunks to fit it; `core/console_memory.py` cut the previous-chat summary (4000) and dialogue turns (600); history (20 turns) and `block_memory` (40 notes) were capped without a signal.
+- Changed: new `core/llm_context_budget.py`; per-message limit off by default, `DEEPSEEK_MESSAGE_CHAR_LIMIT` opt-in and enforced by refusal or whole-unit omission; `context_report` on `/chat`, `/query`, `/chat/stream` (`context` event + final event); console toast; `LlmContextOverflowError` for provider context rejections; Gemini explicit-cache key/text no longer prefix-cut. Response-length settings (`max_tokens`) unchanged. Access policy (egress lease, data mode, API-key auth) unchanged.
+- Tests: `tests/test_llm_context_no_silent_truncation.py` (new); `tests/test_evidence_use_contract.py`, `tests/test_llm_deepseek_thinking.py`, `tests/test_llm_reader_adapter.py` updated from the old truncation contract to the new one. No real model calls.
+- Status: implemented, tested; wired into `/chat`, `/chat/stream`, `/query` and the router. Not observed on a running instance. Merge is not deployment.
+- Documentation impact: `GITHUB_ONLY` (`docs/ai/KNOWN_RISKS.md`, this log, `config/llm.example.env`).
+
 ---
 
 ## 2026-11-06 — MCP session serialization merge reconciliation

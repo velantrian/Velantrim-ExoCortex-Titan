@@ -162,6 +162,9 @@ _PERMANENT_VALUE_ERROR_MARKERS = (
     "provider is required",
     "unsupported provider",
     "unknown provider",
+    # core.llm_context_budget.CONTEXT_LIMIT_CODE: a configured message limit
+    # refused the request; retrying the same chunk cannot succeed.
+    "llm_context_limit",
 )
 
 
@@ -886,18 +889,25 @@ def _build_user_prompt(chunk_text: str) -> str:
 def _provider_safe_limits(
     provider: str, limits: LlmReaderLimits
 ) -> LlmReaderLimits:
-    """Keep source chunks below any router-enforced message truncation limit.
+    """Keep source chunks below an explicitly configured per-message limit.
 
-    The user envelope consumes part of the provider's per-message allowance.
-    Planning against source size alone would let the router silently truncate a
-    chunk and create an unexamined gap before the next overlapping chunk.
+    By default there is no Titan per-message limit (``DEEPSEEK_MESSAGE_CHAR_LIMIT``
+    unset) and the planner uses ``limits.chunk_chars`` as is. When the limit is
+    set, the router refuses (never truncates) an over-limit message, so chunks
+    are planned to fit including the user envelope; overlapping chunks still
+    cover the source and coverage/provenance are tracked per chunk.
     """
 
     from core.llm_router import message_content_char_limit_for_provider
+    from core.remote_egress import sanitize_remote_system_prompt
 
     message_limit = message_content_char_limit_for_provider(provider)
     if message_limit is None:
         return limits
+    if len(sanitize_remote_system_prompt(_SYSTEM_PROMPT)) > message_limit:
+        raise ValueError(
+            "configured provider message limit is smaller than the Reader system instructions"
+        )
     envelope_chars = len(_build_user_prompt(""))
     safe_chunk_chars = message_limit - envelope_chars
     if safe_chunk_chars <= 0:

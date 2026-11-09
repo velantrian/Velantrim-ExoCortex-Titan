@@ -516,7 +516,7 @@ async def test_chat_stream_forwards_the_stream_error_code_and_event_id(monkeypat
     cfg = r.LlmCallConfig(provider="openai", api_key=f"{MARKER}\nX", model="gpt-4o")
 
     async def prepare(req):
-        return [], None, cfg, "system", "ru", "openai", "gpt-4o"
+        return [], None, cfg, "system", "ru", "openai", "gpt-4o", None
 
     monkeypatch.setattr(srv, "_chat_prepare", prepare)
     monkeypatch.setattr(srv, "_console_offline_reply", lambda *a, **k: None)

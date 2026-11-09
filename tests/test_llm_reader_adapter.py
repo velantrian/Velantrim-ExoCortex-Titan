@@ -714,6 +714,9 @@ def test_deepseek_chunks_fit_router_limit_and_cover_the_source(
 ):
     from core.llm_router import message_content_char_limit_for_provider
 
+    # The per-message limit is optional since the fixed 4000 cut was removed;
+    # pin it here to keep checking chunk planning under a configured limit.
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "4000")
     text = "".join(f"<segment-{index:04d}>" for index in range(700))
     provider = _script(monkeypatch, [_payload([])] * 8)
 
