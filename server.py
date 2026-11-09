@@ -275,10 +275,12 @@ def _build_system_prompt(
         from core.evidence_labels import format_label, neutralize_label_like_text
 
         def _line(f: dict) -> str:
-            label = evidence_map.label_for(str(f.get("fact_id") or "").strip())
+            label = evidence_map.label_for_fact(f)
             tag = f"{format_label(label)} " if label else ""
+            # Every text field that is inserted into the prompt is neutralized, not only the claim.
             claim = neutralize_label_like_text(str(f.get("claim", "")))
-            return f"- {tag}[{f.get('source', '?')} | conf={f.get('confidence', 0):.2f}] {claim}"
+            source = neutralize_label_like_text(str(f.get("source", "?")))
+            return f"- {tag}[{source} | conf={f.get('confidence', 0):.2f}] {claim}"
     else:
 
         def _line(f: dict) -> str:

@@ -17,6 +17,7 @@ reference is valid only if the label is in the request's map.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -33,20 +34,47 @@ PROMPT_INSTRUCTION = (
 )
 
 
+def record_fingerprint(fact: dict[str, Any]) -> str:
+    """Identity of what the prompt actually shows for a record: its claim and its source."""
+    shown = f"{fact.get('claim', '')}\x1f{fact.get('source', '')}"
+    return hashlib.sha256(shown.encode("utf-8")).hexdigest()[:16]
+
+
 @dataclass(frozen=True)
 class EvidenceMap:
-    """label (``ev_1``) -> fact_id, for one request."""
+    """label (``ev_1``) -> fact_id, for one request.
 
-    entries: tuple[tuple[str, str], ...] = ()
+    ``records`` holds (label, fact_id, fingerprint of the presented record). A label belongs
+    to one PRESENTED record. Two records that share a fact_id but show different content get
+    different labels and both are marked ambiguous: the fact_id alone does not say which
+    presented record an answer relied on.
+    """
+
+    records: tuple[tuple[str, str, str], ...] = ()
+    ambiguous: frozenset[str] = frozenset()
+
+    @property
+    def entries(self) -> tuple[tuple[str, str], ...]:
+        return tuple((label, fact_id) for label, fact_id, _ in self.records)
 
     def fact_id_for(self, label: str) -> str | None:
-        for known, fact_id in self.entries:
+        for known, fact_id, _ in self.records:
             if known == label:
                 return fact_id
         return None
 
+    def label_for_fact(self, fact: dict[str, Any]) -> str | None:
+        """Label of exactly this presented record (same fact_id AND same shown content)."""
+        fact_id = str(fact.get("fact_id") or "").strip()
+        fp = record_fingerprint(fact)
+        for label, known, known_fp in self.records:
+            if known == fact_id and known_fp == fp:
+                return label
+        return None
+
     def label_for(self, fact_id: str) -> str | None:
-        for label, known in self.entries:
+        """First label of a fact_id. Prefer ``label_for_fact`` for a presented record."""
+        for label, known, _ in self.records:
             if known == fact_id:
                 return label
         return None
@@ -59,17 +87,27 @@ class EvidenceMap:
 
 
 def build_evidence_map(facts: list[dict[str, Any]]) -> EvidenceMap:
-    """Assign ev_1, ev_2, ... in fact order. A fact without a real fact_id gets no label,
-    and a repeated fact_id keeps its first label."""
-    entries: list[tuple[str, str]] = []
-    seen: set[str] = set()
+    """Assign ev_1, ev_2, ... to presented records in fact order.
+
+    - A fact without a real fact_id gets no label.
+    - An exact repeat (same fact_id, same shown claim and source) reuses the first label.
+    - The same fact_id with different shown content gets its own label, and every label of
+      that fact_id is marked ambiguous.
+    """
+    records: list[tuple[str, str, str]] = []
+    by_id: dict[str, set[str]] = {}
     for fact in facts:
         fact_id = str(fact.get("fact_id") or "").strip()
-        if not fact_id or fact_id == "unknown" or fact_id in seen:
+        if not fact_id or fact_id == "unknown":
             continue
-        seen.add(fact_id)
-        entries.append((f"ev_{len(entries) + 1}", fact_id))
-    return EvidenceMap(tuple(entries))
+        fp = record_fingerprint(fact)
+        if any(r[1] == fact_id and r[2] == fp for r in records):
+            continue
+        label = f"ev_{len(records) + 1}"
+        records.append((label, fact_id, fp))
+        by_id.setdefault(fact_id, set()).add(label)
+    ambiguous = frozenset(label for labels in by_id.values() if len(labels) > 1 for label in labels)
+    return EvidenceMap(tuple(records), ambiguous)
 
 
 def neutralize_label_like_text(text: str) -> str:
@@ -89,7 +127,9 @@ def check_references(answer: str, evidence_map: EvidenceMap) -> dict[str, Any]:
             found.append(label)
     valid = [label for label in found if evidence_map.fact_id_for(label)]
     unknown = [label for label in found if label not in valid]
-    return {"scope": "reference_existence_only", "valid": valid, "unknown": unknown}
+    # A valid label whose fact_id was shown with different content does not identify one record.
+    ambiguous = [label for label in valid if label in evidence_map.ambiguous]
+    return {"scope": "reference_existence_only", "valid": valid, "unknown": unknown, "ambiguous": ambiguous}
 
 
 __all__ = [
@@ -99,4 +139,5 @@ __all__ = [
     "check_references",
     "format_label",
     "neutralize_label_like_text",
+    "record_fingerprint",
 ]
