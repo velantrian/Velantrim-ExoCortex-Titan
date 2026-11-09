@@ -1,5 +1,25 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
+
+Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
+
+Contract, explicit and opt-in: `QueryRequest.evidence_labels` (default `false`). When it is `false`, nothing changes: the records part of the prompt is byte-identical to before (tested against the unlabelled builder). When it is `true`:
+- The code creates labels `[ev_1]`, `[ev_2]`, ... in fact order and prefixes each record line with its label; one instruction sentence tells the model to cite by label and that a label does not mean the record supports the statement. A record without a real `fact_id` gets no label.
+- The map label -> `fact_id` belongs to this request only: it is returned as `evidence_labels`, stored in this request's trace metadata, and never shared.
+- Internal ids and epistemic fields still stay out of the prompt.
+- Label-like text inside a record (for example `[ev_2]` in an imported document) is neutralized in the prompt (`[ev_2]` becomes `[ ev_2]`, any case and spacing). A reference is valid only if the exact ASCII label (`[ev_N]`, N from 1 to 9999, no leading zero) is in this request's map.
+- `reference_check` reports which labels in the answer exist in the map (`valid`) and which do not (`unknown`). It checks **existence only**.
+
+Tests: `tests/test_evidence_labels.py` (13 tests): label order and skipped ids, independent maps per request, neutralization, the exact-label rule, default prompt unchanged, opt-in prompt, a forged label from a source document is `unknown`, the map is stored with the trace.
+
+Remaining limits:
+- A valid label shows which record an answer points at; it does not show that the record supports the statement. A claim-level support check is still open (#512). Nothing here blocks or changes an answer: `reference_check` is reported only.
+- Only `/query` is covered; `/chat`, `/chat/stream` and `/query/roles` are not.
+- The model may ignore the labels or cite them wrongly; there is no measurement of how often. Neutralization covers the ASCII sequence `[` + optional spaces + `ev_`; look-alike Unicode brackets are not counted as labels by the check, but are not rewritten in the prompt either.
+- Label order follows the order of the facts of that request, so the same record can carry a different label in another request.
+- The stored map holds internal `fact_id`s in the trace metadata, like `source_fact_ids` already does.
+
 ## Reduced risk — MCP same-session side-effect interleaving (process-local)
 
 Competing side-effecting MCP `tools/call` runs that share an explicit
