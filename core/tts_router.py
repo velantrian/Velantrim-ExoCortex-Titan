@@ -20,6 +20,7 @@ from typing import Any
 
 import httpx
 
+from core.llm_errors import validate_llm_api_key
 from core.remote_egress import ensure_remote_egress_allowed
 
 logger = logging.getLogger(__name__)
@@ -197,6 +198,17 @@ def _mime_to_wav(
     return audio_bytes, mime or "application/octet-stream"
 
 
+def _tts_http_error(provider: str, status: int):
+    from core.llm_router import LlmProviderRequestError
+
+    return LlmProviderRequestError(
+        provider=provider,
+        status_code=status,
+        detail="",
+        message=f"{provider} TTS: HTTP {status}",
+    )
+
+
 async def openai_tts_stream(
     api_key: str,
     text: str,
@@ -205,6 +217,7 @@ async def openai_tts_stream(
     model: str = DEFAULT_OPENAI_TTS_MODEL,
     timeout: float = 120.0,
 ) -> AsyncIterator[bytes]:
+    validate_llm_api_key(api_key)
     ensure_remote_egress_allowed(
         "remote_tts",
         provider="openai",
@@ -230,11 +243,9 @@ async def openai_tts_stream(
             json=body,
         ) as response:
             if response.status_code >= 400:
-                detail = (await response.aread())[:400]
-                raise ValueError(
-                    f"openai TTS: HTTP {response.status_code} — "
-                    f"{detail.decode('utf-8', errors='replace')}"
-                )
+                await response.aread()
+                # Typed, body-free: the provider body is never copied into an exception.
+                raise _tts_http_error("openai", response.status_code)
             async for chunk in response.aiter_bytes():
                 if chunk:
                     yield chunk
@@ -268,6 +279,7 @@ async def gemini_tts_bytes(
     model: str = DEFAULT_GEMINI_TTS_MODEL,
     timeout: float = 120.0,
 ) -> tuple[bytes, str]:
+    validate_llm_api_key(api_key)
     ensure_remote_egress_allowed(
         "remote_tts",
         provider="gemini",
@@ -307,10 +319,7 @@ async def gemini_tts_bytes(
             json=body,
         )
         if response.status_code >= 400:
-            raise ValueError(
-                f"gemini TTS: HTTP {response.status_code} — "
-                f"{(response.text or '')[:400]}"
-            )
+            raise _tts_http_error("gemini", response.status_code)
         data = response.json()
 
     candidates = data.get("candidates") or []

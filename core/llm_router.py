@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, field
 from typing import Any
 
 import httpx
@@ -111,6 +111,21 @@ def _http_error(provider: str, resp: httpx.Response) -> LlmProviderRequestError:
     )
 
 
+from core.llm_errors import (  # noqa: E402
+    LlmNotConfiguredError,
+    describe_llm_failure,
+    log_llm_failure,
+    validate_llm_api_key,
+)
+
+
+def _require_api_key(cfg: LlmCallConfig) -> None:
+    """Presence and header-safe format of the key, checked before any request is built."""
+    if not cfg.api_key:
+        raise LlmNotConfiguredError("LLM API key не задан")
+    validate_llm_api_key(cfg.api_key)
+
+
 # Каталог провайдеров: core/provider_catalog.py (единый источник для API)
 from core.provider_catalog import (  # noqa: E402,F401
     CATALOG_BUILD_ID,
@@ -141,7 +156,7 @@ def llm_timeout_for_max_tokens(max_tokens: int, base: float = 90.0) -> float:
 @dataclass
 class LlmCallConfig:
     provider: str
-    api_key: str
+    api_key: str = field(repr=False)  # never in repr/str/f-string output
     model: str | None = None
     max_tokens: int = 8192
     timeout: float = 120.0
@@ -610,8 +625,7 @@ async def chat_complete(
     identity = resolve_llm_execution_identity(cfg)
     resolved_cfg = replace(cfg, provider=identity.provider, model=identity.model)
     provider = identity.provider
-    if not cfg.api_key:
-        raise ValueError("LLM API key не задан")
+    _require_api_key(cfg)
     assert_model_allowed(resolved_cfg)
     return await _run_cancellable(
         _chat_complete_dispatch(resolved_cfg, provider, prompt, system, data_mode),
@@ -682,6 +696,8 @@ async def transcribe_audio_gemini(
 ) -> str:
     """Распознавание речи через Gemini (inline audio в generateContent)."""
     import base64
+
+    validate_llm_api_key(cfg.api_key)
 
     ensure_remote_egress_allowed(
         "remote_stt",
@@ -773,13 +789,15 @@ async def transcribe_audio_gemini(
             return text
         except Exception as exc:
             last_err = exc
-            logger.info("Gemini STT model %s: %s", try_model, exc)
+            log_llm_failure(
+                logger, describe_llm_failure(exc), exc, route=f"stt:gemini:{try_model}", level="info"
+            )
             continue
-    raise ValueError(
-        f"Gemini STT: {last_err}"
-        if last_err
-        else "распознавание не удалось"
-    )
+    if last_err is not None:
+        # Keep the typed error: its class and status code drive the safe code, and its
+        # text is never returned or logged by the callers.
+        raise last_err
+    raise ValueError("распознавание не удалось")
 
 
 async def transcribe_audio_openai(
@@ -791,6 +809,8 @@ async def transcribe_audio_openai(
 ) -> str:
     """Распознавание речи через OpenAI Whisper API."""
     import base64
+
+    validate_llm_api_key(cfg.api_key)
 
     ensure_remote_egress_allowed(
         "remote_stt",
@@ -866,8 +886,7 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
     identity = resolve_llm_execution_identity(cfg)
     resolved_cfg = replace(cfg, provider=identity.provider, model=identity.model)
     provider = identity.provider
-    if not cfg.api_key:
-        raise ValueError("LLM API key не задан")
+    _require_api_key(cfg)
     # Здесь, а не только в chat_complete: deepseek-ветка ниже зовёт
     # _openai_compatible_chat напрямую и иначе обошла бы проверку модели — тот
     # самый паттерн «проверка у вызывающего обходится следующим вызывающим».

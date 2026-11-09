@@ -20,6 +20,12 @@ from typing import Any
 
 import httpx
 
+from core.llm_errors import (
+    describe_llm_failure,
+    log_llm_failure,
+    safe_llm_error_text,
+    validate_llm_api_key,
+)
 from core.llm_router import (
     LlmCallConfig,
     _deepseek_request_body,
@@ -156,7 +162,7 @@ async def _gemini_ensure_explicit_cache(
                 _gemini_explicit_cache[key] = name
                 return name
     except Exception as exc:
-        logger.info("Gemini explicit cache: %s", exc)
+        log_llm_failure(logger, describe_llm_failure(exc), exc, route="gemini_cache", level="info")
     return None
 
 
@@ -199,6 +205,7 @@ async def chat_complete_messages(
     history: list[dict[str, str]] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Нестриминговый remote-вызов с обязательным policy lease."""
+    validate_llm_api_key(cfg.api_key)
     provider = (cfg.provider or "").strip().lower()
     assert_model_allowed(cfg)
     ensure_remote_egress_allowed(
@@ -372,6 +379,7 @@ async def stream_chat_events(
     provider = (cfg.provider or "").strip().lower()
 
     try:
+        validate_llm_api_key(cfg.api_key)
         assert_model_allowed(cfg)
         ensure_remote_egress_allowed(
             "remote_llm",
@@ -411,7 +419,14 @@ async def stream_chat_events(
         yield {"type": "token", "text": text}
         yield {"type": "done", "reply": text, "usage": usage}
     except Exception as exc:
-        yield {"type": "error", "message": str(exc)}
+        info = describe_llm_failure(exc)
+        log_llm_failure(logger, info, exc, route="llm_stream")
+        yield {
+            "type": "error",
+            "message": safe_llm_error_text(info),
+            "error_code": info.code,
+            "event_id": info.event_id,
+        }
 
 
 async def _stream_openai_compatible(
@@ -460,19 +475,9 @@ async def _stream_openai_compatible(
             json=body,
         ) as resp:
             if resp.status_code >= 400:
-                err_body = await resp.aread()
-                try:
-                    detail = err_body.decode(
-                        "utf-8",
-                        errors="replace",
-                    )[:400]
-                    raise ValueError(
-                        f"{provider}: HTTP {resp.status_code} — {detail}"
-                    )
-                except ValueError:
-                    raise
-                except Exception:
-                    raise _http_error(provider, resp)
+                await resp.aread()
+                # Typed error: the status code selects the safe code (401/402/404/429/...).
+                raise _http_error(provider, resp)
             async for line in resp.aiter_lines():
                 if not line:
                     continue

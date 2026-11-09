@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+logger = logging.getLogger(__name__)
 
 # AUDIT-FIX P1: split into two routers.
 #  • public_router  — read-only catalog/diagnostics (GET). No secret, no quota.
@@ -96,17 +99,13 @@ def _normalize_stt_provider(v: str) -> str:
     return pid
 
 
-def _llm_test_http_status(exc: Exception) -> int:
-    msg = str(exc).lower()
-    if "http 401" in msg or "invalid_api_key" in msg or "authentication" in msg:
-        return 401
-    if "http 402" in msg:
-        return 402
-    if "http 404" in msg or ("model" in msg and "not found" in msg):
-        return 404
-    if "http 429" in msg:
-        return 429
-    return 400
+def _safe_llm_http_error(exc: Exception, *, route: str) -> HTTPException:
+    """HTTP error that carries a fixed code and an event id, never the exception text."""
+    from core.llm_errors import describe_llm_failure, log_llm_failure, safe_llm_error_text
+
+    info = describe_llm_failure(exc)
+    log_llm_failure(logger, info, exc, route=route)
+    return HTTPException(status_code=info.http_status, detail=safe_llm_error_text(info))
 
 
 async def _run_llm_test(req: LlmTestBody):
@@ -156,10 +155,7 @@ async def _run_llm_test(req: LlmTestBody):
         result["verified"] = True
         return result
     except Exception as exc:
-        raise HTTPException(
-            status_code=_llm_test_http_status(exc),
-            detail=str(exc),
-        ) from exc
+        raise _safe_llm_http_error(exc, route="/llm") from None
 
 
 @public_router.get("/llm/providers")
@@ -284,10 +280,7 @@ async def _run_stt_test(req: SttTestBody):
             "hint": f"Ключ {provider} для голоса проверен — STT API отвечает.",
         }
     except Exception as exc:
-        raise HTTPException(
-            status_code=_llm_test_http_status(exc),
-            detail=str(exc),
-        ) from exc
+        raise _safe_llm_http_error(exc, route="/llm") from None
 
 
 @secure_router.post("/console/stt/test")
@@ -344,7 +337,7 @@ async def stt_transcribe(req: SttTranscribeBody):
             "text": text,
         }
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise _safe_llm_http_error(exc, route="/stt/transcribe") from None
 
 
 class TtsTestBody(BaseModel):
@@ -421,10 +414,7 @@ async def tts_test_route(req: TtsTestBody):
             language=req.language or "ru",
         )
     except Exception as exc:
-        raise HTTPException(
-            status_code=_llm_test_http_status(exc),
-            detail=str(exc),
-        ) from exc
+        raise _safe_llm_http_error(exc, route="/llm") from None
 
 
 @secure_router.post("/console/tts/speak")
@@ -447,7 +437,7 @@ async def tts_speak_chunk(req: TtsSpeakBody):
             "audio_base64": base64.b64encode(audio).decode("ascii"),
         }
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise _safe_llm_http_error(exc, route="/tts/speak") from None
 
 
 @secure_router.post("/console/tts/stream")
@@ -460,10 +450,20 @@ async def tts_stream_route(req: TtsSpeakBody):
         split_tts_chunks,
     )
 
+    from core.llm_errors import (
+        describe_llm_failure,
+        log_llm_failure,
+        validate_llm_api_key,
+    )
+
     provider = req.provider.strip().lower()
     api_key = req.api_key.strip()
     voice = (req.voice or "").strip() or None
     model = (req.model or "").strip() or None
+    try:
+        validate_llm_api_key(api_key)  # before the response starts
+    except Exception as exc:
+        raise _safe_llm_http_error(exc, route="/tts/stream") from None
 
     if provider == "openai":
         from core.tts_router import (
@@ -475,26 +475,36 @@ async def tts_stream_route(req: TtsSpeakBody):
         m = model or DEFAULT_OPENAI_TTS_MODEL
 
         async def audio_iter():
-            async for chunk in openai_tts_stream(
-                api_key, req.text, voice=v, model=m
-            ):
-                yield chunk
+            try:
+                async for chunk in openai_tts_stream(
+                    api_key, req.text, voice=v, model=m
+                ):
+                    yield chunk
+            except Exception as exc:
+                # The body is already audio/mpeg: end the stream. Log only code + type.
+                log_llm_failure(logger, describe_llm_failure(exc), exc, route="/tts/stream")
 
         return StreamingResponse(audio_iter(), media_type="audio/mpeg")
 
     async def ndjson_iter():
-        for piece in split_tts_chunks(req.text):
-            audio, mime = await gemini_tts_bytes(
-                api_key, piece, voice=voice, model=model
-            )
-            line = json.dumps(
-                {
-                    "mime_type": mime,
-                    "audio_base64": base64.b64encode(audio).decode("ascii"),
-                },
-                ensure_ascii=False,
-            )
-            yield (line + "\n").encode("utf-8")
+        try:
+            for piece in split_tts_chunks(req.text):
+                audio, mime = await gemini_tts_bytes(
+                    api_key, piece, voice=voice, model=model
+                )
+                line = json.dumps(
+                    {
+                        "mime_type": mime,
+                        "audio_base64": base64.b64encode(audio).decode("ascii"),
+                    },
+                    ensure_ascii=False,
+                )
+                yield (line + "\n").encode("utf-8")
+        except Exception as exc:
+            info = describe_llm_failure(exc)
+            log_llm_failure(logger, info, exc, route="/tts/stream")
+            err = {"error_code": info.code, "event_id": info.event_id}
+            yield (json.dumps(err, ensure_ascii=False) + "\n").encode("utf-8")
 
     return StreamingResponse(ndjson_iter(), media_type="application/x-ndjson")
 

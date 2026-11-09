@@ -222,7 +222,9 @@ async def _llm_generate(
     # ровно того пути, который ограничивает этот PR. Удалён, чтобы инвариант
     # «весь egress к провайдеру идёт через core.remote_egress» был структурным,
     # а не следствием формы control flow.
-    raise ValueError(
+    from core.llm_errors import LlmNotConfiguredError
+
+    raise LlmNotConfiguredError(
         "LLM не настроен: укажите llm_provider + llm_api_key в консоли "
         "или задайте LLM_PROVIDER и ключ в .env"
     )
@@ -1538,13 +1540,21 @@ async def chat_endpoint(req: ChatRequest):
             )
             from_llm = True
         except Exception as exc:
+            from core.llm_errors import (
+                describe_llm_failure,
+                log_llm_failure,
+                safe_llm_error_text,
+            )
+
+            info = describe_llm_failure(exc)
+            log_llm_failure(logger, info, exc, route="/chat")
             offline = _console_offline_reply(req.message, facts, req.ui_lang)
             if offline:
                 reply = offline
                 from_llm = False
                 pipeline_error = None
             else:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+                raise HTTPException(status_code=400, detail=safe_llm_error_text(info)) from None
     else:
         reply = _format_console_memory_reply(req.message, facts, pipeline_error, lang=req.ui_lang)
 
@@ -1835,7 +1845,19 @@ async def chat_stream_endpoint(req: ChatRequest):
                             llm_usage = ev.get("usage")
                             yield f"data: {_json.dumps(ev, ensure_ascii=False)}\n\n"
                         elif ev.get("type") == "error":
-                            raise RuntimeError(ev.get("message") or "LLM stream error")
+                            from core.llm_errors import (
+                                LlmErrorInfo,
+                                LlmStreamError,
+                                new_event_id,
+                            )
+
+                            raise LlmStreamError(
+                                LlmErrorInfo(
+                                    code=str(ev.get("error_code") or "llm_internal_error"),
+                                    event_id=str(ev.get("event_id") or new_event_id()),
+                                    detail=str(ev.get("detail_code") or ""),
+                                )
+                            )
                     from_llm = True
                 except Exception as exc:
                     offline = _console_offline_reply(req.message, facts, lang)
@@ -1886,7 +1908,21 @@ async def chat_stream_endpoint(req: ChatRequest):
             }
             yield f"data: {_json.dumps(final, ensure_ascii=False)}\n\n"
         except Exception as exc:
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
+            from core.llm_errors import (
+                describe_llm_failure,
+                log_llm_failure,
+                safe_llm_error_text,
+            )
+
+            info = describe_llm_failure(exc)
+            log_llm_failure(logger, info, exc, route="/chat/stream")
+            payload = {
+                'type': 'error',
+                'message': safe_llm_error_text(info),
+                'error_code': info.code,
+                'event_id': info.event_id,
+            }
+            yield f"data: {_json.dumps(payload, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -2196,9 +2232,17 @@ async def query(req: QueryRequest):
                     "source": "request" if _llm_config_from_request(req) else "env",
                 }
         except Exception as exc:
-            logger.warning("LLM генерация упала: %s", exc)
-            llm_answer = f"[LLM error: {exc}]"
-            llm_meta = {"error": str(exc)}
+            from core.llm_errors import (
+                describe_llm_failure,
+                log_llm_failure,
+                safe_llm_error_meta,
+                safe_llm_error_text,
+            )
+
+            info = describe_llm_failure(exc)
+            log_llm_failure(logger, info, exc, route="/query")
+            llm_answer = safe_llm_error_text(info)
+            llm_meta = safe_llm_error_meta(info)
 
     latency = round((time.time() - t0) * 1000, 2)
     logger.info("query: '%s' | facts=%d | llm=%s | %.0fms",
