@@ -7,7 +7,12 @@ Path under test (no real LLM, no network):
 
 Only retrieval/persistence inputs and the provider boundary are replaced. A fix
 in FactsPack alone is not enough: this checks the prompt that actually leaves
-``server.query`` for the provider, plus the remote-egress sanitizer applied to it.
+``server.query`` for the provider, and the output of
+``sanitize_remote_system_prompt`` applied to that captured prompt.
+
+Not covered, on purpose: the LLM circuit breaker (off by default) and the
+production sanitizer call sites inside ``core.llm_router`` (they sit behind the
+faked ``chat_complete``); this test calls the sanitizer itself.
 
 Scope note: this test checks claim text and the fact ids returned to the API
 caller. It deliberately does not require ``fact_id`` or ``epistemic_state`` in
@@ -54,6 +59,12 @@ async def test_distinct_overlapping_records_reach_the_provider_prompt(monkeypatc
     memory_ops_mod = importlib.import_module("core.memory_ops")
     event_bridge_mod = importlib.import_module("core.event_bridge")
     truth_policy_runtime_mod = importlib.import_module("core.truth_policy_runtime")
+    goal_stack_mod = importlib.import_module("core.goal_stack")
+
+    # pipeline.run / server.query create these process-wide singletons lazily;
+    # monkeypatch restores the previous values so nothing leaks to later tests.
+    monkeypatch.setattr(memory_ops_mod, "_GLOBAL_MEMORY_OPS", None)
+    monkeypatch.setattr(goal_stack_mod, "_stack", None)
 
     persisted = {
         fid: {

@@ -123,3 +123,42 @@ def test_records_without_a_real_fact_id_are_never_collapsed():
     pack = _build([dict(no_id), dict(no_id)])
 
     assert len(pack.facts) == 2
+
+
+@pytest.mark.parametrize(
+    ("field", "other"),
+    [
+        ("fact_id", "rec-2"),
+        ("source", "src:other"),
+        ("confidence", 0.60),
+        ("epistemic_state", "Supported"),
+        ("claim", "Срок хранения логов 31 день"),
+    ],
+)
+def test_record_is_not_a_repeat_when_any_key_field_differs(field, other):
+    base = _raw("rec-1", "Срок хранения логов 30 дней", 0.90)
+
+    pack = _build([base, {**base, field: other}])
+
+    assert len(pack.facts) == 2
+
+
+def test_empty_string_fact_id_is_never_collapsed():
+    record = _raw("", "Срок хранения логов 30 дней", 0.90)
+
+    pack = _build([dict(record), dict(record)])
+
+    assert len(pack.facts) == 2
+
+
+@pytest.mark.parametrize("scores", [(0.4, 0.8), (0.8, 0.4)])
+def test_repeat_keeps_the_strongest_retrieval_score_in_either_order(scores):
+    claim = "Срок хранения логов 30 дней"
+
+    pack = _build([
+        _raw("rec-1", claim, 0.90, score=scores[0]),
+        _raw("rec-1", claim, 0.90, score=scores[1]),
+    ])
+
+    assert [f.fact_id for f in pack.facts] == ["rec-1"]
+    assert pack.facts[0].retrieval_score == pytest.approx(0.8)
