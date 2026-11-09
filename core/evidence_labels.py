@@ -82,6 +82,17 @@ class EvidenceMap:
     def to_dict(self) -> dict[str, str]:
         return dict(self.entries)
 
+    def restricted_to(self, shown: list[dict[str, Any]]) -> EvidenceMap:
+        """Keep only the labels of records that were actually shown to the model.
+
+        When a message-size limit drops records from the prompt, their labels never appeared
+        in it. A reference to such a label must not be reported as valid.
+        """
+        keep = {(str(f.get("fact_id") or "").strip(), record_fingerprint(f)) for f in shown}
+        records = tuple(r for r in self.records if (r[1], r[2]) in keep)
+        labels = {r[0] for r in records}
+        return EvidenceMap(records, frozenset(self.ambiguous & labels))
+
     def __bool__(self) -> bool:
         return bool(self.entries)
 

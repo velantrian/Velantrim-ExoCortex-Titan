@@ -4,10 +4,19 @@
 - Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.
 - Contract: default behaviour and the PR #453 prompt contract are unchanged. Full text in `KNOWN_RISKS.md`.
 - Review follow-up: the `source` field is neutralized like the claim; records that share a `fact_id` but differ in shown content get separate labels and are reported `ambiguous`. A targeted mutation control kills five mutants (see `KNOWN_RISKS.md`).
-- Evidence: `tests/test_evidence_labels.py` (18 tests) and `tests/test_prompt_epistemic_boundary.py` pass; the default prompt is byte-identical to the unlabelled builder for the records part.
+- Evidence: `tests/test_evidence_labels.py` (19 tests) and `tests/test_prompt_epistemic_boundary.py` pass; the default prompt is byte-identical to the unlabelled builder for the records part.
 - Not changed: no answer is blocked or rewritten; `/chat`, `/chat/stream`, `/query/roles` are not covered; reference existence is not claim support (issue #512 stays open).
 - Documentation impact: `GITHUB_ONLY`. Notion: not updated by this change.
 - **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
+## 2026-11-09 — No silent LLM context truncation (fixed 4000-character DeepSeek cut removed)
+
+- Base: `main@1a7141c` (#502). Branch `fix/llm-context-no-silent-truncation-20261109`.
+- Found: `core/llm_router.py` cut every DeepSeek message to 4000 characters for all DeepSeek models on `chat_complete` (`/query`, Reader, other callers), `chat_complete_messages` (`/chat`) and `stream_chat_events` (`/chat/stream`); the Reader shrank chunks to fit it; `core/console_memory.py` cut the previous-chat summary (4000) and dialogue turns (600); history (20 turns) and `block_memory` (40 notes) were capped without a signal.
+- Changed: new `core/llm_context_budget.py`; per-message limit off by default, `DEEPSEEK_MESSAGE_CHAR_LIMIT` opt-in and enforced by refusal or whole-unit omission; `context_report` on `/chat`, `/query`, `/chat/stream` (`context` event + final event); console toast; `LlmContextOverflowError` for provider context rejections; Gemini explicit-cache key/text no longer prefix-cut. Response-length settings (`max_tokens`) unchanged. Access policy (egress lease, data mode, API-key auth) unchanged.
+- Tests: `tests/test_llm_context_no_silent_truncation.py` (new); `tests/test_evidence_use_contract.py`, `tests/test_llm_deepseek_thinking.py`, `tests/test_llm_reader_adapter.py` updated from the old truncation contract to the new one. No real model calls.
+- Status: implemented, tested; wired into `/chat`, `/chat/stream`, `/query` and the router. Not observed on a running instance. Merge is not deployment.
+- Documentation impact: `GITHUB_ONLY` (`docs/ai/KNOWN_RISKS.md`, this log, `config/llm.example.env`).
 
 ---
 

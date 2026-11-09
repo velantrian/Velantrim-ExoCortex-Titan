@@ -229,3 +229,25 @@ def test_prompt_neutralizes_the_source_field_and_labels_conflicting_records_apar
         assert prompt.count(f"[{lb}]") == 1, lb
     res = el.check_references("[ev_1] [ev_2] [ev_3]", emap)
     assert res["valid"] == ["ev_1", "ev_2", "ev_3"] and res["ambiguous"] == ["ev_2", "ev_3"]
+
+
+def test_labels_of_records_dropped_from_the_prompt_are_not_valid_references():
+    el = _el()
+    facts = _facts(("a", "x"), ("b", "y"), ("c", "z"))
+    emap = el.build_evidence_map(facts)
+    shown = emap.restricted_to([facts[0], facts[2]])           # the record "b" was dropped by a size limit
+    assert shown.to_dict() == {"ev_1": "a", "ev_3": "c"}
+    res = el.check_references("[ev_1] [ev_2] [ev_3]", shown)
+    assert res["valid"] == ["ev_1", "ev_3"] and res["unknown"] == ["ev_2"]
+    assert emap.restricted_to(facts).to_dict() == emap.to_dict()
+
+
+def test_the_label_instruction_appears_once_and_only_when_labelled():
+    srv = importlib.import_module("server")
+    el = _el()
+    facts = _facts(("a", "x"), ("b", "y"))
+    emap = el.build_evidence_map(facts)
+    labelled = srv._build_system_prompt(facts, evidence_map=emap)
+    plain = srv._build_system_prompt(facts)
+    assert labelled.count(el.PROMPT_INSTRUCTION) == 1 and el.PROMPT_INSTRUCTION not in plain
+    assert "- [ev_1] [src:t | conf=0.90] x" in labelled and "[ev_" not in plain
