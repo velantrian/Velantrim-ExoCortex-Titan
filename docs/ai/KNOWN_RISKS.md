@@ -8,15 +8,17 @@ Contract, explicit and opt-in: `QueryRequest.evidence_labels` (default `false`).
 - The code creates labels `[ev_1]`, `[ev_2]`, ... in fact order and prefixes each record line with its label; one instruction sentence tells the model to cite by label and that a label does not mean the record supports the statement. A record without a real `fact_id` gets no label.
 - The map label -> `fact_id` belongs to this request only: it is returned as `evidence_labels`, stored in this request's trace metadata, and never shared.
 - Internal ids and epistemic fields still stay out of the prompt.
-- Label-like text inside a record (for example `[ev_2]` in an imported document) is neutralized in the prompt (`[ev_2]` becomes `[ ev_2]`, any case and spacing). A reference is valid only if the exact ASCII label (`[ev_N]`, N from 1 to 9999, no leading zero) is in this request's map.
-- `reference_check` reports which labels in the answer exist in the map (`valid`) and which do not (`unknown`). It checks **existence only**.
+- Label-like text inside a record (for example `[ev_2]` in an imported document) is neutralized in every text field that is inserted into the prompt (the claim and the source): `[ev_2]` becomes `[ ev_2]`, any case and spacing. A reference is valid only if the exact ASCII label (`[ev_N]`, N from 1 to 9999, no leading zero) is in this request's map.
+- A label belongs to one presented record. An exact repeat (same `fact_id`, same claim and source) reuses its label. The same `fact_id` with different shown content gets a separate label for each, and every such label is `ambiguous`: the id alone does not say which presented record an answer relied on.
+- `reference_check` reports which labels in the answer exist in the map (`valid`), which do not (`unknown`) and which valid ones are `ambiguous`. It checks **existence only**.
 
-Tests: `tests/test_evidence_labels.py` (13 tests): label order and skipped ids, independent maps per request, neutralization, the exact-label rule, default prompt unchanged, opt-in prompt, a forged label from a source document is `unknown`, the map is stored with the trace.
+Tests: `tests/test_evidence_labels.py` (18 tests, with a targeted mutation control: removing the neutralization of the claim or the source, making the record fingerprint ignore content, or dropping the ambiguity marking each fails a test): label order and skipped ids, independent maps per request, neutralization, the exact-label rule, default prompt unchanged, opt-in prompt, a forged label from a source document is `unknown`, the map is stored with the trace.
 
 Remaining limits:
 - A valid label shows which record an answer points at; it does not show that the record supports the statement. A claim-level support check is still open (#512). Nothing here blocks or changes an answer: `reference_check` is reported only.
 - Only `/query` is covered; `/chat`, `/chat/stream` and `/query/roles` are not.
 - The model may ignore the labels or cite them wrongly; there is no measurement of how often. Neutralization covers the ASCII sequence `[` + optional spaces + `ev_`; look-alike Unicode brackets are not counted as labels by the check, but are not rewritten in the prompt either.
+- Records that share a `fact_id` but differ in content do not arise through `/query` (the pipeline takes content by `fact_id`); the ambiguity handling covers other callers of the builder.
 - Label order follows the order of the facts of that request, so the same record can carry a different label in another request.
 - The stored map holds internal `fact_id`s in the trace metadata, like `source_fact_ids` already does.
 

@@ -3,7 +3,8 @@
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
 - Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.
 - Contract: default behaviour and the PR #453 prompt contract are unchanged. Full text in `KNOWN_RISKS.md`.
-- Evidence: `tests/test_evidence_labels.py` (13 tests) and `tests/test_prompt_epistemic_boundary.py` pass; the default prompt is byte-identical to the unlabelled builder for the records part.
+- Review follow-up: the `source` field is neutralized like the claim; records that share a `fact_id` but differ in shown content get separate labels and are reported `ambiguous`. A targeted mutation control kills five mutants (see `KNOWN_RISKS.md`).
+- Evidence: `tests/test_evidence_labels.py` (18 tests) and `tests/test_prompt_epistemic_boundary.py` pass; the default prompt is byte-identical to the unlabelled builder for the records part.
 - Not changed: no answer is blocked or rewritten; `/chat`, `/chat/stream`, `/query/roles` are not covered; reference existence is not claim support (issue #512 stays open).
 - Documentation impact: `GITHUB_ONLY`. Notion: not updated by this change.
 - **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**

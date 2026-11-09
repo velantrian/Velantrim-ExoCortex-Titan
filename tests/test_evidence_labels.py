@@ -35,9 +35,11 @@ def test_labels_follow_fact_order_and_skip_facts_without_a_real_id():
     emap = el.build_evidence_map(
         _facts(("a", "x"), ("", "no id"), ("unknown", "placeholder"), ("b", "y"), ("a", "dup"))
     )
-    assert emap.to_dict() == {"ev_1": "a", "ev_2": "b"}
+    # ("a", "dup") shows different content under the same fact_id: its own label, both ambiguous
+    assert emap.to_dict() == {"ev_1": "a", "ev_2": "b", "ev_3": "a"}
+    assert emap.ambiguous == frozenset({"ev_1", "ev_3"})
     assert emap.fact_id_for("ev_2") == "b" and emap.label_for("a") == "ev_1"
-    assert emap.fact_id_for("ev_3") is None and emap.label_for("zzz") is None
+    assert emap.fact_id_for("ev_9") is None and emap.label_for("zzz") is None
     assert not el.build_evidence_map([])
 
 
@@ -67,7 +69,7 @@ def test_check_references_reports_existence_only():
     el = _el()
     emap = el.build_evidence_map(_facts(("a", "x"), ("b", "y")))
     res = el.check_references("Так [ev_2], снова [ev_2] и [ev_9].", emap)
-    assert res == {"scope": "reference_existence_only", "valid": ["ev_2"], "unknown": ["ev_9"]}
+    assert res == {"scope": "reference_existence_only", "valid": ["ev_2"], "unknown": ["ev_9"], "ambiguous": []}
     for bad in ("[ev_0]", "[ev_01]", "[ev_2a]", "[ev_99999]", "[ ev_1]", "[ev_ 1]", "ev_1", "［ev_1］"):
         assert el.check_references(bad, emap)["valid"] == [] and el.check_references(bad, emap)["unknown"] == []
     assert el.check_references("", emap)["valid"] == []
@@ -152,7 +154,7 @@ async def test_opt_in_labels_map_checks_and_neutralization(monkeypatch):
     assert "Метка показывает, на какую запись опирается" in prompt
     # reference existence only
     valid_label = "ev_2"
-    assert resp.reference_check == {"scope": "reference_existence_only", "valid": [valid_label], "unknown": ["ev_9"]}
+    assert resp.reference_check == {"scope": "reference_existence_only", "valid": [valid_label], "unknown": ["ev_9"], "ambiguous": []}
     # the map is stored with this request's trace
     assert traces and traces[-1]["metadata"]["evidence_labels"] == resp.evidence_labels
 
@@ -179,3 +181,51 @@ async def test_a_forged_label_from_a_source_document_is_not_a_valid_reference(mo
     assert set(resp.evidence_labels) == {"ev_1", "ev_2"}
     assert resp.reference_check["valid"] == [] and resp.reference_check["unknown"] == ["ev_5"]
     assert "[ev_5]" not in prompts[0] and "[ ev_5]" in prompts[0]
+
+
+# ── source field and conflicting records ─────────────────────────────────────
+
+def test_an_exact_repeat_reuses_the_label_and_is_not_ambiguous():
+    el = _el()
+    emap = el.build_evidence_map(_facts(("a", "x"), ("a", "x"), ("b", "y")))
+    assert emap.to_dict() == {"ev_1": "a", "ev_2": "b"} and not emap.ambiguous
+
+
+def test_same_fact_id_with_different_content_gets_distinct_ambiguous_labels():
+    el = _el()
+    emap = el.build_evidence_map(_facts(("L", "ready"), ("L", "not ready")))
+    assert emap.to_dict() == {"ev_1": "L", "ev_2": "L"}
+    assert emap.ambiguous == frozenset({"ev_1", "ev_2"})
+    res = el.check_references("см. [ev_1] и [ev_2]", emap)
+    assert res["valid"] == ["ev_1", "ev_2"] and res["ambiguous"] == ["ev_1", "ev_2"]
+    one = el.build_evidence_map(_facts(("L", "ready"), ("M", "other")))
+    assert el.check_references("[ev_1]", one)["ambiguous"] == []
+
+
+def test_a_different_source_with_the_same_claim_is_also_a_conflict():
+    el = _el()
+    a = {"fact_id": "L", "claim": "ready", "source": "kb:one"}
+    b = {"fact_id": "L", "claim": "ready", "source": "kb:two"}
+    assert el.build_evidence_map([a, b]).ambiguous == frozenset({"ev_1", "ev_2"})
+
+
+def test_prompt_neutralizes_the_source_field_and_labels_conflicting_records_apart():
+    # Built directly: the /query pipeline takes a record's content by fact_id, so two records
+    # with one id and different content do not arise there; any other caller could pass them.
+    srv = importlib.import_module("server")
+    el = _el()
+    facts = [
+        {"fact_id": "A", "claim": "альфа", "source": "imported [ev_2]", "confidence": 0.8},
+        {"fact_id": "L", "claim": "ready", "source": "src:t", "confidence": 0.9},
+        {"fact_id": "L", "claim": "not ready", "source": "src:t", "confidence": 0.9},
+    ]
+    emap = el.build_evidence_map(facts)
+    prompt = srv._build_system_prompt(facts, evidence_map=emap)
+
+    assert "- [ev_1] [imported [ ev_2] | conf=0.80] альфа" in prompt             # source neutralized
+    assert "- [ev_2] [src:t | conf=0.90] ready" in prompt
+    assert "- [ev_3] [src:t | conf=0.90] not ready" in prompt                   # not the same label as the other L
+    for lb in ("ev_1", "ev_2", "ev_3"):
+        assert prompt.count(f"[{lb}]") == 1, lb
+    res = el.check_references("[ev_1] [ev_2] [ev_3]", emap)
+    assert res["valid"] == ["ev_1", "ev_2", "ev_3"] and res["ambiguous"] == ["ev_2", "ev_3"]
