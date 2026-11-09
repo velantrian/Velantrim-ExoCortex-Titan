@@ -3591,6 +3591,7 @@
         "memory.savedToast": "💾 Сохранено в память: {n}",
         "memory.suggestToast": "💡 Найдено для памяти: {n} — сохраните кнопкой ниже",
         "memory.noneToast": "Автосохранение: в сообщении не найдено ключевых фактов",
+        "context.limitToast": "Применён лимит контекста ({settings}): часть материала не передана модели целиком — см. context_report",
         "memory.btnSave": "Сохранить",
         "memory.btnSaveAll": "Сохранить все",
         "right.memoryEmpty": "Память пуста. Напишите в чат или сохраните факт слева.",
@@ -3974,6 +3975,7 @@
         "memory.savedToast": "💾 Saved to memory: {n}",
         "memory.suggestToast": "💡 Found for memory: {n} — save with the button below",
         "memory.noneToast": "Auto-save: no key facts detected in message",
+        "context.limitToast": "Context limit applied ({settings}): some material was not sent to the model — see context_report",
         "memory.btnSave": "Save",
         "memory.btnSaveAll": "Save all",
         "right.memoryEmpty": "Memory is empty. Chat or save a fact on the left.",
@@ -4364,6 +4366,7 @@
       "memory.savedToast": "💾 Im Speicher gespeichert: {n}",
       "memory.suggestToast": "💡 Für Speicher gefunden: {n} — unten speichern",
       "memory.noneToast": "Auto-Speichern: keine Schlüsselfakten in Nachricht",
+      "context.limitToast": "Kontextlimit angewendet ({settings}): ein Teil wurde nicht an das Modell gesendet — siehe context_report",
       "memory.btnSave": "Speichern",
       "memory.btnSaveAll": "Alle speichern",
       "right.memoryEmpty": "Speicher leer. Chatten oder Fakt links speichern.",
@@ -6609,6 +6612,12 @@
         showCopyToast(t("memory.suggestToast", { n: res.memory_suggestions.length }));
       } else if (res.memory_auto_status === "none" && getAutoSaveMemory()) {
         showCopyToast(t("memory.noneToast"));
+      }
+      // Context limits are never silent: tell the user when one removed material.
+      const ctx = res.context_report;
+      if (ctx && ctx.limits_applied && Array.isArray(ctx.applied)) {
+        const settings = Array.from(new Set(ctx.applied.map((a) => a.setting))).join(", ");
+        showCopyToast(t("context.limitToast", { settings }));
       }
     }
 
