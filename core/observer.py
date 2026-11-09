@@ -20,7 +20,9 @@ Increment-1 checks (each delegates to an existing module):
 
 A check that raises is reported as flag ``check_unavailable`` (decision at least ``warn``,
 ``details["unavailable_checks"]`` = check name + exception type, no exception text). It is never
-folded into a clean ``allow``, and it is distinct from missing-evidence flags.
+folded into a clean ``allow``, and it is distinct from missing-evidence flags. The severity is a flat
+``warn`` (also for the hard ``no_admissible_evidence`` check), so a consumer that gates on Observer
+must key on ``check_unavailable`` in ``flags`` / ``not is_clean``, not on ``decision == reject``.
 
 Deferred (named in the plan): query-side gist, stale_context, false_reactivation,
 causal_overclaim, advanced gist_distortion, metrics dashboards, nightly review.
