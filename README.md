@@ -31,6 +31,21 @@
 
 ---
 
+## 🧭 Governed environment and replaceable models
+
+Titan develops the memory, tool and execution environment around a replaceable
+model/provider layer. Model output can propose an action or memory update; the
+existing owning permission and write boundaries decide whether it is admissible.
+
+[Crystal](https://github.com/velantrian/velantrim-exocortex-crystal) contributes its
+own evidence/memory infrastructure. Titan also has its own memory; calling Titan
+does not automatically use Crystal. An explicit bridge must preserve provenance,
+scope and state ownership. Laboratory message capture does not establish a
+complete deployed integration or correct model answers.
+
+See [the design principle and integration requirements](docs/design/GOVERNED_MODEL_ENVIRONMENT.md).
+Experiments evaluate useful work and boundary failures across materials and models.
+
 ## 👋 Titan in 60 seconds
 
 A bare LLM often mixes memory, retrieval, confidence, policy, tools, and fluent wording

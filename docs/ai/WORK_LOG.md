@@ -1,3 +1,19 @@
+## 2026-11-09 — Governed environment / replaceable models (documentation proposal)
+
+- Base: `6b45854f57ca90516b86b2c48b284c88857bc2c2`.
+- Clarify project intent and Crystal/Titan boundaries in English/Russian README;
+  record the shared design rationale and proposed bridge acceptance requirements
+  in [GOVERNED_MODEL_ENVIRONMENT.md](../design/GOVERNED_MODEL_ENVIRONMENT.md).
+- Distinguish typed proposals from admitted state, local ownership from integration,
+  prepared messages from delivery, and receipts from answer support. The laboratory
+  bridge snapshot is evidence about its bounded harness, not a deployed connection.
+- Documentation impact: `GITHUB_AND_NOTION`. Dedicated Notion principle page and
+  visible hub reference saved; public reference is its safe title only.
+- Validation and exact proposed head/CI belong to this documentation PR. No new
+  runtime tests, model calls, feature enablement or implementation checkpoint.
+
+---
+
 ## 2026-11-09 — No silent LLM context truncation (fixed 4000-character DeepSeek cut removed)
 
 - Base: `main@1a7141c` (#502). Branch `fix/llm-context-no-silent-truncation-20261109`.
