@@ -339,7 +339,7 @@ def test_prompt_neutralizes_the_source_field_and_labels_conflicting_records_apar
     assert res["valid"] == ["ev_1", "ev_2", "ev_3"] and res["ambiguous"] == ["ev_2", "ev_3"]
 
 
-def test_a_source_that_starts_with_ev_N_close_does_not_become_a_code_made_label():
+def test_a_source_that_starts_with_an_ev_label_and_a_bracket_does_not_become_a_code_made_label():
     # The line template wraps source in [...]: a source of "ev_2] ..." would become "[ev_2] ...".
     # Neutralizing "[ev_" inside the raw field is not enough, because the opening bracket is
     # added by the template, not present in the field.
