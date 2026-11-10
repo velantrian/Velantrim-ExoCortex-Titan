@@ -474,15 +474,31 @@ async def tts_stream_route(req: TtsSpeakBody):
         v = voice or DEFAULT_OPENAI_TTS_VOICE
         m = model or DEFAULT_OPENAI_TTS_MODEL
 
+        from core.llm_errors import LlmEmptyResponseError, LlmStreamError
+
+        stream = openai_tts_stream(api_key, req.text, voice=v, model=m)
+        # Take the first chunk before the response starts: a failure here is still a normal HTTP
+        # error (status, code, event id). Once audio/mpeg is on the wire the status cannot change.
+        try:
+            first = await stream.__anext__()
+        except StopAsyncIteration:
+            raise _safe_llm_http_error(
+                LlmEmptyResponseError("openai TTS: empty audio"), route="/tts/stream"
+            ) from None
+        except Exception as exc:
+            raise _safe_llm_http_error(exc, route="/tts/stream") from None
+
         async def audio_iter():
+            yield first
             try:
-                async for chunk in openai_tts_stream(
-                    api_key, req.text, voice=v, model=m
-                ):
+                async for chunk in stream:
                     yield chunk
             except Exception as exc:
-                # The body is already audio/mpeg: end the stream. Log only code + type.
-                log_llm_failure(logger, describe_llm_failure(exc), exc, route="/tts/stream")
+                info = describe_llm_failure(exc)
+                log_llm_failure(logger, info, exc, route="/tts/stream")
+                # Ending the stream normally would look like a short, valid file. Abort the
+                # transfer instead; the error carries the code only, not the original text.
+                raise LlmStreamError(info) from None
 
         return StreamingResponse(audio_iter(), media_type="audio/mpeg")
 

@@ -338,7 +338,7 @@ async def gemini_tts_bytes(
         )
         audio = base64.b64decode(raw_b64)
         return _mime_to_wav(audio, mime)
-    raise ValueError("gemini TTS: нет аудио в ответе")
+    raise LlmEmptyResponseError("gemini TTS: нет аудио в ответе")
 
 
 async def synthesize_chunk(

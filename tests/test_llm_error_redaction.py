@@ -682,3 +682,98 @@ async def test_an_empty_provider_answer_has_its_own_code_not_request_invalid(mon
     with pytest.raises(ValueError) as excinfo:
         await router.chat_complete(cfg, "q", system="s")
     assert e.classify_llm_error(excinfo.value) == "llm_empty_response"
+
+
+# ── OpenAI TTS stream: a failure must stay visible to the client ─────────────
+
+def _fake_openai_stream(monkeypatch, *, chunks, then):
+    """Replace the provider stream: yield ``chunks``, then raise ``then`` (if given)."""
+    tts = importlib.import_module("core.tts_router")
+
+    async def fake(api_key, text, **kwargs):
+        for chunk in chunks:
+            yield chunk
+        if then is not None:
+            raise then
+
+    monkeypatch.setattr(tts, "openai_tts_stream", fake)
+
+
+@pytest.mark.asyncio
+async def test_openai_tts_failure_before_the_first_chunk_is_a_normal_http_error(monkeypatch, caplog):
+    # Nothing was sent yet: the client gets a real status with a code and an event id, not a
+    # 200 with an empty body.
+    from fastapi import HTTPException
+
+    routes = importlib.import_module("api.llm_routes")
+    router = _llm_router()
+    caplog.set_level(logging.DEBUG)
+    _fake_openai_stream(monkeypatch, chunks=[], then=router.LlmProviderRequestError(
+        provider="openai", status_code=401, detail=MARKER, message=f"openai: HTTP 401 {MARKER}"))
+    with pytest.raises(HTTPException) as excinfo:
+        await routes.tts_stream_route(routes.TtsSpeakBody(provider="openai", api_key="synthetic-valid-key", text="hi"))
+
+    assert excinfo.value.status_code == 401
+    assert "llm_auth_failed" in str(excinfo.value.detail) and "llm_evt_" in str(excinfo.value.detail)
+    _assert_no_marker(detail=str(excinfo.value.detail), logs=_log_blob(caplog))
+
+
+@pytest.mark.asyncio
+async def test_openai_tts_empty_audio_is_an_empty_response_error_not_an_empty_200(monkeypatch):
+    from fastapi import HTTPException
+
+    routes = importlib.import_module("api.llm_routes")
+    _fake_openai_stream(monkeypatch, chunks=[], then=None)
+    with pytest.raises(HTTPException) as excinfo:
+        await routes.tts_stream_route(routes.TtsSpeakBody(provider="openai", api_key="synthetic-valid-key", text="hi"))
+    assert "llm_empty_response" in str(excinfo.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_openai_tts_failure_after_audio_started_aborts_the_transfer_with_a_safe_error(monkeypatch, caplog):
+    # The 200 and the audio/mpeg headers are already out. Ending the stream normally would look
+    # like a short but valid file; the transfer must fail instead, and the error that the server
+    # logs or raises must carry the code only.
+    routes = importlib.import_module("api.llm_routes")
+    errors = _errors()
+    caplog.set_level(logging.DEBUG)
+    _fake_openai_stream(monkeypatch, chunks=[b"aa", b"bb"], then=RuntimeError(f"mid-stream {MARKER}"))
+    resp = await routes.tts_stream_route(routes.TtsSpeakBody(provider="openai", api_key="synthetic-valid-key", text="hi"))
+
+    received = []
+    with pytest.raises(errors.LlmStreamError) as excinfo:
+        async for chunk in resp.body_iterator:
+            received.append(chunk)
+
+    assert received == [b"aa", b"bb"]
+    err = excinfo.value
+    assert err.info.code == "llm_internal_error" and err.info.event_id.startswith("llm_evt_")
+    assert err.__cause__ is None and err.__suppress_context__          # the original text is not chained
+    _assert_no_marker(message=str(err), rep=repr(err), logs=_log_blob(caplog))
+    import traceback
+
+    _assert_no_marker(traceback="".join(traceback.format_exception(err)))
+
+
+@pytest.mark.asyncio
+async def test_a_complete_openai_tts_stream_is_unchanged(monkeypatch):
+    routes = importlib.import_module("api.llm_routes")
+    _fake_openai_stream(monkeypatch, chunks=[b"aa", b"bb", b"cc"], then=None)
+    resp = await routes.tts_stream_route(routes.TtsSpeakBody(provider="openai", api_key="synthetic-valid-key", text="hi"))
+    assert [c async for c in resp.body_iterator] == [b"aa", b"bb", b"cc"]
+    assert resp.media_type == "audio/mpeg"
+
+
+@pytest.mark.asyncio
+async def test_gemini_tts_without_audio_in_the_answer_has_the_empty_response_code(monkeypatch):
+    tts = importlib.import_module("core.tts_router")
+    _allow_egress(monkeypatch)
+
+    def no_audio(request):
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "no audio here"}]}}]})
+
+    _mock_httpx(monkeypatch, no_audio)
+    with pytest.raises(ValueError) as excinfo:
+        await tts.gemini_tts_bytes("synthetic-valid-key", "hello",
+                                   model=tts.DEFAULT_GEMINI_TTS_MODEL, voice=tts.DEFAULT_GEMINI_TTS_VOICE)
+    assert _errors().classify_llm_error(excinfo.value) == "llm_empty_response"
