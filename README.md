@@ -1,10 +1,10 @@
-# 🔱 VELANTRIM TITAN 9.0
+#  Tritium VELANTRIM TITAN 9.0
 
 **English** · [Русский](README.ru.md)
 
 > 🗿 **A local-first memory system for AI work where finding information does not count as permission to trust or act on it.**
 >
-> **Why it matters:** An AI assistant may recover an old note saying “the purchase was approved.” Retrieving that note is not proof of current approval. Titan separates recall, provenance, review and authorized changes instead of silently turning an assistant's suggestion into a human decision.
+> **Why it matters:** An AI assistant may recover an old note saying "the purchase was approved." Retrieving that note is not proof of current approval. Titan separates recall, provenance, review and authorized changes instead of silently turning an assistant's suggestion into a human decision.
 >
 > **What exists:** A research-grade memory and orchestration prototype with explicit trust/write boundaries, audit surfaces and optional integrations. **Not** a production-authorized service or a guarantee of correct answers.
 >
@@ -45,7 +45,7 @@ query / user action
   → tools or replaceable LLM/provider layer
 ```
 
-The important claim is not that Titan “knows truth.” The important property is that
+The important claim is not that Titan "knows truth." The important property is that
 retrieval, evidence, permission, mutation, auditability, and language generation do not
 silently become the same authority.
 
@@ -63,6 +63,14 @@ machine (ESM), controlled canonical mutation paths, hybrid retrieval capability,
 provenance/audit surfaces, remote-egress policy, authenticated API/tool surfaces, and
 feature-gated research layers. An LLM may read, extract, rank, summarize, or render
 language, but it does not automatically gain the right to mutate Canon.
+
+Hybrid retrieval is not a single-mode fallback. The lexical/BM25 path is always on
+and runs on any hardware. Dense embeddings (sentence-transformers, multilingual MiniLM)
+and graph signals attach optionally via extras and configuration; when they are absent
+the system degrades to a narrower but working path rather than failing. Ranking fusion
+combines whichever signals are available. This is a deliberate local-first trade-off:
+no mandatory heavy dependencies, semantics as an amplifier rather than a prerequisite.
+See [Retrieval precision](#retrieval-precision) below for signal status and gating details.
 
 ---
 
@@ -324,5 +332,5 @@ SYSTEM_OVERVIEW.md    Russian atlas (same sections / claims)
 Version source: `pyproject.toml` / `core.__version__`.
 History: [`CHANGELOG.md`](CHANGELOG.md).
 
-> **Titan understands and proposes. Trust boundaries verify and admit.
+> **Titan understands and proposes. Trust boundaries verify and admit.**
 > The kernel preserves invariants. The LLM remains replaceable.**
