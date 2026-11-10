@@ -162,3 +162,75 @@ def test_repeat_keeps_the_strongest_retrieval_score_in_either_order(scores):
 
     assert [f.fact_id for f in pack.facts] == ["rec-1"]
     assert pack.facts[0].retrieval_score == pytest.approx(0.8)
+
+
+# ── enrichment fields are part of the record ────────────────────────────────
+
+ENRICHMENT_DIFFERENCES = [
+    pytest.param("causal_summary", {"path": ["a", "b"]}, {"path": ["a", "c"]}, id="causal_summary"),
+    pytest.param("living_context", {"where": "lab"}, {"where": "field"}, id="living_context"),
+    pytest.param("context_applicability", 0.9, 0.4, id="context_applicability"),
+]
+
+
+@pytest.mark.parametrize(("field", "first", "second"), ENRICHMENT_DIFFERENCES)
+def test_same_record_with_different_enrichment_is_not_collapsed(field, first, second):
+    # Collapsing would keep the first copy and silently lose the other one's enrichment.
+    base = _raw("rec-1", "Срок хранения логов 30 дней", 0.90)
+
+    pack = _build([{**base, field: first}, {**base, field: second}])
+
+    assert len(pack.facts) == 2
+    assert sorted(repr(getattr(f, field)) for f in pack.facts) == sorted([repr(first), repr(second)])
+
+
+@pytest.mark.parametrize(("field", "first", "second"), ENRICHMENT_DIFFERENCES)
+def test_enrichment_present_on_one_copy_only_is_a_difference(field, first, second):
+    base = _raw("rec-1", "Срок хранения логов 30 дней", 0.90)
+
+    pack = _build([dict(base), {**base, field: first}])
+
+    assert len(pack.facts) == 2
+
+
+def test_identical_enrichment_still_collapses_and_key_order_does_not_matter():
+    base = _raw("rec-1", "Срок хранения логов 30 дней", 0.90)
+    one = {**base, "retrieval_score": 0.4, "causal_summary": {"a": 1, "b": [1, 2]}, "living_context": {"x": {"y": 1, "z": 2}}}
+    two = {**base, "retrieval_score": 0.8, "causal_summary": {"b": [1, 2], "a": 1}, "living_context": {"x": {"z": 2, "y": 1}}}
+
+    pack = _build([one, two])
+
+    assert [f.fact_id for f in pack.facts] == ["rec-1"]
+    assert pack.facts[0].retrieval_score == pytest.approx(0.8)
+
+
+def test_an_unserializable_enrichment_value_never_raises_in_the_key():
+    base = _raw("rec-1", "Срок хранения логов 30 дней", 0.90)
+
+    pack = _build([{**base, "living_context": {"k": object()}}, {**base, "living_context": {"k": object()}}])
+
+    assert len(pack.facts) == 2          # two different objects: not provably the same record
+
+
+def test_every_field_of_a_packed_fact_except_the_retrieval_score_is_part_of_the_record():
+    # Guards the key against a field added to PackedFact later: each field, changed alone,
+    # must stop two otherwise identical copies from collapsing.
+    from dataclasses import fields, replace
+
+    from core.facts_pack import PackedFact
+
+    base = PackedFact(
+        fact_id="rec-1", claim="c", epistemic_state="Validated", confidence=0.9, source="s",
+        retrieval_score=0.5, context_applicability=1.0, causal_summary={"a": 1}, living_context={"b": 2},
+    )
+    changed = {
+        "fact_id": "rec-2", "claim": "c2", "epistemic_state": "Supported", "confidence": 0.8, "source": "s2",
+        "context_applicability": 0.5, "causal_summary": {"a": 2}, "living_context": {"b": 3},
+    }
+    for field in fields(PackedFact):
+        if field.name == "retrieval_score":
+            continue
+        assert field.name in changed, f"new PackedFact field {field.name!r}: add it to this test"
+        out = FactsPackBuilder._dedup_exact_record_repeats([base, replace(base, **{field.name: changed[field.name]})])
+        assert len(out) == 2, field.name
+    assert len(FactsPackBuilder._dedup_exact_record_repeats([base, replace(base, retrieval_score=0.9)])) == 1

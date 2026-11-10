@@ -9,10 +9,15 @@ higher confidence. It is always on for every route that calls `pipeline.run`: `/
 negation, condition, identifier (`L1`/`L2`), status, number or argument order were dropped
 before the LLM prompt, without an `excluded_facts` entry. Same text under different
 `fact_id`s lost separate provenance. The branch replaces it with
-`_dedup_exact_record_repeats`: only the same real `fact_id` with identical claim,
-epistemic_state, source and confidence collapses (the first copy is kept, with the highest
-`retrieval_score`). The key ignores `context_applicability`, `causal_summary` and
-`living_context`.
+`_dedup_exact_record_repeats`: only the same real `fact_id` with an identical record
+payload collapses (the first copy is kept, with the highest `retrieval_score`). The payload is
+every `PackedFact` field except `retrieval_score` (claim, epistemic_state, source, confidence,
+`context_applicability`, `causal_summary`, `living_context`); dict values are compared
+independent of key order, and a value that is not JSON-serializable never raises. An external
+review found that the first version ignored the last three fields, so two copies that differed
+only in enrichment collapsed and one copy's context was lost; today the production caller does
+not pass these fields, so this was an API-level defect. A test fails if a field is added to
+`PackedFact` without being covered by the key.
 
 Tests (fail on base, pass on the branch):
 `tests/test_facts_pack_distinct_records_preserved.py`,

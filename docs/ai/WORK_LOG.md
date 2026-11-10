@@ -9,7 +9,7 @@
 
   Claim-level answer support is a separate change.
 - **FactsPack** (`core/facts_pack.py`):
-  - `_dedup_semantic` (token overlap > 0.7, winner by confidence) is replaced by `_dedup_exact_record_repeats`. It collapses only the same real `fact_id` with identical claim, epistemic_state, source and confidence, and keeps the strongest `retrieval_score`.
+  - `_dedup_semantic` (token overlap > 0.7, winner by confidence) is replaced by `_dedup_exact_record_repeats`. It collapses only the same real `fact_id` with an identical record payload (every `PackedFact` field except `retrieval_score`, enrichment fields included) and keeps the strongest `retrieval_score`. External review (same day): the first version left `context_applicability`, `causal_summary` and `living_context` out of the key; fixed, with tests per field, a guard against future fields, and a mutation control of 8 mutants (all killed).
   - Before: records differing by negation, condition, `L1`/`L2`, status, number or argument order were dropped on `/query`, `/chat` and `/chat/stream` before the LLM, with no `excluded_facts` entry.
 - **Observer** (`core/observer.py`):
   - Before: a raised check became `res = None`, so the verdict could stay `allow` / `clean`.

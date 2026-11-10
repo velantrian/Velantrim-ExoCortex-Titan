@@ -16,7 +16,8 @@ Sprint 1a — Этап G1
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field, replace
+import json
+from dataclasses import dataclass, field, fields, replace
 from datetime import UTC, datetime
 
 # ── Политики ответа по CognitiveMode ─────────────────────────────────────────
@@ -114,6 +115,9 @@ def _is_weakest_rrf_rank_shape(score: float) -> bool:
 
 
 # ── PackedFact ────────────────────────────────────────────────────────────────
+
+# The only PackedFact field that may differ between two copies of one record.
+_RECORD_KEY_IGNORED_FIELDS = frozenset({"retrieval_score"})
 
 @dataclass
 class PackedFact:
@@ -279,6 +283,24 @@ class FactsPack:
 
 # ── FactsPackBuilder ──────────────────────────────────────────────────────────
 
+def _record_key_part(value: object) -> object:
+    """Hashable, order-independent stand-in for a field value (dicts and lists included)."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    # default=repr: a value that is not JSON-serializable never raises here; two different
+    # objects have different reprs, so they are never taken for the same record.
+    return ("json", json.dumps(value, sort_keys=True, default=repr, ensure_ascii=False))
+
+
+def _record_key(fact: PackedFact) -> tuple:
+    """Identity of a memory record: every PackedFact field except ``retrieval_score``."""
+    return tuple(
+        _record_key_part(getattr(fact, f.name))
+        for f in fields(fact)
+        if f.name not in _RECORD_KEY_IGNORED_FIELDS
+    )
+
+
 class FactsPackBuilder:
     """
     Строит FactsPack из сырых фактов из памяти.
@@ -310,9 +332,12 @@ class FactsPackBuilder:
         Collapse only provable repeats of the same memory record.
 
         Two packed facts count as one record only when they carry the same real
-        ``fact_id`` and an identical record payload (claim, epistemic_state,
-        source, confidence). The surviving copy keeps the strongest
-        ``retrieval_score`` seen for that record.
+        ``fact_id`` and an identical record payload: every field of
+        ``PackedFact`` except ``retrieval_score`` (claim, epistemic_state, source,
+        confidence and the enrichment fields). Copies that differ in enrichment
+        are kept apart, because collapsing them would silently lose one copy's
+        context. The surviving copy keeps the strongest ``retrieval_score`` seen
+        for that record.
 
         Wording similarity never authorizes removal. The former token-overlap
         dedup (> 0.7, winner by confidence) silently dropped records that
@@ -320,13 +345,13 @@ class FactsPackBuilder:
         number or argument order, and merged distinct records that share text,
         losing their separate provenance.
         """
-        positions: dict[tuple[str, str, str, str, float], int] = {}
+        positions: dict[tuple, int] = {}
         out: list[PackedFact] = []
         for f in facts:
             if not f.fact_id or f.fact_id == "unknown":
                 out.append(f)
                 continue
-            key = (f.fact_id, f.claim, f.epistemic_state, f.source, f.confidence)
+            key = _record_key(f)
             pos = positions.get(key)
             if pos is None:
                 positions[key] = len(out)
