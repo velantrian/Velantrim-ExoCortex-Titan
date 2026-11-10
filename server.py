@@ -254,6 +254,18 @@ async def _with_llm_circuit(coro_factory):
 
 
 
+def _query_has_model_answer_text(answer: str | None) -> bool:
+    """True when the model produced its own answer text (not an empty/placeholder return).
+
+    Existence of a label map is not enough: an empty string or Titan's Gemini-empty
+    stub ("(пустой ответ Gemini)", used when Gemini returns candidates without text,
+    including a SAFETY finish with no parts) is not an answer the model wrote.
+    This is not a truth or usefulness check.
+    """
+    text = (answer or "").strip()
+    return bool(text) and text != "(пустой ответ Gemini)"
+
+
 def _new_context_report(provider: str | None):
     """Per-request record of what is sent to the LLM and which limits applied."""
     from core.llm_context_budget import ContextReport, LlmContextConfigError
@@ -285,9 +297,11 @@ def _memory_record_line(f: dict, evidence_map: Any = None) -> str:
     # An empty map (no record has a real fact_id) still neutralizes: the opt-in is the switch.
     label = evidence_map.label_for_fact(f)
     tag = f"{format_label(label)} " if label else ""
-    claim = neutralize_label_like_text(str(f.get("claim", "")))
-    source = neutralize_label_like_text(str(f.get("source", "?")))
-    return f"- {tag}[{source} | conf={f.get('confidence', 0):.2f}] {claim}"
+    # Neutralize AFTER wrapping source in [...]: a source that starts with "ev_2]"
+    # would otherwise become a fake [ev_2] that the code did not assign. The real
+    # label lives in ``tag`` and is not passed through this pass.
+    payload = f"[{f.get('source', '?')} | conf={f.get('confidence', 0):.2f}] {f.get('claim', '')}"
+    return f"- {tag}{neutralize_label_like_text(str(payload))}"
 
 
 def _compose_system_prompt(
@@ -938,7 +952,9 @@ class QueryResponse(BaseModel):
         None,
         description=(
             "Состояние карты ссылок: disabled | model_not_called | prompt_rejected | "
-            "model_failed | published. Карта и reference_check публикуются только при published."
+            "model_failed | no_answer | published. Карта и reference_check публикуются "
+            "только при published (модель вернула свой текст ответа). no_answer — вызов "
+            "состоялся, но текста ответа нет (пустая строка или заглушка пустого Gemini)."
         ),
     )
     reference_check: dict[str, Any] | None = Field(
@@ -2531,11 +2547,16 @@ async def query(req: QueryRequest):
             llm_call_started = True
             llm_answer = await _llm_generate(req.query, system=system, override=cfg)
             if prepared_map is not None:
-                from core.evidence_labels import check_references
+                if _query_has_model_answer_text(llm_answer):
+                    from core.evidence_labels import check_references
 
-                reference_check = check_references(llm_answer, prepared_map)
-                evidence_map = prepared_map
-                evidence_lifecycle = "published"
+                    reference_check = check_references(llm_answer, prepared_map)
+                    evidence_map = prepared_map
+                    evidence_lifecycle = "published"
+                else:
+                    # The provider was called, but there is no model-authored text.
+                    # Publishing the map would look like a successful answer.
+                    evidence_lifecycle = "no_answer"
             if cfg:
                 from core.llm_router import _resolve_model as _rm
 
