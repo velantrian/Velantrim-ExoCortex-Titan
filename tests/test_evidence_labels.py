@@ -270,6 +270,9 @@ async def test_query_builds_the_map_from_the_records_that_were_sent_and_renumber
     assert report["memory_records_total"] == 3 and report["memory_records_sent"] == 2
     assert [o["fact_id"] for o in report["memory_records_omitted"]] == ["huge"]
     assert report["applied"] and report["applied"][0]["omitted"] == 1
+    assert len(report["memory_records_omitted"]) == 1
+    assert len([item for item in report["applied"] if item.get("affected") == "memory_records"]) == 1
+    assert prompt.count("записей памяти не переданы") == 1
     assert len(prompt) <= 4000 + 400                                     # the sanitizer adds a short prefix
     assert traces[-1]["metadata"]["evidence_labels"] == resp.evidence_labels
 
@@ -429,6 +432,115 @@ async def test_no_map_when_the_prompt_is_rejected_before_sending(monkeypatch):
     resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
     _assert_nothing_published(resp, "prompt_rejected")
     assert prompts == [] and "evidence_labels" not in traces[-1]["metadata"]
+
+
+def _assert_report_without_secrets(report, *, limit=None, total=None):
+    assert report is not None
+    if limit is not None:
+        assert report["message_char_limit"] == limit
+        assert report["message_char_limit_setting"] == "DEEPSEEK_MESSAGE_CHAR_LIMIT"
+    if total is not None:
+        assert report["memory_records_total"] == total
+    blob = str(report)
+    assert "synthetic-valid-key" not in blob
+    assert "sk-" not in blob
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("opt_in", [False, True])
+async def test_context_report_survives_when_system_prompt_does_not_fit(monkeypatch, opt_in):
+    # Mandatory instructions alone exceed the limit. The provider must not be called, the
+    # citation map must not be published, and the report must still be returned (labels on
+    # or off). The report is created before prompt assembly so a limit error cannot drop it.
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "50")
+    srv, prompts, traces = _harness(monkeypatch, FACTS, answer="не будет вызвана", provider="deepseek")
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=opt_in))
+
+    assert prompts == []
+    assert resp.llm_answer.startswith("[LLM error: llm_context_limit")
+    assert "mandatory system instructions" in resp.llm_answer
+    assert "current question" not in resp.llm_answer
+    assert "synthetic-valid-key" not in (resp.llm_answer or "")
+    assert resp.llm_meta and "synthetic-valid-key" not in str(resp.llm_meta)
+    _assert_report_without_secrets(resp.context_report, limit=50, total=len(FACTS))
+    if opt_in:
+        _assert_nothing_published(resp, "prompt_rejected")
+        assert traces[-1]["metadata"]["evidence_lifecycle"] == "prompt_rejected"
+        assert "evidence_labels" not in traces[-1]["metadata"]
+    else:
+        _assert_nothing_published(resp, "disabled")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("opt_in", [False, True])
+async def test_context_report_survives_when_the_question_itself_does_not_fit(monkeypatch, opt_in):
+    # The limit is chosen so the system prompt (records + instructions) fits, and the
+    # current question does not. Refusal reason must name the question, not the system
+    # prompt; the report describes the records that would have been sent.
+    # QueryRequest.query is capped at 2000 characters. 1800 leaves room for the
+    # records, label/lens instructions and the remote sanitizer prefix, while
+    # the 1950-character question is still over the limit.
+    limit = 1800
+    query = "Q" * 1950
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", str(limit))
+    srv, prompts, traces = _harness(monkeypatch, FACTS, answer="не будет вызвана", provider="deepseek")
+    resp = await srv.query(srv.QueryRequest(query=query, use_llm=True, evidence_labels=opt_in))
+
+    assert prompts == []
+    assert resp.llm_answer.startswith("[LLM error: llm_context_limit")
+    assert "current question" in resp.llm_answer
+    assert "mandatory system instructions" not in resp.llm_answer
+    assert "synthetic-valid-key" not in (resp.llm_answer or "")
+    assert resp.llm_meta and "synthetic-valid-key" not in str(resp.llm_meta)
+    report = resp.context_report
+    _assert_report_without_secrets(report, limit=limit, total=len(FACTS))
+    assert report["memory_records_sent"] == len(FACTS)
+    assert report["memory_records_omitted"] == []
+    if opt_in:
+        _assert_nothing_published(resp, "prompt_rejected")
+        assert traces[-1]["metadata"].get("evidence_lifecycle") == "prompt_rejected"
+        assert "evidence_labels" not in traces[-1]["metadata"]
+    else:
+        _assert_nothing_published(resp, "disabled")
+
+
+@pytest.mark.asyncio
+async def test_context_report_survives_a_second_pass_build_error(monkeypatch):
+    # Pass 2 (renumber labels for the records that fit) is coded to raise the same
+    # limit error, but the production second prompt is not longer than the first:
+    # labels only shrink or stay, and the empty-map instruction is shorter. This
+    # test forces the second pass to fail to lock the report-preserving contract.
+    from core.llm_context_budget import LlmContextLimitError
+
+    facts = _facts(("small-1", "короткая запись один"), ("huge", "Ж" * 6000), ("small-2", "короткая запись два"))
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "4000")
+    srv, prompts, traces = _harness(monkeypatch, facts, answer="не будет вызвана", provider="deepseek")
+    real_build = srv._build_system_prompt
+
+    def flaky(*args, **kwargs):
+        if kwargs.get("selected_positions") is not None:
+            raise LlmContextLimitError(
+                setting="DEEPSEEK_MESSAGE_CHAR_LIMIT",
+                limit=4000,
+                role="system",
+                length=4001,
+                part="mandatory system instructions",
+            )
+        return real_build(*args, **kwargs)
+
+    monkeypatch.setattr(srv, "_build_system_prompt", flaky)
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
+
+    assert prompts == []
+    _assert_nothing_published(resp, "prompt_rejected")
+    assert "evidence_labels" not in traces[-1]["metadata"]
+    report = resp.context_report
+    _assert_report_without_secrets(report, limit=4000, total=3)
+    # Pass 1 already selected what would have been sent; that data must not be discarded.
+    assert report["memory_records_sent"] == 2
+    assert [item["fact_id"] for item in report["memory_records_omitted"]] == ["huge"]
+    assert resp.llm_answer.startswith("[LLM error: llm_context_limit")
+    assert "synthetic-valid-key" not in (resp.llm_answer or "")
 
 
 @pytest.mark.asyncio

@@ -439,6 +439,7 @@ def _prepare_evidence_prompt(
     *,
     provider: str | None,
     lens_instructions: str | None,
+    report: Any = None,
 ) -> tuple[str, Any, Any]:
     """Labelled system prompt plus the map of exactly the records that were sent.
 
@@ -446,11 +447,17 @@ def _prepare_evidence_prompt(
     widest possible, so the selection is safe). Pass 2 numbers the records that were sent
     ``ev_1..ev_k`` without gaps and rebuilds the prompt for exactly those records, keeping the
     omission notice and the limit report of pass 1. Returns ``(system, report, evidence_map)``.
+
+    ``report`` is created by the caller when it needs the object even if prompt assembly
+    raises (a context-limit refusal). Pass 2 builds a fresh report so a successful rebuild
+    cannot duplicate pass 1's applied entries; if pass 2 raises, the caller's report still
+    holds the pass 1 selection.
     """
     from core.evidence_labels import build_evidence_map
     from core.llm_context_budget import ContextReport
 
-    report = ContextReport.for_provider(provider)
+    if report is None:
+        report = ContextReport.for_provider(provider)
     full_map = build_evidence_map(facts)
     system = _build_system_prompt(
         facts, lens_instructions=lens_instructions, report=report, evidence_map=full_map
@@ -459,15 +466,15 @@ def _prepare_evidence_prompt(
     if len(sent_positions) == len(facts):
         return system, report, full_map
     final_map = build_evidence_map([facts[i] for i in sent_positions])
-    report = ContextReport.for_provider(provider)
+    rebuilt = ContextReport.for_provider(provider)
     system = _build_system_prompt(
         facts,
         lens_instructions=lens_instructions,
-        report=report,
+        report=rebuilt,
         evidence_map=final_map,
         selected_positions=sent_positions,
     )
-    return system, report, final_map
+    return system, rebuilt, final_map
 
 
 # ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
@@ -2495,14 +2502,15 @@ async def query(req: QueryRequest):
             extra = routed.system_instructions if routed else None
             from core.llm_context_budget import ContextReport
 
+            context_report = ContextReport.for_provider(cfg.provider if cfg else None)
             if req.evidence_labels:
                 system, context_report, prepared_map = _prepare_evidence_prompt(
                     pipeline_facts,
                     provider=cfg.provider if cfg else None,
                     lens_instructions=extra,
+                    report=context_report,
                 )
             else:
-                context_report = ContextReport.for_provider(cfg.provider if cfg else None)
                 system = _build_system_prompt(
                     pipeline_facts,
                     lens_instructions=extra,
