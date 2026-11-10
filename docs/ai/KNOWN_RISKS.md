@@ -1,5 +1,98 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — FactsPack silently dropped distinct records (PR #509, draft, not merged)
+
+Base `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. `FactsPackBuilder._dedup_semantic`
+removed a record when its whitespace-token overlap with another exceeded 0.7, keeping the
+higher confidence. It is always on for every route that calls `pipeline.run`: `/query`,
+`/chat` and `/chat/stream` (`server.py` 2126, 1460, 1715). Records differing only by
+negation, condition, identifier (`L1`/`L2`), status, number or argument order were dropped
+before the LLM prompt, without an `excluded_facts` entry. Same text under different
+`fact_id`s lost separate provenance. The branch replaces it with
+`_dedup_exact_record_repeats`: only the same real `fact_id` with an identical record
+payload collapses (the first copy is kept, with the highest `retrieval_score`). The payload is
+every `PackedFact` field except `retrieval_score` (claim, epistemic_state, source, confidence,
+`context_applicability`, `causal_summary`, `living_context`); dict values are compared
+independent of key order, and a value that is not JSON-serializable never raises. An external
+review found that the first version ignored the last three fields, so two copies that differed
+only in enrichment collapsed and one copy's context was lost; today the production caller does
+not pass these fields, so this was an API-level defect. A test fails if a field is added to
+`PackedFact` without being covered by the key.
+
+Tests (fail on base, pass on the branch):
+`tests/test_facts_pack_distinct_records_preserved.py`,
+`tests/test_query_prompt_preserves_distinct_facts.py` (fake provider at
+`core.llm_router.chat_complete`; checks the provider-bound system prompt and the
+`sanitize_remote_system_prompt` output). Mutation check: dropping any one of fact_id,
+claim, source, confidence or epistemic_state from the key, dropping the empty-id guard, or
+keeping the last copy instead of the highest score each fails a test.
+
+Remaining limits:
+- Prompt growth is bounded by the retrieval `k`: 3 by default, up to 6 with the budget planner.
+- `core/pipeline.py::build_facts_pack` keys its metadata/modality/canonical lookups by
+  `fact_id`. Two records with one `fact_id` but different payload would share them.
+  Latent: canonical payloads come from `get_fact`, so one id gives one payload.
+- Prompt serialization still omits `fact_id` and `epistemic_state` by the PR #453 contract
+  (`tests/test_prompt_epistemic_boundary.py`). Whether to add them is an open policy
+  decision, not a bug fix.
+- Other context paths still trim silently (`core/llm_stream.py` history `[-20:]`,
+  `core/console_memory.py` caps). `WorkingMemoryGate`/`ContextPack` remain shadow-only.
+
+## Reduced risk — Observer folded a failed check into a clean verdict (PR #509, draft, not merged)
+
+`core/observer.py::observe` turned a check exception into `res = None`, so a broken check
+looked like `allow` / `clean`. On the branch a raised check adds flag `check_unavailable`
+(decision at least `warn`) and `details["unavailable_checks"]` = check name + exception
+type. Exception text is not included. Tests: `tests/test_observer_check_unavailable.py`
+(each of the four checks, all at once, audit chain, clean verdict).
+
+Reality status: default off in code (`enable_observer: False`), but
+`docker-compose.prod.yml:100` sets `ENABLE_OBSERVER=1`, so in that profile `/query`
+responses carry the `observer` block. Only `/query` calls it (`server.py:2288`). Observer
+stays passive: it does not change the delivered answer. The prod compose file is a profile,
+not an authorized deployment (see the P0 operator-GO risk).
+
+Consumer contract and limits:
+- The decision for an unavailable check is a flat `warn`, also for `no_admissible_evidence`,
+  whose normal failing outcome is `reject`. A future gate must key on `check_unavailable` in
+  `flags` (or `not is_clean`), not on `decision == reject`, or it fails open.
+- The audit event records the flags but not `details`, so it cannot say which check was down.
+- A failed check can leave its partial `details` entry in place. Latent: each current check
+  writes `details` as its last fallible step.
+
+## Open risk — LLM answers are not checked claim-by-claim against evidence
+
+- `core/output_faithfulness.py` uses word-set overlap with tokens of 3+ characters. It
+  scores negation, `L1`↔`L2`, `7`↔`30` days, `принято`↔`отменено` and a dropped condition
+  as fully grounded (1.0). Its docstring says TF-IDF; the code is plain overlap.
+- Where it runs:
+  - On the pipeline template answer, as `result["faithfulness"]` after `ResponseGuardian`
+    (`core/pipeline.py`). `QueryResponse` has no such field, so no production route returns it.
+  - Through Observer on the `/query` LLM answer (`core/observer.py:80`) when
+    `ENABLE_OBSERVER=1` (set in `docker-compose.prod.yml`), independent of
+    `ENABLE_OUTPUT_FAITHFULNESS`. Observer flags only when the overlap score is below 0.30,
+    so a contradicting answer is reported clean. On a Validated fact "Руслан одобрил
+    миграцию на PostgreSQL", the answers "Руслан не одобрил миграцию на PostgreSQL." and
+    "Миграцию на PostgreSQL отклонили." both give `allow` / `clean` (score 1.0).
+- `/chat`, `/chat/stream` and `/query/roles` have neither this checker nor Observer.
+- `ResponseGuardian` does not compare claims with evidence.
+- A claim-level support check is a separate proposed change: shadow-first, with distinct
+  `CHECK_UNAVAILABLE` and `INSUFFICIENT_EVIDENCE`, and never `SUPPORTED` merely because no
+  contradiction was found.
+
+## Latent risk — embedding writers can republish an erased fact if wired as-is (writers unwired)
+
+`EmbeddingProjectionStore.rebuild` (`core/embedding_projection.py`) and
+`EmbeddingStore.store` / `store_batch` (`core/embedding_store.py`, unconditional
+`INSERT OR REPLACE`) write caller-prepared vectors without re-checking erasure in the same
+transaction. `ErasureCoordinator` generations detect residual data after the fact; they do
+not prevent the write. No non-test caller of these writers exists today, and
+`docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md` marks the projection contract `UNWIRED`, so no
+production path currently exposes it. Before any writer is wired it needs an atomic
+conditional write: a revision/tombstone check and the publish in one transaction. A late
+task must not resurrect an erased record, and that must stay distinct from a new,
+explicitly admitted input.
+
 ## Reduced risk — silent truncation of LLM context (fixed 4000-character DeepSeek cut removed)
 
 Until this change `core/llm_router.py` cut **every** DeepSeek message (system, history and the current question) to 4000 characters (`_DEEPSEEK_MESSAGE_CHAR_LIMIT`), for every DeepSeek model (Flash and Pro), on all router paths: `chat_complete` (`/query`, Reader, other `chat_complete` callers), `chat_complete_messages` (`/chat`) and `stream_chat_events` (`/chat/stream`). The cut happened after the prompt was assembled, so the tail of the question, of the instructions or of the memory block could disappear with only an in-text `...[truncated by Velantrim console]` suffix; the caller and the user were not told. `tests/test_evidence_use_contract.py` documented the loss (tail evidence and an F2 exception lost at the S -> T boundary). The console also cut `previous_chat_summary` to 4000 characters, dialogue-block turns to 600 characters, and silently capped history at 20 turns and `block_memory` at 40 notes.
