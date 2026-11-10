@@ -333,6 +333,18 @@ async def fetch_gemini_models_from_api(
     if not key:
         return [], ["Пустой API ключ"]
 
+    from core.llm_errors import (
+        describe_llm_failure,
+        log_llm_failure,
+        safe_llm_error_text,
+        validate_llm_api_key,
+    )
+
+    try:
+        validate_llm_api_key(key)  # before any request is built
+    except ValueError as exc:
+        return [], [safe_llm_error_text(describe_llm_failure(exc))]
+
     from core.remote_egress import ensure_remote_egress_allowed
 
     url = f"{_GEMINI_API_BASE}/v1beta/models"
@@ -380,8 +392,9 @@ async def fetch_gemini_models_from_api(
                 if not page_token:
                     break
     except Exception as exc:
-        warnings.append(str(exc))
-        logger.info("Gemini models.list: %s", exc)
+        info = describe_llm_failure(exc)
+        warnings.append(safe_llm_error_text(info))
+        log_llm_failure(logger, info, exc, route="gemini_models.list", level="info")
 
     unique = ordered_gemini_model_ids(ids)
     return unique, warnings

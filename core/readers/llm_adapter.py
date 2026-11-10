@@ -983,6 +983,10 @@ def _build_essence(
 
 
 def _is_permanent_value_error(exc: ValueError) -> bool:
+    from core.llm_errors import LlmKeyInvalidError, LlmNotConfiguredError
+
+    if isinstance(exc, (LlmKeyInvalidError, LlmNotConfiguredError)):
+        return True
     message = str(exc).strip().casefold()
     return any(marker in message for marker in _PERMANENT_VALUE_ERROR_MARKERS)
 
