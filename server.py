@@ -295,10 +295,12 @@ def _compose_system_prompt(
     *,
     lens_instructions: str | None,
     omitted_notice: str | None = None,
-    labelled: bool = False,
+    label_instruction: str | None = None,
 ) -> str:
     if not lines:
         base = "Ты — Velantrim ExoCortex. Отвечай честно. Если не знаешь — скажи."
+        if label_instruction:
+            base += f"\n\n{label_instruction}"
         if omitted_notice:
             base += f"\n\n{omitted_notice}"
         if lens_instructions:
@@ -314,10 +316,8 @@ def _compose_system_prompt(
         "Если записи не содержат ответа — скажи об этом честно.\n\n"
         f"Записи памяти (часть может быть неподтверждённой):\n{facts_text}"
     )
-    if labelled:
-        from core.evidence_labels import PROMPT_INSTRUCTION
-
-        prompt += f"\n\n{PROMPT_INSTRUCTION}"
+    if label_instruction:
+        prompt += f"\n\n{label_instruction}"
     if omitted_notice:
         prompt += f"\n\n{omitted_notice}"
     if lens_instructions:
@@ -338,11 +338,16 @@ def _build_system_prompt(
     lens_instructions: str | None = None,
     report: Any = None,
     evidence_map: Any = None,
+    selected_positions: list[int] | None = None,
 ) -> str:
     """Собрать system prompt из записей памяти без повышения их эпистемического статуса.
 
     ``evidence_map`` (opt-in, QueryRequest.evidence_labels): записи с реальным fact_id получают
-    метку ``[ev_N]`` этого запроса; без карты вывод не меняется (байт-в-байт).
+    метку ``[ev_N]`` этого запроса; без карты (``None``) вывод не меняется (байт-в-байт). Пустая
+    карта — тоже opt-in: текст записей обезвреживается, модель получает инструкцию не придумывать
+    метки. ``selected_positions`` (только при заданном лимите) принудительно задаёт, какие записи
+    остаются: так второй проход пересобирает prompt с перенумерованными метками, не теряя
+    предупреждения о пропущенных записях и отчёта о лимите.
 
     Записи памяти передаются целиком. Без настроенного лимита на сообщение
     (``report.message_char_limit is None`` — по умолчанию) prompt совпадает с
@@ -354,10 +359,14 @@ def _build_system_prompt(
     from core.remote_egress import sanitize_remote_system_prompt
 
     lines = [_memory_record_line(f, evidence_map) for f in facts]
-    labelled = bool(evidence_map)
+    label_instruction: str | None = None
+    if evidence_map is not None:
+        from core.evidence_labels import PROMPT_EMPTY_INSTRUCTION, PROMPT_INSTRUCTION
+
+        label_instruction = PROMPT_INSTRUCTION if evidence_map else PROMPT_EMPTY_INSTRUCTION
 
     def _compose_system_prompt_l(*a: Any, **k: Any) -> str:
-        return _compose_system_prompt(*a, labelled=labelled, **k)
+        return _compose_system_prompt(*a, label_instruction=label_instruction, **k)
 
     limit = getattr(report, "message_char_limit", None)
     if report is not None:
@@ -377,13 +386,16 @@ def _build_system_prompt(
         return len(sanitize_remote_system_prompt(text)) <= limit
 
     kept: list[int] = []
-    for index in range(len(facts)):
-        trial = [lines[i] for i in (*kept, index)]
-        # Reserve room for the omission notice as if every record were omitted.
-        notice = _omitted_records_notice(len(facts), len(facts), setting, limit)
-        if _fits(_compose_system_prompt_l(trial, lens_instructions=lens_instructions,
-                                        omitted_notice=notice)):
-            kept.append(index)
+    if selected_positions is not None:
+        kept = [i for i in selected_positions if 0 <= i < len(facts)]
+    else:
+        for index in range(len(facts)):
+            trial = [lines[i] for i in (*kept, index)]
+            # Reserve room for the omission notice as if every record were omitted.
+            notice = _omitted_records_notice(len(facts), len(facts), setting, limit)
+            if _fits(_compose_system_prompt_l(trial, lens_instructions=lens_instructions,
+                                            omitted_notice=notice)):
+                kept.append(index)
     omitted = [i for i in range(len(facts)) if i not in kept]
     notice = (
         _omitted_records_notice(len(omitted), len(facts), setting, limit) if omitted else None
@@ -420,6 +432,42 @@ def _build_system_prompt(
             len(omitted), len(facts), setting, limit,
         )
     return prompt
+
+
+def _prepare_evidence_prompt(
+    facts: list[dict],
+    *,
+    provider: str | None,
+    lens_instructions: str | None,
+) -> tuple[str, Any, Any]:
+    """Labelled system prompt plus the map of exactly the records that were sent.
+
+    Pass 1 selects the records that fit the message-size limit (labels of the full list are the
+    widest possible, so the selection is safe). Pass 2 numbers the records that were sent
+    ``ev_1..ev_k`` without gaps and rebuilds the prompt for exactly those records, keeping the
+    omission notice and the limit report of pass 1. Returns ``(system, report, evidence_map)``.
+    """
+    from core.evidence_labels import build_evidence_map
+    from core.llm_context_budget import ContextReport
+
+    report = ContextReport.for_provider(provider)
+    full_map = build_evidence_map(facts)
+    system = _build_system_prompt(
+        facts, lens_instructions=lens_instructions, report=report, evidence_map=full_map
+    )
+    sent_positions = list(report.sent_fact_positions)
+    if len(sent_positions) == len(facts):
+        return system, report, full_map
+    final_map = build_evidence_map([facts[i] for i in sent_positions])
+    report = ContextReport.for_provider(provider)
+    system = _build_system_prompt(
+        facts,
+        lens_instructions=lens_instructions,
+        report=report,
+        evidence_map=final_map,
+        selected_positions=sent_positions,
+    )
+    return system, report, final_map
 
 
 # ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
@@ -878,6 +926,13 @@ class QueryResponse(BaseModel):
     evidence_labels: dict[str, str] | None = Field(
         None,
         description="Карта этого запроса: метка ev_N -> fact_id (только при evidence_labels=true)",
+    )
+    evidence_lifecycle: str | None = Field(
+        None,
+        description=(
+            "Состояние карты ссылок: disabled | model_not_called | prompt_rejected | "
+            "model_failed | published. Карта и reference_check публикуются только при published."
+        ),
     )
     reference_check: dict[str, Any] | None = Field(
         None,
@@ -2421,12 +2476,18 @@ async def query(req: QueryRequest):
     # Шаг 5: LLM генерация
     llm_answer: str | None = None
     llm_meta: dict[str, Any] | None = None
+    # The public map is set only after the model has answered, and only for the records that
+    # were sent (see _prepare_evidence_prompt). Everything else leaves it None.
     evidence_map = None
+    prepared_map = None
     reference_check: dict[str, Any] | None = None
-    if req.evidence_labels:
-        from core.evidence_labels import build_evidence_map
-
-        evidence_map = build_evidence_map(pipeline_facts)
+    llm_call_started = False
+    if not req.evidence_labels:
+        evidence_lifecycle = "disabled"
+    elif not eff_use_llm or pipeline_error or truth_rejects_answer:
+        evidence_lifecycle = "model_not_called"
+    else:
+        evidence_lifecycle = "prompt_rejected"
     context_report = None
     if eff_use_llm and not pipeline_error and not truth_rejects_answer:
         try:
@@ -2434,21 +2495,19 @@ async def query(req: QueryRequest):
             extra = routed.system_instructions if routed else None
             from core.llm_context_budget import ContextReport
 
-            context_report = ContextReport.for_provider(cfg.provider if cfg else None)
-            system = _build_system_prompt(
-                pipeline_facts,
-                lens_instructions=extra,
-                report=context_report,
-                evidence_map=evidence_map,
-            )
-            sent_positions = getattr(context_report, "sent_fact_positions", None)
-            if (
-                evidence_map is not None
-                and sent_positions is not None
-                and len(sent_positions) < len(pipeline_facts)
-            ):
-                # Records dropped by a message-size limit were never shown: no valid label.
-                evidence_map = evidence_map.restricted_to([pipeline_facts[i] for i in sent_positions])
+            if req.evidence_labels:
+                system, context_report, prepared_map = _prepare_evidence_prompt(
+                    pipeline_facts,
+                    provider=cfg.provider if cfg else None,
+                    lens_instructions=extra,
+                )
+            else:
+                context_report = ContextReport.for_provider(cfg.provider if cfg else None)
+                system = _build_system_prompt(
+                    pipeline_facts,
+                    lens_instructions=extra,
+                    report=context_report,
+                )
             if context_report.message_char_limit is not None and (
                 len(req.query) > context_report.message_char_limit
             ):
@@ -2461,11 +2520,14 @@ async def query(req: QueryRequest):
                     length=len(req.query),
                     part="current question",
                 )
+            llm_call_started = True
             llm_answer = await _llm_generate(req.query, system=system, override=cfg)
-            if evidence_map is not None:
+            if prepared_map is not None:
                 from core.evidence_labels import check_references
 
-                reference_check = check_references(llm_answer, evidence_map)
+                reference_check = check_references(llm_answer, prepared_map)
+                evidence_map = prepared_map
+                evidence_lifecycle = "published"
             if cfg:
                 from core.llm_router import _resolve_model as _rm
 
@@ -2476,6 +2538,10 @@ async def query(req: QueryRequest):
                 }
         except Exception as exc:
             logger.warning("LLM генерация упала: %s", exc)
+            evidence_map = None
+            reference_check = None
+            if req.evidence_labels:
+                evidence_lifecycle = "model_failed" if llm_call_started else "prompt_rejected"
             llm_answer = f"[LLM error: {exc}]"
             llm_meta = {"error": str(exc)}
 
@@ -2551,8 +2617,9 @@ async def query(req: QueryRequest):
                 "domain": eff_domain,
                 "use_llm": eff_use_llm,
                 "pipeline_error": pipeline_error,
+                **({"evidence_lifecycle": evidence_lifecycle} if req.evidence_labels else {}),
                 **(
-                    {"evidence_labels": evidence_map.to_dict()}
+                    {"evidence_labels": evidence_map.to_dict(), "reference_check": reference_check}
                     if evidence_map is not None
                     else {}
                 ),
@@ -2604,6 +2671,7 @@ async def query(req: QueryRequest):
         observer=observer_block,
         evidence_labels=evidence_map.to_dict() if evidence_map is not None else None,
         reference_check=reference_check,
+        evidence_lifecycle=evidence_lifecycle,
         context_report=context_report.to_dict() if context_report is not None else None,
     )
 

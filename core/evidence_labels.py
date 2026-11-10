@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -41,9 +42,40 @@ PROMPT_INSTRUCTION = (
 )
 
 
+# Used when the opt-in is on but no record in this request carries a label (no record has a real
+# fact_id, or every labelled record was left out by a size limit). Shorter than PROMPT_INSTRUCTION
+# on purpose: the size-limit selection reserves room for the longer text.
+PROMPT_EMPTY_INSTRUCTION = (
+    "У записей памяти в этом запросе нет меток [ev_N]. Не придумывай метки и не ссылайся "
+    "на записи по меткам."
+)
+
+
+def _fold(text: str) -> str:
+    """Per-character NFKC: full-width and other compatibility forms become ASCII.
+
+    Same length as the input, so an index found in the folded text is an index in the original.
+    A character whose NFKC form is not one character is kept as it is.
+    """
+    out: list[str] = []
+    for ch in text:
+        folded = unicodedata.normalize("NFKC", ch)
+        out.append(folded if len(folded) == 1 else ch)
+    return "".join(out)
+
+
+def _shown_confidence(value: Any) -> str:
+    try:
+        return f"{float(value):.2f}"      # the prompt shows conf=%.2f
+    except (TypeError, ValueError):
+        return str(value)
+
+
 def record_fingerprint(fact: dict[str, Any]) -> str:
-    """Identity of what the prompt actually shows for a record: its claim and its source."""
-    shown = f"{fact.get('claim', '')}\x1f{fact.get('source', '')}"
+    """Identity of what the prompt actually shows for a record: claim, source and confidence."""
+    shown = (
+        f"{fact.get('claim', '')}\x1f{fact.get('source', '')}\x1f{_shown_confidence(fact.get('confidence', 0))}"
+    )
     return hashlib.sha256(shown.encode("utf-8")).hexdigest()[:16]
 
 
@@ -89,17 +121,6 @@ class EvidenceMap:
     def to_dict(self) -> dict[str, str]:
         return dict(self.entries)
 
-    def restricted_to(self, shown: list[dict[str, Any]]) -> EvidenceMap:
-        """Keep only the labels of records that were actually shown to the model.
-
-        When a message-size limit drops records from the prompt, their labels never appeared
-        in it. A reference to such a label must not be reported as valid.
-        """
-        keep = {(str(f.get("fact_id") or "").strip(), record_fingerprint(f)) for f in shown}
-        records = tuple(r for r in self.records if (r[1], r[2]) in keep)
-        labels = {r[0] for r in records}
-        return EvidenceMap(records, frozenset(self.ambiguous & labels))
-
     def __bool__(self) -> bool:
         return bool(self.entries)
 
@@ -129,8 +150,24 @@ def build_evidence_map(facts: list[dict[str, Any]]) -> EvidenceMap:
 
 
 def neutralize_label_like_text(text: str) -> str:
-    """Make label-like text inside a record unusable as a label: ``[ev_2]`` -> ``[ ev_2]``."""
-    return _LABEL_LIKE_RE.sub("[ ev_", text or "")
+    """Make label-like text inside a record unusable as a label: ``[ev_2]`` -> ``[ ev_2]``.
+
+    Forms that fold to a label under NFKC (``［ｅｖ＿１］``) are matched too; the text that is
+    not part of a label is returned unchanged. Homoglyphs from other scripts are not covered.
+    """
+    text = text or ""
+    folded = _fold(text)
+    matches = list(_LABEL_LIKE_RE.finditer(folded))
+    if not matches:
+        return text
+    pieces: list[str] = []
+    last = 0
+    for match in matches:
+        pieces.append(text[last:match.start()])
+        pieces.append("[ ev_")
+        last = match.end()
+    pieces.append(text[last:])
+    return "".join(pieces)
 
 
 def format_label(label: str) -> str:
@@ -140,10 +177,11 @@ def format_label(label: str) -> str:
 def check_references(answer: str, evidence_map: EvidenceMap) -> dict[str, Any]:
     """Reference EXISTENCE only: which labels in the answer exist in this request's map.
 
-    Only the exact form ``[ev_N]`` is a reference. Label-like text in any other form
-    (``[ev_1, ev_2]``, ``(ev_3)``, ``[EV_4]``, ``ev_5`` without brackets) is not counted as a
-    reference, valid or unknown; it is reported in ``malformed`` so that it is never silently
-    ignored.
+    Only the exact ASCII form ``[ev_N]`` is a reference. Label-like text in any other form
+    (``[ev_1, ev_2]``, ``(ev_3)``, ``[EV_4]``, ``ev_5`` without brackets, full-width
+    ``［ｅｖ＿６］``) is not counted as a reference, valid or unknown; it is reported in
+    ``malformed`` so that it is never silently ignored. Homoglyphs from other scripts and
+    zero-width characters are not detected.
     """
     text = answer or ""
     found: list[str] = []
@@ -157,7 +195,7 @@ def check_references(answer: str, evidence_map: EvidenceMap) -> dict[str, Any]:
     # A valid label whose fact_id was shown with different content does not identify one record.
     ambiguous = [label for label in valid if label in evidence_map.ambiguous]
     malformed: list[str] = []
-    for match in _LABEL_TOKEN_RE.finditer(text):
+    for match in _LABEL_TOKEN_RE.finditer(_fold(text)):
         if any(start <= match.start() and match.end() <= end for start, end in exact_spans):
             continue
         token = match.group(0)[:_MALFORMED_MAX_CHARS]
@@ -173,6 +211,7 @@ def check_references(answer: str, evidence_map: EvidenceMap) -> dict[str, Any]:
 
 
 __all__ = [
+    "PROMPT_EMPTY_INSTRUCTION",
     "PROMPT_INSTRUCTION",
     "EvidenceMap",
     "build_evidence_map",

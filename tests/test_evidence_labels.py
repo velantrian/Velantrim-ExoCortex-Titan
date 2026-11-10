@@ -117,8 +117,9 @@ def test_opt_in_without_any_labelable_record_still_neutralizes_and_checks():
     assert not emap and emap.to_dict() == {}
     prompt = srv._build_system_prompt(facts, evidence_map=emap)
     assert "- [import [ ev_2] | conf=0.90] в документе [ ev_1]" in prompt
-    assert "[ev_" not in prompt.replace(el.PROMPT_INSTRUCTION, "")
-    assert el.PROMPT_INSTRUCTION not in prompt                 # nothing to cite, no instruction
+    assert "[ev_" not in prompt.replace(el.PROMPT_EMPTY_INSTRUCTION, "")   # no label of any kind
+    assert el.PROMPT_INSTRUCTION not in prompt                 # no label exists to point at
+    assert el.PROMPT_EMPTY_INSTRUCTION in prompt               # the model is told not to invent any
     assert el.check_references("опираюсь на [ev_1]", emap)["unknown"] == ["ev_1"]
     # default (no map at all) is a different thing: the record text is passed as is
     assert "в документе [ev_1]" in srv._build_system_prompt(facts)
@@ -139,7 +140,7 @@ def test_the_instruction_points_at_the_records_above_and_asks_for_one_label_per_
 
 # ── end to end: server.query ─────────────────────────────────────────────────
 
-def _harness(monkeypatch, facts, *, answer, provider="openai"):
+def _harness(monkeypatch, facts, *, answer, provider="openai", blocks_llm=False):
     srv = importlib.import_module("server")
     pipeline_mod = importlib.import_module("core.pipeline")
     router = importlib.import_module("core.llm_router")
@@ -155,7 +156,7 @@ def _harness(monkeypatch, facts, *, answer, provider="openai"):
         {"id": f["fact_id"], "text": f["claim"], "retrieval_score": 0.9} for f in facts])
     monkeypatch.setattr(pipeline_mod, "get_fact", lambda fid: dict(persisted[fid]) if fid in persisted else None)
     monkeypatch.setattr(truth, "evaluate_configured_truth_policy_runtime",
-                        lambda *a, **k: SimpleNamespace(truth_block=None, blocks_llm=False))
+                        lambda *a, **k: SimpleNamespace(truth_block=None, blocks_llm=blocks_llm))
     traces = []
     monkeypatch.setattr(memory_ops.MemoryOpsStore, "save_trace", lambda self, **kw: traces.append(kw) or {"trace_id": "t-ev"})
 
@@ -169,6 +170,8 @@ def _harness(monkeypatch, facts, *, answer, provider="openai"):
 
     async def fake_chat(received_cfg, prompt, system="", **kw):
         prompts.append(system)
+        if isinstance(answer, Exception):
+            raise answer
         return answer
 
     monkeypatch.setattr(router, "chat_complete", fake_chat)
@@ -247,23 +250,27 @@ async def test_a_forged_label_from_a_source_document_is_not_a_valid_reference(mo
 
 
 @pytest.mark.asyncio
-async def test_query_drops_the_labels_of_records_omitted_by_a_message_size_limit(monkeypatch):
-    # The whole path: a configured per-message limit omits the oversized record from the
-    # prompt, so its label was never shown and must not be a valid reference.
+async def test_query_builds_the_map_from_the_records_that_were_sent_and_renumbers_it(monkeypatch):
+    # A per-message limit omits the oversized record. The published map and the prompt are built
+    # from the records that were sent: no gap in the numbering, no label for the omitted record,
+    # and the model is still told that records were left out (#516).
     facts = _facts(("small-1", "короткая запись один"), ("huge", "Ж" * 6000), ("small-2", "короткая запись два"))
     monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "4000")
     srv, prompts, traces = _harness(monkeypatch, facts, answer="[ev_1] [ev_2] [ev_3]", provider="deepseek")
     resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
 
-    by_fact = {f["fact_id"]: i for i, f in enumerate(resp.facts)}
-    full = importlib.import_module("core.evidence_labels").build_evidence_map(resp.facts)
-    huge_label = next(lb for lb, fid in full.to_dict().items() if fid == "huge")
-    assert "huge" in by_fact and "Ж" * 100 not in prompts[0]             # retrieved, not sent
-    assert huge_label not in resp.evidence_labels
+    prompt = prompts[0]
+    assert "Ж" * 100 not in prompt                                       # retrieved, not sent
+    assert set(resp.evidence_labels) == {"ev_1", "ev_2"}                 # no gap
     assert set(resp.evidence_labels.values()) == {"small-1", "small-2"}
-    assert resp.reference_check["unknown"] == [huge_label]
-    assert sorted(resp.reference_check["valid"]) == sorted(resp.evidence_labels)
-    assert f"[{huge_label}]" not in prompts[0]
+    assert "- [ev_1] [src:t" in prompt and "- [ev_2] [src:t" in prompt and "[ev_3]" not in prompt
+    assert resp.reference_check["valid"] == ["ev_1", "ev_2"] and resp.reference_check["unknown"] == ["ev_3"]
+    assert "1 из 3 записей памяти не переданы" in prompt                 # the #516 notice survives
+    report = resp.context_report
+    assert report["memory_records_total"] == 3 and report["memory_records_sent"] == 2
+    assert [o["fact_id"] for o in report["memory_records_omitted"]] == ["huge"]
+    assert report["applied"] and report["applied"][0]["omitted"] == 1
+    assert len(prompt) <= 4000 + 400                                     # the sanitizer adds a short prefix
     assert traces[-1]["metadata"]["evidence_labels"] == resp.evidence_labels
 
 
@@ -329,15 +336,24 @@ def test_prompt_neutralizes_the_source_field_and_labels_conflicting_records_apar
     assert res["valid"] == ["ev_1", "ev_2", "ev_3"] and res["ambiguous"] == ["ev_2", "ev_3"]
 
 
-def test_labels_of_records_dropped_from_the_prompt_are_not_valid_references():
+def test_prepared_prompt_and_map_describe_exactly_the_records_that_were_sent(monkeypatch):
+    srv = importlib.import_module("server")
     el = _el()
-    facts = _facts(("a", "x"), ("b", "y"), ("c", "z"))
-    emap = el.build_evidence_map(facts)
-    shown = emap.restricted_to([facts[0], facts[2]])           # the record "b" was dropped by a size limit
-    assert shown.to_dict() == {"ev_1": "a", "ev_3": "c"}
-    res = el.check_references("[ev_1] [ev_2] [ev_3]", shown)
-    assert res["valid"] == ["ev_1", "ev_3"] and res["unknown"] == ["ev_2"]
-    assert emap.restricted_to(facts).to_dict() == emap.to_dict()
+    facts = _facts(("a", "x" * 50), ("b", "Ж" * 6000), ("c", "z" * 50))
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "4000")
+
+    system, report, emap = srv._prepare_evidence_prompt(facts, provider="deepseek", lens_instructions=None)
+
+    assert emap.to_dict() == {"ev_1": "a", "ev_2": "c"}
+    assert report.sent_fact_positions == [0, 2] and report.memory_records_total == 3
+    assert [o["fact_id"] for o in report.memory_records_omitted] == ["b"]
+    assert "[ev_3]" not in system and "Ж" * 100 not in system
+    assert "1 из 3 записей памяти не переданы" in system
+    assert system.count(el.PROMPT_INSTRUCTION) == 1
+    # nothing omitted: the same objects come back untouched
+    monkeypatch.delenv("DEEPSEEK_MESSAGE_CHAR_LIMIT")
+    system2, report2, emap2 = srv._prepare_evidence_prompt(facts, provider="deepseek", lens_instructions=None)
+    assert emap2.to_dict() == {"ev_1": "a", "ev_2": "b", "ev_3": "c"} and not report2.applied
 
 
 def test_the_label_instruction_appears_once_and_only_when_labelled():
@@ -349,3 +365,130 @@ def test_the_label_instruction_appears_once_and_only_when_labelled():
     plain = srv._build_system_prompt(facts)
     assert labelled.count(el.PROMPT_INSTRUCTION) == 1 and el.PROMPT_INSTRUCTION not in plain
     assert "- [ev_1] [src:t | conf=0.90] x" in labelled and "[ev_" not in plain
+
+
+# ── lifecycle: the map is published only for an answer the model produced ────
+
+def _assert_nothing_published(resp, lifecycle):
+    assert resp.evidence_lifecycle == lifecycle
+    assert resp.evidence_labels is None and resp.reference_check is None
+
+
+@pytest.mark.asyncio
+async def test_lifecycle_disabled_by_default(monkeypatch):
+    srv, _, traces = _harness(monkeypatch, FACTS, answer="ответ")
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True))
+    _assert_nothing_published(resp, "disabled")
+    assert "evidence_lifecycle" not in traces[-1]["metadata"]            # the default trace is unchanged
+
+
+@pytest.mark.asyncio
+async def test_lifecycle_published_after_a_successful_answer(monkeypatch):
+    srv, _, traces = _harness(monkeypatch, FACTS, answer="Так [ev_1].")
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
+    assert resp.evidence_lifecycle == "published"
+    assert resp.evidence_labels and resp.reference_check["valid"] == ["ev_1"]
+    meta = traces[-1]["metadata"]
+    assert meta["evidence_lifecycle"] == "published"
+    assert meta["evidence_labels"] == resp.evidence_labels and meta["reference_check"] == resp.reference_check
+
+
+@pytest.mark.asyncio
+async def test_no_map_when_the_model_is_not_called(monkeypatch):
+    srv, prompts, traces = _harness(monkeypatch, FACTS, answer="не будет вызвана")
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=False, evidence_labels=True))
+    _assert_nothing_published(resp, "model_not_called")
+    assert prompts == []
+    assert "evidence_labels" not in traces[-1]["metadata"]
+    assert traces[-1]["metadata"]["evidence_lifecycle"] == "model_not_called"
+
+
+@pytest.mark.asyncio
+async def test_no_map_when_the_truth_policy_blocks_the_model(monkeypatch):
+    srv, prompts, traces = _harness(monkeypatch, FACTS, answer="не будет вызвана", blocks_llm=True)
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
+    _assert_nothing_published(resp, "model_not_called")
+    assert prompts == [] and "evidence_labels" not in traces[-1]["metadata"]
+
+
+@pytest.mark.asyncio
+async def test_no_map_when_the_model_fails(monkeypatch):
+    srv, prompts, traces = _harness(monkeypatch, FACTS, answer=RuntimeError("provider down"))
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
+    _assert_nothing_published(resp, "model_failed")
+    assert prompts and "LLM error" in resp.llm_answer                    # the call was attempted
+    meta = traces[-1]["metadata"]
+    assert meta["evidence_lifecycle"] == "model_failed" and "evidence_labels" not in meta and "reference_check" not in meta
+
+
+@pytest.mark.asyncio
+async def test_no_map_when_the_prompt_is_rejected_before_sending(monkeypatch):
+    # The mandatory instructions alone do not fit the configured limit: nothing is sent.
+    monkeypatch.setenv("DEEPSEEK_MESSAGE_CHAR_LIMIT", "50")
+    srv, prompts, traces = _harness(monkeypatch, FACTS, answer="не будет вызвана", provider="deepseek")
+    resp = await srv.query(srv.QueryRequest(query="q", use_llm=True, evidence_labels=True))
+    _assert_nothing_published(resp, "prompt_rejected")
+    assert prompts == [] and "evidence_labels" not in traces[-1]["metadata"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("opt_in", [False, True])
+async def test_the_published_invariant_holds_in_every_scenario(monkeypatch, opt_in):
+    # Whatever happened, a map in the response means: the model answered, and this is the map of
+    # what it was sent.
+    scenarios = [
+        dict(kwargs={"use_llm": False}, answer="x"),
+        dict(kwargs={"use_llm": True}, answer=RuntimeError("down")),
+        dict(kwargs={"use_llm": True}, answer="ok [ev_1]"),
+    ]
+    for scenario in scenarios:
+        srv, _, _ = _harness(monkeypatch, FACTS, answer=scenario["answer"])
+        resp = await srv.query(srv.QueryRequest(query="q", evidence_labels=opt_in, **scenario["kwargs"]))
+        if resp.evidence_lifecycle == "published":
+            assert resp.evidence_labels is not None and resp.reference_check is not None
+        else:
+            assert resp.evidence_labels is None and resp.reference_check is None
+
+
+# ── look-alike forms ─────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize(
+    "text",
+    ["［ev_1］", "[ｅｖ_１]", "[ev＿1]", "［ｅｖ＿１］", "[ 　ev_1]", "(ｅｖ_１)"],
+)
+def test_compatibility_forms_of_a_label_are_neutralized_in_the_prompt_and_reported_by_the_check(text):
+    el = _el()
+    emap = el.build_evidence_map(_facts(("a", "x")))
+    res = el.check_references(text, emap)
+    assert res["valid"] == [] and res["unknown"] == []                  # not a reference ...
+    assert res["malformed"], text                                       # ... and not silent
+    if "[" in text or "［" in text:
+        cleaned = el.neutralize_label_like_text(text)
+        assert not el._LABEL_RE.search(el._fold(cleaned)), cleaned         # not a label, even after folding
+        assert el.neutralize_label_like_text(cleaned) == cleaned           # and neutralizing again changes nothing
+
+
+def test_neutralization_keeps_surrounding_text_and_length_of_unrelated_parts():
+    el = _el()
+    assert el.neutralize_label_like_text("до ［ｅｖ＿１］ после [ev_2] конец") == "до [ ev_１］ после [ ev_2] конец"
+    assert el.neutralize_label_like_text("обычный ｔｅｘｔ ｅｖ без скобок") == "обычный ｔｅｘｔ ｅｖ без скобок"
+
+
+# ── what the prompt shows is what identifies the record ──────────────────────
+
+def test_a_different_confidence_is_a_different_presented_record():
+    el = _el()
+    a = {"fact_id": "L", "claim": "ready", "source": "s", "confidence": 0.9}
+    b = {"fact_id": "L", "claim": "ready", "source": "s", "confidence": 0.5}
+    emap = el.build_evidence_map([a, b])
+    assert emap.to_dict() == {"ev_1": "L", "ev_2": "L"} and emap.ambiguous == frozenset({"ev_1", "ev_2"})
+    same = el.build_evidence_map([a, dict(a)])
+    assert same.to_dict() == {"ev_1": "L"} and not same.ambiguous
+
+
+def test_the_empty_instruction_is_not_longer_than_the_labelled_one():
+    # The size-limit selection reserves room for the labelled instruction; the empty-map text may
+    # replace it only if it is not longer.
+    el = _el()
+    assert len(el.PROMPT_EMPTY_INSTRUCTION) < len(el.PROMPT_INSTRUCTION)
+    assert not el._LABEL_RE.search(el.PROMPT_EMPTY_INSTRUCTION)
