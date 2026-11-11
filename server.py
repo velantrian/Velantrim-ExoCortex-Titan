@@ -497,7 +497,8 @@ def _neutralize_chat_inputs(req: "ChatRequest") -> tuple["ChatRequest", dict[str
     Earlier assistant turns in ``chat_history`` may contain [ev_N] from an EARLIER request's
     map; the summary, block notes, operator instructions and the question may contain forged
     ones. Only the copy is used to build the provider request; side effects (auto-save,
-    essence) keep the original ``req``. Returns the copy and per-field change counts.
+    essence) keep the original ``req``. Returns the copy and per-field counts of changed
+    strings (not occurrences).
     """
     from core.evidence_labels import neutralize_label_like_text as _n
 
@@ -1066,7 +1067,8 @@ class ChatRequest(BaseModel):
         False,
         description=(
             "Opt-in (только /chat): метки [ev_N] у записей памяти, реально отправленных в "
-            "этом запросе. Метка — указатель происхождения, не проверка достоверности ответа."
+            "этом запросе. Метка — указатель происхождения, не проверка достоверности ответа. "
+            "/chat/stream отклоняет true с HTTP 400 evidence_labels_stream_unsupported."
         ),
     )
 
@@ -1172,8 +1174,10 @@ class ChatResponse(BaseModel):
     evidence_neutralized: dict[str, int] | None = Field(
         None,
         description=(
-            "Сколько строк клиента (по полям запроса) содержали текст, похожий на метку, "
-            "и были обезврежены перед отправкой провайдеру"
+            "Число изменённых при обезвреживании строковых полей/элементов запроса (не число "
+            "вхождений): message, previous_chat_summary, console_instructions — 0 или 1; "
+            "chat_history — число изменённых реплик; block_memory — число изменённых подполей "
+            "claim/category_label/category по всем элементам"
         ),
     )
 
@@ -2217,6 +2221,20 @@ async def chat_stream_endpoint(req: ChatRequest):
     """Потоковый чат (SSE): токены по мере генерации + память в конце."""
     import json as _json
 
+    if req.evidence_labels:
+        # Stream labels are not implemented. Refuse before retrieval, the provider call and
+        # auto-save instead of silently returning an unlabelled stream.
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "evidence_labels_stream_unsupported",
+                "message": (
+                    "evidence_labels поддерживается только в POST /chat; потоковые метки "
+                    "в /chat/stream не реализованы. Повторите запрос без evidence_labels "
+                    "или используйте /chat."
+                ),
+            },
+        )
     t0 = time.time()
     (
         facts, pipeline_error, cfg, system, lang, llm_provider_out, llm_model_out,
