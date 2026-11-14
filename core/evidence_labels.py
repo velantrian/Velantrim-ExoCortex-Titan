@@ -18,6 +18,7 @@ reference is valid only if the label is in the request's map.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -73,8 +74,14 @@ def _shown_confidence(value: Any) -> str:
 
 def record_fingerprint(fact: dict[str, Any]) -> str:
     """Identity of what the prompt actually shows for a record: claim, source and confidence."""
-    shown = (
-        f"{fact.get('claim', '')}\x1f{fact.get('source', '')}\x1f{_shown_confidence(fact.get('confidence', 0))}"
+    shown = json.dumps(
+        [
+            str(fact.get("claim", "")),
+            str(fact.get("source", "")),
+            _shown_confidence(fact.get("confidence", 0)),
+        ],
+        ensure_ascii=False,
+        separators=(",", ":"),
     )
     return hashlib.sha256(shown.encode("utf-8")).hexdigest()[:16]
 
