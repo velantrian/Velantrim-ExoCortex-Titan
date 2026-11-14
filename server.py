@@ -2678,7 +2678,8 @@ async def query(req: QueryRequest):
         logger.debug("reasoning trace save skipped: %s", exc)
 
     # Observer P0 (пассивный мета-монитор). Аддитивно + за флагом (ENABLE_OBSERVER, default off).
-    # Работает ПОСЛЕ формирования ответа; пассивен — только вердикт, не пишет факты и не меняет поток.
+    # Семантическая диагностика ограничена успешным ответом и sent_facts; прочие проверки
+    # Observer сохраняются и при отсутствии ответа модели.
     observer_block: dict[str, Any] | None = None
     try:
         from core.runtime_flags import is_observer_enabled
@@ -2691,16 +2692,17 @@ async def query(req: QueryRequest):
                 model_call_started=llm_call_started,
                 model_error=bool((llm_meta or {}).get("error")),
             )
-            if observer_input is not None:
-                from core.observer import observe as _observe
+            from core.observer import observe as _observe
 
-                observer_answer, observer_facts = observer_input
-                observer_block = _observe(
-                    req.query,
-                    observer_facts,
-                    observer_answer,
-                    mode=eff_mode,
-                ).to_dict()
+            observer_answer = observer_input[0] if observer_input is not None else ""
+            semantic_facts = observer_input[1] if observer_input is not None else None
+            observer_block = _observe(
+                req.query,
+                pipeline_facts,
+                observer_answer,
+                mode=eff_mode,
+                semantic_facts=semantic_facts,
+            ).to_dict()
     except Exception as exc:  # noqa: BLE001 — аддитивно; никогда не ломаем ответ
         logger.debug("observer skipped: %s", exc)
 

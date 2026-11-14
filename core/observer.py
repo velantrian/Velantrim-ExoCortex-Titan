@@ -13,7 +13,8 @@ Hard constraints (canon / ТЗ) — Observer is PASSIVE:
     audit_chain event, but only if a chain is explicitly handed to it.
 
 Increment-1 checks (each delegates to an existing module):
-  unsupported_claim      → core.output_faithfulness.OutputFaithfulnessChecker
+  semantic_support       → unavailable until a real semantic verifier exists
+  lexical diagnostic     → core.output_faithfulness.OutputFaithfulnessChecker
   no_admissible_evidence → core.truth_policy.decide (hard reject only)
   truth_scope_leak       → epistemic_state mix / known_false among the facts used
   goal_drift             → core.gap_detector.query_goal_alignment
@@ -65,7 +66,7 @@ class ObserverVerdict:
         }
 
 
-def _check_unsupported_claim(answer: str, facts: list, details: dict):
+def _check_semantic_support(answer: str, facts: list, details: dict):
     if not answer:
         return None
     if not facts:
@@ -80,10 +81,15 @@ def _check_unsupported_claim(answer: str, facts: list, details: dict):
 
         res = OutputFaithfulnessChecker().check(answer, facts)
         # This is only a lexical diagnostic; it is not an entailment result and
-        # never changes the semantic-support status or Observer decision.
-        details["lexical_diagnostic"] = res.to_dict()
+        # never changes the semantic-support status or Observer decision. Keep the
+        # historical field as a compatibility alias for existing API consumers.
+        diagnostic = res.to_dict()
+        details["lexical_diagnostic"] = diagnostic
+        details["faithfulness"] = dict(diagnostic)
     except Exception:  # noqa: BLE001 — a failed diagnostic never breaks Observer
-        details["lexical_diagnostic"] = {"status": "check_unavailable"}
+        diagnostic = {"status": "check_unavailable"}
+        details["lexical_diagnostic"] = diagnostic
+        details["faithfulness"] = dict(diagnostic)
 
     # No suitable local semantic verifier is available. Never infer support or
     # contradiction from word overlap; both remain unknown until one is added.
@@ -139,15 +145,21 @@ def observe(
     mode: str = "BALANCED",
     user_id: str = "default",
     audit_chain: Any = None,
+    semantic_facts: Sequence[dict] | None = None,
 ) -> ObserverVerdict:
-    """Run the passive meta-checks and return one aggregated verdict. Never raises."""
+    """Run passive checks; ``semantic_facts`` limits only answer-support diagnostics.
+
+    Other checks use ``facts``. When ``semantic_facts`` is omitted, support diagnostics
+    retain the legacy behavior of using all ``facts``.
+    """
     facts = list(facts or [])
+    semantic_facts = facts if semantic_facts is None else list(semantic_facts)
     details: dict[str, Any] = {}
     flags: list[str] = []
     decision = ALLOW
 
     checks = (
-        lambda: _check_unsupported_claim(answer, facts, details),
+        lambda: _check_semantic_support(answer, semantic_facts, details),
         lambda: _check_admissible_evidence(query, facts, mode, details),
         lambda: _check_truth_scope_leak(facts, details),
         lambda: _check_goal_drift(query, user_id, details),

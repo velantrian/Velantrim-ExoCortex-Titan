@@ -93,6 +93,7 @@ def test_observer_receives_only_records_kept_by_real_prompt_builder(monkeypatch)
         _fact("omitted", "record omitted from prompt " + "Ж" * 6000),
         _fact("sent-3", "third prompt record"),
     ]
+    facts[1]["known_false"] = True
     monkeypatch.setenv(budget.DEEPSEEK_MESSAGE_CHAR_LIMIT_ENV, "4000")
 
     # Same prompt-builder/context-report path as an unlabelled server.query request.
@@ -128,12 +129,15 @@ def test_observer_receives_only_records_kept_by_real_prompt_builder(monkeypatch)
     answer, observer_facts = model_input
     assert answer == "model response"
     assert observer_facts == report.sent_facts(facts)
-    verdict = observer.observe("q", observer_facts, answer)
+    verdict = observer.observe("q", facts, answer, semantic_facts=observer_facts)
 
     expected_ids = ["sent-1", "sent-3"]
     assert [fact["fact_id"] for fact in captured["facts"]] == expected_ids
     assert [fact["fact_id"] for fact in observer_facts] == expected_ids
     assert verdict.details["semantic_support"]["records_checked"] == 2
+    assert verdict.details["epistemic_states"] == ["Validated"] * 3
+    assert "truth_scope_leak" in verdict.flags
+    assert verdict.details["faithfulness"] == verdict.details["lexical_diagnostic"]
 
 
 def test_observer_input_is_absent_without_a_successful_call():
@@ -161,19 +165,55 @@ def test_observer_input_is_absent_without_a_successful_call():
         (RuntimeError("synthetic provider failure"), True),
     ],
 )
-async def test_query_skips_observer_without_successful_model_answer(
+async def test_query_keeps_nonsemantic_observations_without_successful_model_answer(
     monkeypatch, answer, use_llm
 ):
     facts = [_fact("route-fact", "synthetic route fact")]
     srv, prompts = _query_harness(monkeypatch, facts, answer)
     runtime_flags = importlib.import_module("core.runtime_flags")
     observer = importlib.import_module("core.observer")
+    monkeypatch.setattr(
+        "core.gap_detector.query_goal_alignment", lambda q, u="default": 0.1
+    )
     monkeypatch.setattr(runtime_flags, "is_observer_enabled", lambda: True)
+    real_observe = observer.observe
     calls = []
-    monkeypatch.setattr(observer, "observe", lambda *a, **k: calls.append((a, k)))
+
+    def capture_observe(query, observed_facts, model_answer, **kwargs):
+        calls.append((query, list(observed_facts), model_answer, kwargs))
+        return real_observe(query, observed_facts, model_answer, **kwargs)
+
+    monkeypatch.setattr(observer, "observe", capture_observe)
 
     response = await srv.query(srv.QueryRequest(query="q", use_llm=use_llm))
 
+    assert response.observer is not None
+    assert len(calls) == 1
+    observed_query, observed_facts, model_answer, kwargs = calls[0]
+    assert observed_query == "q"
+    assert observed_facts
+    assert model_answer == ""
+    assert kwargs["semantic_facts"] is None
+    assert "goal_drift" in response.observer["flags"]
+    assert response.observer["details"]["goal_alignment"] == 0.1
+    assert "epistemic_states" in response.observer["details"]
+    assert "semantic_support" not in response.observer["details"]
+    assert "faithfulness" not in response.observer["details"]
+    assert bool(prompts) is use_llm
+
+
+@pytest.mark.asyncio
+async def test_query_does_not_run_observer_when_feature_is_disabled(monkeypatch):
+    facts = [_fact("route-fact", "synthetic route fact")]
+    srv, prompts = _query_harness(monkeypatch, facts, "unused")
+    runtime_flags = importlib.import_module("core.runtime_flags")
+    observer = importlib.import_module("core.observer")
+    monkeypatch.setattr(runtime_flags, "is_observer_enabled", lambda: False)
+    calls = []
+    monkeypatch.setattr(observer, "observe", lambda *a, **k: calls.append((a, k)))
+
+    response = await srv.query(srv.QueryRequest(query="q", use_llm=False))
+
     assert response.observer is None
     assert calls == []
-    assert bool(prompts) is use_llm
+    assert prompts == []
