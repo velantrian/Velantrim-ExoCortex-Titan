@@ -1,5 +1,18 @@
 # ⚠️ Known Risks and Required Proof
 
+## Draft follow-up: Observer evidence alignment and semantic support (#512)
+
+In this draft follow-up, `/query` runs Observer only for a successful non-empty
+model answer and passes the selected prompt records. Pipeline-only, rejected,
+failed, empty and Gemini-placeholder answers receive no Observer result; this
+also omits its existing truth-policy and scope-leak observations for those paths.
+No semantic verifier is implemented: non-empty evidence is `check_unavailable`,
+empty evidence is `insufficient_evidence`. The lexical score is diagnostic only;
+`details.faithfulness` becomes `details.lexical_diagnostic` and the lexical
+`unsupported_claim` flag is removed. API clients and alerts may depend on both.
+The answer is not blocked or rewritten. A real semantic verifier, per-claim
+checking, calibration and external consumer compatibility remain unverified.
+
 ## Observer semantic support remains unavailable (#512)
 
 The lexical faithfulness score is word overlap, not evidence of semantic support.

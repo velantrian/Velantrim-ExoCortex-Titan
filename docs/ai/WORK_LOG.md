@@ -1,3 +1,9 @@
+## 2026-11-14 — Draft Observer evidence-alignment follow-up (#512)
+
+- Stacked on #521 head `5057904ce613a773e5eab585000dca55d8f41aa7`; this is not independent of its draft parent. Cue's v5 patch SHA-256: `50b4a2ce3e7ce9d5e8367d188173846ff86073abc22c6893f3f02ac610a284d8`.
+- The Observer receives the records kept in the model prompt only for successful nonempty model answers. Other paths do not receive any Observer verdict, including its truth-policy and scope checks. Its lexical metric is diagnostic, with a renamed field and no `unsupported_claim` flag; external consumers may break.
+- No semantic verifier, supported/contradicted decision or answer blocking is implemented. #512 remains open. Local and CI evidence and environment limitations are in the PR description. Documentation impact: `GITHUB_AND_NOTION`.
+
 ## 2026-11-14 — Observer lexical-confidence mitigation (#512)
 
 - Base: main `485c4b0906ec35829ff7231c6276bf7d817f096f`. A lexical match no longer produces a clean Observer verdict: the semantic support check is explicitly unavailable. Low overlap still produces the existing unsupported-claim flag. A failure of the lexical check also returns an unverified warning.
