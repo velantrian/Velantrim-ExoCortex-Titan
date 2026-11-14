@@ -491,6 +491,50 @@ def _prepare_evidence_prompt(
     return system, rebuilt, final_map
 
 
+def _neutralize_chat_inputs(req: "ChatRequest") -> tuple["ChatRequest", dict[str, int]]:
+    """Copy of ``req`` whose client text cannot carry a label-like ``[ev_`` into the prompt.
+
+    Earlier assistant turns in ``chat_history`` may contain [ev_N] from an EARLIER request's
+    map; the summary, block notes, operator instructions and the question may contain forged
+    ones. Only the copy is used to build the provider request; side effects (auto-save,
+    essence) keep the original ``req``. Returns the copy and per-field counts of changed
+    strings (not occurrences).
+    """
+    from core.evidence_labels import neutralize_label_like_text as _n
+
+    counts = {"message": 0, "chat_history": 0, "previous_chat_summary": 0,
+              "block_memory": 0, "console_instructions": 0}
+
+    def _t(field: str, value: str | None) -> str | None:
+        if value is None:
+            return None
+        out = _n(value)
+        counts[field] += int(out != value)
+        return out
+
+    history = None
+    if req.chat_history is not None:
+        history = [{**t, "content": _t("chat_history", t.get("content") or "")}
+                   for t in req.chat_history]
+    block = None
+    if req.block_memory is not None:
+        block = []
+        for item in req.block_memory:
+            new = dict(item)
+            for key in ("claim", "category_label", "category"):
+                if isinstance(new.get(key), str):
+                    new[key] = _t("block_memory", new[key])
+            block.append(new)
+    sent = req.model_copy(update={
+        "message": _t("message", req.message),
+        "chat_history": history,
+        "previous_chat_summary": _t("previous_chat_summary", req.previous_chat_summary),
+        "block_memory": block,
+        "console_instructions": _t("console_instructions", req.console_instructions),
+    })
+    return sent, counts
+
+
 # ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
 
 @asynccontextmanager
@@ -1019,6 +1063,14 @@ class ChatRequest(BaseModel):
         "off",
         description="DeepSeek thinking: off | high | max (xhigh → max)",
     )
+    evidence_labels: bool = Field(
+        False,
+        description=(
+            "Opt-in (только /chat): метки [ev_N] у записей памяти, реально отправленных в "
+            "этом запросе. Метка — указатель происхождения, не проверка достоверности ответа. "
+            "/chat/stream отклоняет true с HTTP 400 evidence_labels_stream_unsupported."
+        ),
+    )
 
     @field_validator("llm_provider")
     @classmethod
@@ -1103,6 +1155,30 @@ class ChatResponse(BaseModel):
     dialogue_essence: dict[str, Any] | None = Field(
         None,
         description="Граф эссенции диалога (узлы/связи) для панели мониторинга консоли",
+    )
+    evidence_labels: dict[str, str] | None = Field(
+        None,
+        description="Карта этого запроса ev_N -> fact_id; только записи, реально отправленные модели",
+    )
+    evidence_lifecycle: str | None = Field(
+        None,
+        description=(
+            "disabled | model_not_called | prompt_rejected | model_failed | no_answer | "
+            "published. Карта и reference_check публикуются только при published."
+        ),
+    )
+    reference_check: dict[str, Any] | None = Field(
+        None,
+        description="Существуют ли метки из ответа в карте запроса (не поддержка утверждения)",
+    )
+    evidence_neutralized: dict[str, int] | None = Field(
+        None,
+        description=(
+            "Число изменённых при обезвреживании строковых полей/элементов запроса (не число "
+            "вхождений): message, previous_chat_summary, console_instructions — 0 или 1; "
+            "chat_history — число изменённых реплик; block_memory — число изменённых подполей "
+            "claim/category_label/category по всем элементам"
+        ),
     )
 
 
@@ -1730,6 +1806,21 @@ async def chat_endpoint(req: ChatRequest):
     llm_model_out: str | None = None
     llm_usage: dict[str, Any] | None = None
     context_report = None
+    # Evidence labels (opt-in). The public map is set only after the model returned its own
+    # text, and only for records that were in the provider request.
+    evidence_map = None
+    prepared_map = None
+    reference_check: dict[str, Any] | None = None
+    evidence_neutralized: dict[str, int] | None = None
+    if not req.evidence_labels:
+        evidence_lifecycle = "disabled"
+    elif not req.llm_enabled:
+        evidence_lifecycle = "model_not_called"
+    else:
+        evidence_lifecycle = "prompt_rejected"
+    sent_req = req
+    if req.evidence_labels and req.llm_enabled:
+        sent_req, evidence_neutralized = _neutralize_chat_inputs(req)
 
     if req.llm_enabled:
         cfg = _llm_config_from_request(req) or _env_llm_config()
@@ -1764,12 +1855,12 @@ async def chat_endpoint(req: ChatRequest):
             )
         # Только прошлый чат в system; текущая сессия — в messages[] (KV-cache DeepSeek / Gemini)
         ctx = build_chat_context_for_prompt(
-            None, req.previous_chat_summary, lang, req.block_memory,
+            None, sent_req.previous_chat_summary, lang, sent_req.block_memory,
             report=context_report,
         )
         if ctx:
             extra_parts.append(ctx)
-        op = (req.console_instructions or "").strip()
+        op = (sent_req.console_instructions or "").strip()
         if op:
             extra_parts.append(
                 "Инструкции оператора:\n" + op
@@ -1778,9 +1869,21 @@ async def chat_endpoint(req: ChatRequest):
             )
         lens_extra = "\n\n".join(extra_parts) if extra_parts else None
         try:
-            system = _build_system_prompt(
-                facts, lens_instructions=lens_extra, report=context_report
-            )
+            if req.evidence_labels:
+                # Pass 2 of _prepare_evidence_prompt starts a fresh report: keep the limits
+                # already recorded for block memory / previous summary (no silent loss).
+                pre_applied = list(context_report.applied)
+                system, prepared_report, prepared_map = _prepare_evidence_prompt(
+                    facts, provider=cfg.provider, lens_instructions=lens_extra,
+                    report=context_report,
+                )
+                if prepared_report is not context_report:
+                    prepared_report.applied[:0] = pre_applied
+                    context_report = prepared_report
+            else:
+                system = _build_system_prompt(
+                    facts, lens_instructions=lens_extra, report=context_report
+                )
         except Exception as exc:
             _raise_if_context_error(exc)
             raise
@@ -1791,14 +1894,26 @@ async def chat_endpoint(req: ChatRequest):
             reply, llm_usage = await chat_complete_messages(
                 cfg,
                 system,
-                req.message,
-                req.chat_history,
+                sent_req.message,
+                sent_req.chat_history,
                 report=context_report,
             )
             from_llm = True
+            if prepared_map is not None:
+                if _query_has_model_answer_text(reply):
+                    from core.evidence_labels import check_references
+
+                    reference_check = check_references(reply, prepared_map)
+                    evidence_map = prepared_map
+                    evidence_lifecycle = "published"
+                else:
+                    evidence_lifecycle = "no_answer"
         except Exception as exc:
             # A context-limit refusal is a clear answer, not an offline fallback.
             _raise_if_context_error(exc)
+            if req.evidence_labels:
+                # Offline text is not a model answer: never publish the map with it.
+                evidence_lifecycle = "model_failed"
             offline = _console_offline_reply(req.message, facts, req.ui_lang)
             if offline:
                 reply = offline
@@ -1847,6 +1962,10 @@ async def chat_endpoint(req: ChatRequest):
         memory_auto_status=memory_auto_status,
         llm_usage=llm_usage,
         dialogue_essence=dialogue_essence,
+        evidence_labels=evidence_map.to_dict() if evidence_map is not None else None,
+        evidence_lifecycle=evidence_lifecycle,
+        reference_check=reference_check,
+        evidence_neutralized=evidence_neutralized,
     )
 
 
@@ -2102,6 +2221,20 @@ async def chat_stream_endpoint(req: ChatRequest):
     """Потоковый чат (SSE): токены по мере генерации + память в конце."""
     import json as _json
 
+    if req.evidence_labels:
+        # Stream labels are not implemented. Refuse before retrieval, the provider call and
+        # auto-save instead of silently returning an unlabelled stream.
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "evidence_labels_stream_unsupported",
+                "message": (
+                    "evidence_labels поддерживается только в POST /chat; потоковые метки "
+                    "в /chat/stream не реализованы. Повторите запрос без evidence_labels "
+                    "или используйте /chat."
+                ),
+            },
+        )
     t0 = time.time()
     (
         facts, pipeline_error, cfg, system, lang, llm_provider_out, llm_model_out,
