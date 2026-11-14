@@ -491,6 +491,25 @@ def _prepare_evidence_prompt(
     return system, rebuilt, final_map
 
 
+def _observer_model_input(
+    answer: str | None,
+    facts: list[dict],
+    context_report: Any,
+    *,
+    model_call_started: bool,
+    model_error: bool,
+) -> tuple[str, list[dict]] | None:
+    """Return only a successful model answer and memory records in its final prompt."""
+    if (
+        not model_call_started
+        or model_error
+        or context_report is None
+        or not _query_has_model_answer_text(answer)
+    ):
+        return None
+    return answer, context_report.sent_facts(facts)
+
+
 # ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
 
 @asynccontextmanager
@@ -2665,14 +2684,23 @@ async def query(req: QueryRequest):
         from core.runtime_flags import is_observer_enabled
 
         if is_observer_enabled():
-            from core.observer import observe as _observe
-
-            observer_block = _observe(
-                req.query,
+            observer_input = _observer_model_input(
+                llm_answer,
                 pipeline_facts,
-                llm_answer or pipeline_answer or "",
-                mode=eff_mode,
-            ).to_dict()
+                context_report,
+                model_call_started=llm_call_started,
+                model_error=bool((llm_meta or {}).get("error")),
+            )
+            if observer_input is not None:
+                from core.observer import observe as _observe
+
+                observer_answer, observer_facts = observer_input
+                observer_block = _observe(
+                    req.query,
+                    observer_facts,
+                    observer_answer,
+                    mode=eff_mode,
+                ).to_dict()
     except Exception as exc:  # noqa: BLE001 — аддитивно; никогда не ломаем ответ
         logger.debug("observer skipped: %s", exc)
 

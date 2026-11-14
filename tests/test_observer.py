@@ -58,16 +58,30 @@ def test_observe_clean_grounded_answer():
     assert v.details["semantic_support"]["status"] == "check_unavailable"
 
 
-@pytest.mark.parametrize("answer", [
-    "Руслан одобрил миграцию на PostgreSQL.",
-    "Руслан не одобрил миграцию на PostgreSQL.",
-    "Миграцию на PostgreSQL отклонили.",
+@pytest.mark.parametrize(("claim", "answer"), [
+    (
+        "Руслан одобрил миграцию на PostgreSQL.",
+        "Руслан не одобрил миграцию на PostgreSQL.",
+    ),
+    (
+        "Компания открыла 3 филиала в 2024 году.",
+        "Компания открыла 8 филиалов в 2024 году.",
+    ),
+    (
+        "Перенос одобрен, если тесты пройдут.",
+        "Перенос одобрен, даже если тесты не пройдут.",
+    ),
+    (
+        "Команда прекратила работу в Берлине.",
+        "Коллектив закрыл офис в столице Германии.",
+    ),
 ])
-def test_lexical_similarity_does_not_claim_semantic_support(answer):
-    fact = _fact("a", 0.95, "Руслан одобрил миграцию на PostgreSQL")
-    verdict = observe("миграция", [fact], answer)
-    assert not verdict.is_clean
+def test_semantic_edge_cases_remain_unverified_without_checker(claim, answer):
+    fact = _fact("a", 0.95, claim)
+    verdict = observe("вопрос", [fact], answer)
     assert verdict.details["semantic_support"]["status"] == "check_unavailable"
+    assert "semantic_support_unverified" in verdict.flags
+    assert "unsupported_claim" not in verdict.flags
 
 
 def test_faithfulness_failure_is_not_reported_as_clean(monkeypatch):
@@ -81,16 +95,28 @@ def test_faithfulness_failure_is_not_reported_as_clean(monkeypatch):
     assert not verdict.is_clean
     assert "semantic_support_unverified" in verdict.flags
     assert verdict.details["semantic_support"]["status"] == "check_unavailable"
+    assert verdict.details["lexical_diagnostic"]["status"] == "check_unavailable"
 
 
 # ── unsupported_claim (answer not grounded in facts) ─────────────────────────────
 
-def test_observe_unsupported_claim():
+def test_low_lexical_overlap_does_not_claim_semantic_unsupported():
     facts = [_fact("a", 0.9, "Вода кипит при 100 градусах Цельсия")]
     answer = "Слоны являются крупнейшими сухопутными млекопитающими планеты."
     v = observe("вопрос про воду", facts, answer)
-    assert "unsupported_claim" in v.flags
-    assert v.decision == GAP_NOTICE
+    assert "semantic_support_unverified" in v.flags
+    assert "unsupported_claim" not in v.flags
+    assert v.decision == WARN
+    assert v.details["semantic_support"]["status"] == "check_unavailable"
+
+
+def test_empty_sent_records_are_insufficient_evidence():
+    v = observe("q", [], "Ответ модели")
+    assert v.details["semantic_support"] == {
+        "status": "insufficient_evidence",
+        "records_checked": 0,
+    }
+    assert "insufficient_evidence" in v.flags
 
 
 # ── no_admissible_evidence (reject) ──────────────────────────────────────────────

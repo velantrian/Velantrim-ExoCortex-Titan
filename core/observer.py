@@ -38,7 +38,6 @@ WARN = "warn"
 _SEVERITY = {ALLOW: 0, WARN: 1, GAP_NOTICE: 2, REJECT: 3}
 
 # Conservative tunables — calibrate before flipping the flag on by default.
-_FAITHFULNESS_MIN = 0.30      # answer grounding below this → unsupported_claim
 _GOAL_ALIGNMENT_MIN = 0.30    # query↔goal alignment below this → goal_drift
 _LEAK_STATES = {"Contradicted", "Deprecated", "Collapsed"}
 _TRUSTED_STATES = {"Validated", "ImmutableCore", "Supported"}
@@ -67,22 +66,31 @@ class ObserverVerdict:
 
 
 def _check_unsupported_claim(answer: str, facts: list, details: dict):
-    if not answer or not facts:
+    if not answer:
         return None
+    if not facts:
+        details["semantic_support"] = {
+            "status": "insufficient_evidence",
+            "records_checked": 0,
+        }
+        return WARN, "insufficient_evidence"
+
     try:
         from core.output_faithfulness import OutputFaithfulnessChecker
 
         res = OutputFaithfulnessChecker().check(answer, facts)
-    except Exception:  # noqa: BLE001 — expose failed check without breaking Observer
-        details["semantic_support"] = {"status": "check_unavailable"}
-        return WARN, "semantic_support_unverified"
-    details["faithfulness"] = res.to_dict()
-    # Lexical overlap is not an entailment check. In particular, negation,
-    # numbers and conditions can change while overlap remains high. Until a
-    # semantic verifier is available, never present that result as verified.
-    details["semantic_support"] = {"status": "check_unavailable"}
-    if res.total_claims and res.score < _FAITHFULNESS_MIN:
-        return GAP_NOTICE, "unsupported_claim"
+        # This is only a lexical diagnostic; it is not an entailment result and
+        # never changes the semantic-support status or Observer decision.
+        details["lexical_diagnostic"] = res.to_dict()
+    except Exception:  # noqa: BLE001 — a failed diagnostic never breaks Observer
+        details["lexical_diagnostic"] = {"status": "check_unavailable"}
+
+    # No suitable local semantic verifier is available. Never infer support or
+    # contradiction from word overlap; both remain unknown until one is added.
+    details["semantic_support"] = {
+        "status": "check_unavailable",
+        "records_checked": len(facts),
+    }
     return WARN, "semantic_support_unverified"
 
 
