@@ -1,3 +1,9 @@
+## 2026-11-14 — Observer lexical-confidence mitigation (#512)
+
+- Base: main `485c4b0906ec35829ff7231c6276bf7d817f096f`. A lexical match no longer produces a clean Observer verdict: the semantic support check is explicitly unavailable. Low overlap still produces the existing unsupported-claim flag. A failure of the lexical check also returns an unverified warning.
+- The warning intentionally applies even to genuinely supported answers: it prevents an unsupported semantic assurance but is not a semantic checker. No answer is blocked or rewritten. #512 remains open; per-claim assessment against the exact records sent to the model is not implemented.
+- Documentation impact: `GITHUB_AND_NOTION`; the accompanying Notion record tracks the review and limitations. Local checks and hosted CI are recorded in the PR rather than inferred here.
+
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.

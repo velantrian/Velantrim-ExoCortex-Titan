@@ -1,5 +1,18 @@
 # ⚠️ Known Risks and Required Proof
 
+## Observer semantic support remains unavailable (#512)
+
+The lexical faithfulness score is word overlap, not evidence of semantic support.
+Observer reports `semantic_support_unverified` / `check_unavailable` when a
+lexical result would otherwise be clean. Even a verbatim answer is not certified;
+the warning is expected for ordinary grounded answers too. A low lexical score
+still raises `unsupported_claim`. This conservative mitigation is not semantic
+contradiction detection and does not resolve #512. It changes Observer verdicts
+when enabled, but does not block or rewrite answers. The `/query` caller passes
+pipeline facts rather than the exact prompt subset; this warning does not check
+the evidence actually sent to the model. Per-claim semantic support, handling of
+insufficient evidence, and a calibrated verifier remain future work.
+
 ## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
 
 Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
