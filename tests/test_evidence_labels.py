@@ -647,3 +647,18 @@ def test_the_empty_instruction_is_not_longer_than_the_labelled_one():
     el = _el()
     assert len(el.PROMPT_EMPTY_INSTRUCTION) < len(el.PROMPT_INSTRUCTION)
     assert not el._LABEL_RE.search(el.PROMPT_EMPTY_INSTRUCTION)
+
+
+def test_unit_separator_in_claim_or_source_does_not_alias_records():
+    el = _el()
+    facts = [
+        {"fact_id": "same", "claim": "a\x1fb", "source": "c", "confidence": 0.9},
+        {"fact_id": "same", "claim": "a", "source": "b\x1fc", "confidence": 0.9},
+    ]
+
+    emap = el.build_evidence_map(facts)
+
+    assert el.record_fingerprint(facts[0]) != el.record_fingerprint(facts[1])
+    assert emap.to_dict() == {"ev_1": "same", "ev_2": "same"}
+    assert emap.ambiguous == frozenset({"ev_1", "ev_2"})
+    assert [emap.label_for_fact(fact) for fact in facts] == ["ev_1", "ev_2"]
