@@ -317,6 +317,12 @@ SYSTEM_OVERVIEW.md    Russian atlas (same sections / claims)
 
 ---
 
+## Preexisting code — Apart Swarm Alignment Hackathon (6–8 November 2026)
+
+The Titan code and tests examined in this hackathon report are preexisting work, not new hackathon implementation. Maintenance changes dated 6–7 November are not claimed as hackathon contributions. The hackathon contribution is a report-only threat mapping, evidence audit and proposed evaluation protocol. No new runtime code was written and no oversight-efficacy experiment was executed for this submission.
+
+---
+
 ## 🧭 Version
 
 **<!-- SYNC:VERSION -->v9.0.0<!-- /SYNC:VERSION --> — VELANTRIM TITAN 9.0**
