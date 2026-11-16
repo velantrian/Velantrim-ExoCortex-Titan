@@ -14,6 +14,7 @@
 """
 
 import logging
+from contextvars import ContextVar
 import os
 import tempfile
 import time
@@ -30,6 +31,9 @@ def _check_available(module_name: str) -> bool:
 
 PY7ZR_AVAILABLE = _check_available("py7zr")
 RARFILE_AVAILABLE = _check_available("rarfile")
+
+
+_ARCHIVE_DEPTH: ContextVar[int] = ContextVar("archive_parse_depth", default=0)
 
 
 class ArchiveParser(FileParser):
@@ -59,6 +63,15 @@ class ArchiveParser(FileParser):
         ]
 
     def parse(self, file_path: str) -> ParseResult:
+        """Propagate nesting per parse context; never mutate a shared registry."""
+        depth = max(self._depth, _ARCHIVE_DEPTH.get())
+        token = _ARCHIVE_DEPTH.set(depth + 1)
+        try:
+            return self._parse_at_depth(file_path, depth)
+        finally:
+            _ARCHIVE_DEPTH.reset(token)
+
+    def _parse_at_depth(self, file_path: str, depth: int) -> ParseResult:
         early = self._check_file(file_path)
         if early is not None:
             return early
@@ -67,7 +80,7 @@ class ArchiveParser(FileParser):
         result.file_size_bytes = self._get_file_size(file_path)
         start = time.time()
 
-        if self._depth >= self.MAX_DEPTH:
+        if depth >= self.MAX_DEPTH:
             result.error = f"Превышена максимальная глубина вложенности архивов: {self.MAX_DEPTH}"
             result.parse_time_ms = (time.time() - start) * 1000
             return result
@@ -95,30 +108,16 @@ class ArchiveParser(FileParser):
                     )
                     return result
 
-                # Рекурсивный парсинг через inner ingester
-                # FIX v8.5.1 (Gemini Security): depth передаётся как параметр.
-                # Раньше _depth хранился в состоянии синглтона и никогда
-                # не увеличивался → zip-bomb защита не работала.
-                # Теперь для вложенных архивов создаётся новый ArchiveParser
-                # с depth+1 — если встречается вложенный .zip, он проверит
-                # self._depth+1 >= MAX_DEPTH и остановится.
                 inner_results: list[dict] = []
+                child_text: list[str] = []
                 if self._inner and files:
-                    # Временно заменяем archive-парсер в registry на версию с depth+1
-                    _deeper = ArchiveParser(
-                        inner_ingester=self._inner,
-                        _depth=self._depth + 1,
-                    )
-                    _orig_archive = None
-                    if hasattr(self._inner, "registry"):
-                        _orig_archive = self._inner.registry._initialized.get("archive")
-                        self._inner.registry._initialized["archive"] = _deeper
-
                     for fpath in files[: self.MAX_FILES]:
                         try:
                             r = self._inner.ingest(fpath)  # type: ignore[attr-defined]  # _inner — FileIngester (duck-typed)
+                            if r.extracted_text:
+                                child_text.append(f"=== {os.path.relpath(fpath, tmpdir)} ===\n{r.extracted_text}")
                             inner_results.append({
-                                "file": os.path.basename(fpath),
+                                "file": os.path.relpath(fpath, tmpdir),
                                 "type": r.file_type,
                                 "method": r.extraction_method,
                                 "text_length": len(r.extracted_text or ""),
@@ -127,11 +126,8 @@ class ArchiveParser(FileParser):
                         except Exception as exc:
                             logger.warning(f"Inner parse failed for {fpath}: {exc}")
 
-                    # Восстанавливаем оригинальный archive-парсер
-                    if _orig_archive is not None and hasattr(self._inner, "registry"):
-                        self._inner.registry._initialized["archive"] = _orig_archive
-
-                # Сборка текста — простой листинг + первые 1000 символов из каждого
+                # Preserve complete child text for the downstream Reader. Existing
+                # archive extraction/depth budgets still apply; no per-file text cut.
                 text_parts: list[str] = [
                     f"=== Archive: {os.path.basename(file_path)} ===",
                     f"Files: {len(files)}",
@@ -139,6 +135,7 @@ class ArchiveParser(FileParser):
                 ]
                 for f in files[:50]:
                     text_parts.append(f"  - {os.path.relpath(f, tmpdir)}")
+                text_parts.extend(child_text)
                 text = "\n".join(text_parts)
 
                 result.extracted_text = text
@@ -147,7 +144,7 @@ class ArchiveParser(FileParser):
                     "file_count": len(files),
                     "files": [os.path.relpath(f, tmpdir) for f in files[:200]],
                     "inner_results": inner_results,
-                    "depth": self._depth,
+                    "depth": depth,
                 }
                 result.provenance = self._build_provenance(file_path, result.extraction_method)
 

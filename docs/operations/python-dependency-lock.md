@@ -33,9 +33,10 @@ CI fails closed when `pyproject.toml` and `uv.lock` drift (`uv lock --check`).
 
 ## Docker
 
-The Docker image still uses `pip install -e ".[${RUNTIME_EXTRAS}]"` inside the
-Dockerfile. That runtime story remains separate from CI lock reproducibility until
-an explicit Docker lock migration is accepted.
+The Dockerfile exports selected runtime dependencies from `uv.lock`, installs with
+hash verification, and installs the built wheel without resolving dependencies again.
+`RUNTIME_EXTRAS` selects locked extras; editable source installation is not the runtime
+image contract. See the export and wheel stages in `Dockerfile`.
 
 ## Supply-chain pinning
 

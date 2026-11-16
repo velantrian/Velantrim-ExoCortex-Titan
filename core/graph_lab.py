@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import time
+from pathlib import Path
 from collections.abc import Sequence
 from typing import Any
 
@@ -56,27 +58,14 @@ def is_available() -> bool:
 # ── subgraph loader (read-only over the `relations` table) ──────────────────────
 
 def _store_conn() -> sqlite3.Connection | None:
-    """A read connection to the DB that holds the `relations` table.
-
-    Reuses the causal graph singleton's connection when present; otherwise opens a
-    fresh read connection to the global store path. Returns None if unavailable.
-    """
+    """Open an owned read-only connection; analytics never initializes a writer."""
     try:
-        from core.pipeline import _get_causal_graph
-
-        cg = _get_causal_graph()
-        if cg is not None and getattr(cg, "_conn", None) is not None:
-            return cg._conn
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("graph_lab: causal singleton unavailable (%s)", exc)
-    try:
-        import core.memory as _mem
-
-        path = getattr(_mem._GLOBAL_STORE, "db_path", None)
+        import core.memory as memory
+        path = getattr(memory._GLOBAL_STORE, "db_path", None)
         if path:
-            return sqlite3.connect(path)
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("graph_lab: store conn unavailable (%s)", exc)
+            return sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
+    except Exception as exc:
+        logger.debug("graph_lab: read connection unavailable (%s)", type(exc).__name__)
     return None
 
 
@@ -97,34 +86,49 @@ def build_subgraph(
         return None, False
     c = conn or _store_conn()
     if c is None:
-        return nx.DiGraph(), False
+        g = nx.DiGraph()
+        g.graph["read_error"] = "store_read_unavailable"
+        return g, False
 
     g = nx.DiGraph()
     truncated = False
-    try:
-        rows = c.execute(
-            "SELECT from_fact_id, to_fact_id, relation_type, confidence, knowledge_status "
-            "FROM relations"
-        ).fetchall()
-    except Exception as exc:  # noqa: BLE001 — table may not exist yet
-        logger.debug("graph_lab: relations read failed (%s)", exc)
+    if not isinstance(max_nodes, int) or not 1 <= max_nodes <= _DEFAULT_MAX_NODES:
+        if conn is None:
+            c.close()
+        g.graph["read_error"] = "invalid_graph_budget"
         return g, False
-
-    seeds = set(seed_fact_ids) if seed_fact_ids else None
-    for src, dst, rtype, conf, kstatus in rows:
-        if seeds is not None and src not in seeds and dst not in seeds:
-            continue
-        if g.number_of_nodes() >= max_nodes:
-            truncated = True
-            break
-        g.add_edge(
-            src, dst,
-            type=rtype,
-            confidence=float(conf if conf is not None else 0.0),
-            knowledge_status=kstatus,
+    seeds = list(dict.fromkeys(seed_fact_ids or []))
+    if len(seeds) > max_nodes:
+        seeds = seeds[:max_nodes]
+        truncated = True
+    edge_budget = max_nodes * 10
+    params: list[Any] = []
+    where = ""
+    if seeds:
+        marks = ",".join("?" for _ in seeds)
+        where = f" WHERE from_fact_id IN ({marks}) OR to_fact_id IN ({marks})"
+        params.extend(seeds + seeds)
+    try:
+        cursor = c.execute(
+            "SELECT from_fact_id, to_fact_id, relation_type, confidence, knowledge_status "
+            "FROM relations" + where + " LIMIT ?", (*params, edge_budget + 1),
         )
-    if truncated:
-        logger.info("graph_lab: subgraph truncated at max_nodes=%d", max_nodes)
+        for index, (src, dst, rtype, conf, kstatus) in enumerate(cursor):
+            if index >= edge_budget:
+                truncated = True
+                break
+            if g.number_of_nodes() + sum(node not in g for node in {src, dst}) > max_nodes:
+                truncated = True
+                continue
+            g.add_edge(src, dst, type=rtype,
+                       confidence=float(conf if conf is not None else 0.0),
+                       knowledge_status=kstatus)
+    except Exception as exc:
+        logger.debug("graph_lab: relations read unavailable (%s)", type(exc).__name__)
+        g.graph["read_error"] = "relations_read_unavailable"
+    finally:
+        if conn is None:
+            c.close()
     return g, truncated
 
 
@@ -161,18 +165,40 @@ def communities(g) -> list[list[str]]:
 
 
 def cycles(g, max_len: int = _DEFAULT_MAX_CYCLE_LEN, limit: int = 50) -> list[list[str]]:
-    nx = _NX.get()
-    if nx is None or g is None or g.number_of_nodes() == 0:
+    """Enumerate short directed cycles under a node-expansion and time budget.
+
+    Canonical start ordering avoids rotated copies. Budget exhaustion is explicit
+    in graph metadata; an empty bounded result is not proof of acyclicity.
+    """
+    if g is None or not g or max_len < 1 or limit < 1:
         return []
     out: list[list[str]] = []
-    try:
-        for cyc in nx.simple_cycles(g):
-            if len(cyc) <= max_len:
-                out.append([str(x) for x in cyc])
-            if len(out) >= limit:
-                break
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("graph_lab: cycles failed (%s)", exc)
+    order = {node: index for index, node in enumerate(g.nodes)}
+    steps = 0
+    deadline = time.monotonic() + .25
+    g.graph["cycle_budget_exhausted"] = False
+    for start in g.nodes:
+        path = [start]
+        seen = {start}
+        stack = [iter(g.successors(start))]
+        while stack:
+            steps += 1
+            if steps > 10000 or time.monotonic() >= deadline:
+                g.graph["cycle_budget_exhausted"] = True
+                return out
+            neighbor = next(stack[-1], None)
+            if neighbor is None:
+                stack.pop()
+                seen.remove(path.pop())
+            elif neighbor == start:
+                out.append([str(node) for node in path])
+                if len(out) >= limit:
+                    g.graph["cycle_budget_exhausted"] = True
+                    return out
+            elif len(path) < min(max_len, _DEFAULT_MAX_CYCLE_LEN) and neighbor not in seen and order[neighbor] >= order[start]:
+                path.append(neighbor)
+                seen.add(neighbor)
+                stack.append(iter(g.successors(neighbor)))
     return out
 
 
@@ -322,6 +348,7 @@ def analyze(
     top_k: int = 20,
     max_nodes: int = _DEFAULT_MAX_NODES,
     conn: sqlite3.Connection | None = None,
+    max_cycle_len: int = _DEFAULT_MAX_CYCLE_LEN,
 ) -> dict[str, Any]:
     """One-shot structural report over the causal subgraph. Never raises."""
     if not is_available():
@@ -329,6 +356,9 @@ def analyze(
     g, truncated = build_subgraph(seed_fact_ids, max_nodes=max_nodes, conn=conn)
     if g is None:
         return {"available": False, "reason": "networkx_not_installed"}
+    if g.graph.get("read_error"):
+        return {"available": False, "reason": g.graph["read_error"]}
+    cycle_list = cycles(g, max_len=max_cycle_len)
     return {
         "available": True,
         "node_count": g.number_of_nodes(),
@@ -336,7 +366,8 @@ def analyze(
         "truncated": truncated,
         "centrality": centrality(g, top_k=top_k),
         "communities": communities(g),
-        "cycles": cycles(g),
+        "cycles": cycle_list,
+        "cycle_budget_exhausted": g.graph.get("cycle_budget_exhausted", False),
         "pagerank": pagerank(g, top_k=top_k),
     }
 

@@ -9,7 +9,7 @@ Summary: «Пользователь обсуждает SQLite, Kuzu, Graphiti.»
 Gist:    «Пользователь ищет орган, превращающий хранение в понимание.»
 
 Использование:
-    from core.essence import GistSynthesizer, extract_gist
+    from core.essence_facade import GistSynthesizer, extract_gist
     synth = GistSynthesizer()
     gist = synth.synthesize(facts, query, mode="essence")
     print(gist.core_question)  # «какой орган превращает БД в понимание?»
@@ -58,6 +58,7 @@ class GistSynthesizer:
         query: str = "",
         *,
         mode: str = "essence",
+        session_id: str | None = None,
     ) -> Gist:
         """
         Синтезировать gist из верифицированных фактов.
@@ -87,18 +88,13 @@ class GistSynthesizer:
         except Exception:
             gist.user_intent = "unknown"
 
-        # Constraints — из working_notebook
-        try:
-            # Pre-existing API drift: core.working_notebook exposes get_notebook(session_id),
-            # not get_working_notebook(). Caught below like any other optional-bridge failure,
-            # so this bridge currently always no-ops. Not fixed here (behavior change out of
-            # scope for a typing-only pass) — tracked as a follow-up bug.
-            from core.working_notebook import get_working_notebook  # type: ignore[attr-defined]
-            nb = get_working_notebook()
-            if nb:
-                gist.constraints = nb.get_active_constraints()
-        except Exception:
-            pass
+        # Read constraints only from the caller's session; no global notebook guess.
+        if session_id is not None:
+            from core.working_notebook import get_notebook
+            gist.constraints = [
+                block.text for block in get_notebook(session_id).active_blocks()
+                if block.type == "constraint"
+            ]
 
         # Hypothesis — что система знает из essence
         if facts and mode == "essence":
