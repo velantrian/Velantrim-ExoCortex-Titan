@@ -189,8 +189,8 @@ def test_facade_bridges_use_real_functions_and_selected_notebook():
 def test_branch_retrieval_uses_policy_owner_not_full_store(monkeypatch):
     from core.branch_manager import BranchManager
     from core import pipeline
-    monkeypatch.setattr(pipeline, "run", lambda query: {"facts": [{"fact_id": "bounded"}]})
-    assert BranchManager()._retrieve_with_hints("test", {}) == [{"fact_id": "bounded"}]
+    monkeypatch.setattr(pipeline, "run", lambda query: {"facts": [{"fact_id": "bounded", "epistemic_state": "Validated"}]})
+    assert BranchManager()._retrieve_with_hints("test", {}) == [{"fact_id": "bounded", "epistemic_state": "Validated"}]
     monkeypatch.setattr(pipeline, "run", lambda query: {"reason_code": "facts_pack_policy_unavailable"})
     with pytest.raises(RuntimeError, match="retrieval_policy_unavailable"):
         BranchManager()._retrieve_with_hints("test", {})

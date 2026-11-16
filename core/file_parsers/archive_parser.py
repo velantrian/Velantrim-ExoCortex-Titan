@@ -114,6 +114,10 @@ class ArchiveParser(FileParser):
                     for fpath in files[: self.MAX_FILES]:
                         try:
                             r = self._inner.ingest(fpath)  # type: ignore[attr-defined]  # _inner — FileIngester (duck-typed)
+                            relative = os.path.relpath(fpath, tmpdir)
+                            if r.error:
+                                result.warnings.append(f"{relative}: {r.error}")
+                            result.warnings.extend(f"{relative}: {warning}" for warning in r.warnings)
                             if r.extracted_text:
                                 child_text.append(f"=== {os.path.relpath(fpath, tmpdir)} ===\n{r.extracted_text}")
                             inner_results.append({

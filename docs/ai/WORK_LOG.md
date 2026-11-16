@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-16 — Runtime regression follow-up
+
+Initial full run: 4981 passed, 2 failed, 17 skipped, 1 xfailed; core coverage 78.74%. Failures exposed old test assumptions (source-spelling archive guard and locally constructed branch retriever). Replaced them with executed nested-archive rejection and restricted-result exclusion. Branch consumers additionally reuse recall policy on bounded results; nested child errors/warnings reach the enclosing archive report. Follow-up: **74 passed**, including the independent NetworkX cycle oracle. A fresh full run is required; the initial run is not reported green.
+
 ## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.

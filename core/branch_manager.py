@@ -238,7 +238,8 @@ class BranchManager:
         result = run(query)
         if result.get("reason_code") == "facts_pack_policy_unavailable":
             raise RuntimeError("retrieval_policy_unavailable")
-        return list(result.get("facts") or [])[:k]
+        from core.recall_policy import filter_facts_for_recall
+        return filter_facts_for_recall(list(result.get("facts") or []))[:k]
 
     async def _generate_response(
         self,
