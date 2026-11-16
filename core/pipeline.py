@@ -1280,7 +1280,15 @@ def run(
     if not retrieved:
         return _insufficient_evidence(query, reason_code="no_local_retrieval_results")
     _retrieval_mode = retrieved[0].get("retrieval_mode") if retrieved else None
-    facts_pack = build_facts_pack(retrieved, query, cognitive_mode=cognitive_mode)
+    try:
+        facts_pack = build_facts_pack(
+            retrieved, query, cognitive_mode=cognitive_mode, require_policy=True,
+        )
+    except FactsPackPolicyUnavailableError:
+        logger.warning("FactsPack policy unavailable; answer withheld")
+        return _insufficient_evidence(
+            query, reason_code="facts_pack_policy_unavailable",
+        )
     if not facts_pack.get("facts"):
         return _insufficient_evidence(
             query,
