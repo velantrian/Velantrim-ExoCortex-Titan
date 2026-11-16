@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-16 — PR #523 final local regression evidence
+
+Commit `a4c03a27d6b692754c84e6d75c8b1a121acf6459`: **4969 passed, 17 skipped, 1 xfailed**, core coverage **78.49%** (blocking threshold 74%), Python 3.12, 393.51 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90 --cov=core --cov-report=term --cov-fail-under=74`. This fallback environment has BM25/numpy and no sentence-transformers; embedding-enabled remote CI remains separate. Optional parser skips and the existing expected failure are preserved. No provider request or production activation.
+
 ## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
 
 Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
