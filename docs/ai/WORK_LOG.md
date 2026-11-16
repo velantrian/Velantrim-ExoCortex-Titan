@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-16 — Runtime final full regression
+
+On code commit `c3c2b90`: **4984 passed, 17 skipped, 1 xfailed**, Python 3.12, 225.33 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90`. The earlier coverage-instrumented run measured 78.74% but had two test failures; those were fixed and the full uninstrumented suite rerun green. Fresh remote coverage/CI is required at the published head. No production activation or merge.
+
 ## 2026-11-16 — Runtime regression follow-up
 
 Initial full run: 4981 passed, 2 failed, 17 skipped, 1 xfailed; core coverage 78.74%. Failures exposed old test assumptions (source-spelling archive guard and locally constructed branch retriever). Replaced them with executed nested-archive rejection and restricted-result exclusion. Branch consumers additionally reuse recall policy on bounded results; nested child errors/warnings reach the enclosing archive report. Follow-up: **74 passed**, including the independent NetworkX cycle oracle. A fresh full run is required; the initial run is not reported green.
