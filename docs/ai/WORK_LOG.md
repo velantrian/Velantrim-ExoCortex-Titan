@@ -1,5 +1,9 @@
 ## 2026-11-14 — Observer compatibility revision prepared for Draft PR #522
 
+## 2026-11-16 — Observer child synchronized to the tested availability parent
+
+PR #522 now includes parent #521 at `0e0be79`, itself stacked on #509. Kept named, content-free unavailable-check reporting and scoped only the semantic diagnostic to actually sent records; other passive checks still run. **106 focused tests passed**, including Observer, prompt records, evidence labels and prompt epistemic boundaries. No claim-level entailment verifier or main merge is implied.
+
 - Preparation snapshot: PR #522 head `27192ec5aef7f8ef3fd4fa305bf9d4f7e400df63`, base / PR #521 head `5057904ce613a773e5eab585000dca55d8f41aa7`. The candidate diff was prepared only in a disposable detached copy; this preparation did not change either PR, a branch, a commit, or hosted CI.
 - Candidate behavior: when enabled, Observer continues applicable truth-policy, scope-leak and goal-drift checks over `pipeline_facts`, including when the model was not called, failed, or returned no usable answer. Only the semantic-support/lexical diagnostic is gated on a successful non-empty answer and uses `ContextReport.sent_facts`.
 - Candidate API contract: preserve `details.faithfulness` as an alias of `details.lexical_diagnostic`, explicitly lexical-only and not proof of support. Removal of the lexical-only `unsupported_claim` flag remains a separate client-visible contract change. No semantic verifier or answer blocking is added; #512 remains open.
@@ -8,10 +12,50 @@
 
 ## 2026-11-14 — Observer lexical-confidence mitigation (#512)
 
+## 2026-11-16 — Observer availability and semantic-support integration
+
+PR #521 is stacked on tested PR #509 (`0f1097e`) so an unavailable control cannot become clean while lexical overlap is marked semantically unverified. Renamed the internal support check at the lowest owning parent and updated inherited availability regressions to the new passive contract. **60 focused tests passed** (Observer, unavailable controls, golden evaluation, distinct records). No semantic verifier or answer blocking is introduced. Dependency order: #509 → #521 → #522; main is unchanged.
+
 - Base: main `485c4b0906ec35829ff7231c6276bf7d817f096f`. A lexical match no longer produces a clean Observer verdict: the semantic support check is explicitly unavailable. Low overlap still produces the existing unsupported-claim flag. A failure of the lexical check also returns an unverified warning.
 - The warning intentionally applies even to genuinely supported answers: it prevents an unsupported semantic assurance but is not a semantic checker. No answer is blocked or rewritten. #512 remains open; per-claim assessment against the exact records sent to the model is not implemented.
 - Documentation impact: `GITHUB_AND_NOTION`; the accompanying Notion record tracks the review and limitations. Local checks and hosted CI are recorded in the PR rather than inferred here.
 
+## 2026-11-08 — FactsPack keeps distinct records; Observer reports unavailable checks
+
+## 2026-11-16 — PR #509 synchronized with merged evidence labels
+
+Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` into this PR without rewriting its history. Preserved the #515 evidence-label implementation and tests. Resolved documentation conflicts by retaining both records. Focused regression suite: **97 passed** on Python 3.12; no provider calls. Main and deployment remain unchanged. Fresh exact-head CI remains required.
+
+- Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `ccr-21271488-mmapps`, draft [PR #509](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/509), not merged.
+- Origin: a cross-repository audit (Titan / Crystal / native-kernel) and its review. The review limited this first change to:
+  - provable repeats only;
+  - provenance preserved;
+  - the full path to the provider prompt;
+  - an explicit Observer failure status.
+
+  Claim-level answer support is a separate change.
+- **FactsPack** (`core/facts_pack.py`):
+  - `_dedup_semantic` (token overlap > 0.7, winner by confidence) is replaced by `_dedup_exact_record_repeats`. It collapses only the same real `fact_id` with an identical record payload (every `PackedFact` field except `retrieval_score`, enrichment fields included) and keeps the strongest `retrieval_score`. External review (same day): the first version left `context_applicability`, `causal_summary` and `living_context` out of the key; fixed, with tests per field, a guard against future fields, and a mutation control of 8 mutants (all killed).
+  - Before: records differing by negation, condition, `L1`/`L2`, status, number or argument order were dropped on `/query`, `/chat` and `/chat/stream` before the LLM, with no `excluded_facts` entry.
+- **Observer** (`core/observer.py`):
+  - Before: a raised check became `res = None`, so the verdict could stay `allow` / `clean`.
+  - Now: flag `check_unavailable`, decision at least `warn`, `details["unavailable_checks"]` with check name and exception type, no exception text.
+  - Observer is default-off in code, set to `1` in `docker-compose.prod.yml:100`, and passive (only `/query` calls it).
+- Reproduced before / passing after:
+  - `tests/test_facts_pack_distinct_records_preserved.py`: 10 failing on base.
+  - `tests/test_query_prompt_preserves_distinct_facts.py`: `server.query` → `pipeline.run` → FactsPack → `_build_system_prompt` → fake `core.llm_router.chat_complete`. It checks the provider-bound prompt line by line and after `sanitize_remote_system_prompt`. On base only the `*-a` records reached the API response (the prompt side was checked with a standalone script; the committed test stops at the API-response assertion).
+  - `tests/test_observer_check_unavailable.py`: 4 failing on base. With `truth_policy.decide` raising, the base verdict was `allow` / `clean`.
+- Not changed, deliberately:
+  - Prompt serialization still omits `fact_id` / `epistemic_state`. PR #453 pins that in `tests/test_prompt_epistemic_boundary.py`; changing it is an open policy decision.
+  - `OutputFaithfulnessChecker`, `ResponseGuardian` and the LLM answer path are unchanged.
+  - Residual risks recorded in `KNOWN_RISKS.md`: claim-level support, and prepared embedding batches after erasure.
+- Second-pass verification (2026-11-09; independent verifiers, some with a devil's-advocate second pass) corrected this entry and `KNOWN_RISKS.md`:
+  - The faithfulness checker is not pipeline-only: Observer runs it on the `/query` LLM answer when `ENABLE_OBSERVER=1`, which `docker-compose.prod.yml` sets. It reports a contradicting answer clean.
+  - The embedding-writer risk is latent: no non-test caller exists and the contract is marked `UNWIRED`.
+  - Tests were strengthened after a mutation check: key fields, empty-string id, max-score order, all four Observer checks, audit-chain path.
+  - Full-suite count: 4880 tests collected on the branch (4864 on main); the 4881 / 4865 in the first PR text counted one module skipped at collection.
+  - Separate issue: [#510](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/510), the BM25 `s > 0` filter. Its blast radius is the NGram candidate set (at most 50), not store size.
+- Documentation impact: `GITHUB_ONLY` (focused bug fixes plus narrowed / recorded risks). Notion: not updated by this change.
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
