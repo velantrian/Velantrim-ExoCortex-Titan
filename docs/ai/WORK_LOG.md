@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-16 — PR #500 synchronized with current main
+
+Preserved missing-partner artifact guards and both partial-ESM regressions while merging main `485c4b0906ec35829ff7231c6276bf7d817f096f`. Resolved the test overlap using the current `REL_CONTRADICTS` contract, retaining both regression scenarios. **40 focused TruthMaintenance tests passed**; no main merge or runtime activation.
+
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
 - Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.
 - Contract: default behaviour and the PR #453 prompt contract are unchanged. Full text in `KNOWN_RISKS.md`.
