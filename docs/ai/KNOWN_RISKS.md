@@ -1,5 +1,16 @@
 # ⚠️ Known Risks and Required Proof
 
+## 2026-11-16 — Audit remediation: MCP input and lifecycle budgets (draft branch, not merged)
+
+Audit C08/A18/A19: configurable streamed HTTP body, batch and JSON depth budgets reject before dispatch. Invalid JSON numbers/UTF-8 no longer produce HTTP 500. Synchronous tools use the existing bounded ASGI thread pool. Session metadata expires after one idle hour with a 4096-entry LRU bound; mutexes live only while held/waited on. Reader source-document size is unchanged. Authentication/capability and operation-owned idempotency remain authoritative; cross-process serialization, tool timeouts and credential quotas remain separate limitations.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+All MCP regressions: **71 passed**, including real Uvicorn chunked HTTP, bounds, event-loop responsiveness, TTL and capability/idempotency/session serialization. Ruff changed paths and mypy core passed. See ADR-2026-11-16-mcp-input-and-lifecycle-budgets.md.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 ## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
 
 Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
