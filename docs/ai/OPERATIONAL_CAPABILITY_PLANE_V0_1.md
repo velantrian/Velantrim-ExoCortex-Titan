@@ -60,7 +60,18 @@ The caller must provide an already-effective capability when used behind a trans
 
 It is read-only. A failed doctor returns a non-zero CLI exit status.
 
-## Deliberately excluded from v0.1
+## Later bounded increments (not part of this plane module)
+
+The capability plane itself remains read/diagnostic only. Related operational
+increments now live beside it rather than inside it:
+
+- MCP side-effect idempotency: [`MCP_SIDE_EFFECT_IDEMPOTENCY_V0_1.md`](MCP_SIDE_EFFECT_IDEMPOTENCY_V0_1.md)
+- MCP session serialization for side-effecting tools:
+  [`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md)
+- sandbox contracts exist under `core/sandbox/` (tested; runtime not wired)
+
+Still deliberately excluded from the capability-plane module and from current
+OpenClaw-adoption follow-through:
 
 - no new Gateway implementation;
 - no Telegram/WhatsApp/Slack adapters;
@@ -68,13 +79,9 @@ It is read-only. A failed doctor returns a non-zero CLI exit status.
 - no background task runtime;
 - no plugin marketplace;
 - no multi-agent routing;
-- no sandbox implementation;
+- no sandbox runtime wiring / policy-vs-elevated split yet;
 - no new authenticated identity system;
-- no side-effect idempotency layer yet;
-- no session serialization changes yet;
 - no changes to TruthGate, Guardian, Canon, Reader authority, Soul identity semantics, or Continuum continuity semantics.
-
-Those are separate bounded increments only after this foundation is reviewed.
 
 ## Authority boundary
 

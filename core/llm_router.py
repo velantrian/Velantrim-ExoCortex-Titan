@@ -16,6 +16,12 @@ import httpx
 
 from core.policy_kernel import _normalize_data_mode
 
+from core.llm_context_budget import (
+    context_overflow_message,
+    enforce_message_char_limit,
+    looks_like_context_overflow,
+    message_char_limit_for_provider,
+)
 from core.remote_egress import (
     ensure_remote_egress_allowed,
     sanitize_remote_system_prompt,
@@ -23,8 +29,10 @@ from core.remote_egress import (
 
 logger = logging.getLogger(__name__)
 
-_DEEPSEEK_MESSAGE_CHAR_LIMIT = 4000
-_TRUNCATED_SUFFIX = "\n...[truncated by Velantrim console]"
+# The former fixed ``_DEEPSEEK_MESSAGE_CHAR_LIMIT = 4000`` cut every DeepSeek
+# message silently. The limit is now optional (DEEPSEEK_MESSAGE_CHAR_LIMIT, off
+# by default) and, when set, enforced by refusal, never by truncation. See
+# core/llm_context_budget.py.
 
 _CONNECTIVITY_PROBE_PROMPT = "Ответь одним словом: OK"
 _CONNECTIVITY_PROBE_SYSTEM = "Ты помощник Velantrim."
@@ -92,6 +100,13 @@ def _http_error(provider: str, resp: httpx.Response) -> LlmProviderRequestError:
         detail = _format_api_error_detail(payload)
     except Exception:
         detail = (resp.text or "")[:400] or resp.reason_phrase
+    if looks_like_context_overflow(resp.status_code, detail):
+        return LlmContextOverflowError(
+            provider=provider,
+            status_code=resp.status_code,
+            detail=detail,
+            message=context_overflow_message(provider, resp.status_code),
+        )
     hints = {
         401: " (неверный или просроченный API ключ)",
         402: " (недостаточно баланса на аккаунте)",
@@ -229,6 +244,16 @@ class LlmProviderRequestError(ValueError):
         self.retryable = status_code in {408, 429} or status_code >= 500
 
 
+class LlmContextOverflowError(LlmProviderRequestError):
+    """Provider rejected the request as larger than the model context window.
+
+    Titan does not count tokens, so this provider answer is the authoritative
+    overflow signal. Nothing was shortened to make the request fit.
+    """
+
+    code = "llm_context_overflow"
+
+
 def _resolve_model(cfg: LlmCallConfig) -> str:
     if cfg.model and str(cfg.model).strip():
         return str(cfg.model).strip()
@@ -256,11 +281,14 @@ def resolve_llm_execution_identity(cfg: LlmCallConfig) -> LlmExecutionIdentity:
 
 
 def message_content_char_limit_for_provider(provider: str) -> int | None:
-    """Return a hard per-message character limit enforced by the router."""
+    """Configured per-message character limit enforced (by refusal) by the router.
 
-    if (provider or "").strip().lower() == "deepseek":
-        return _DEEPSEEK_MESSAGE_CHAR_LIMIT
-    return None
+    ``None`` (the default) means Titan applies no per-message limit; only the
+    provider's own context window applies. Set ``DEEPSEEK_MESSAGE_CHAR_LIMIT``
+    to opt in for DeepSeek.
+    """
+
+    return message_char_limit_for_provider(provider)
 
 
 def _openai_message_text(message: dict[str, Any]) -> str:
@@ -329,30 +357,19 @@ def _deepseek_request_body(
     return body
 
 
-def _truncate_message_content(
-    text: str,
-    limit: int = _DEEPSEEK_MESSAGE_CHAR_LIMIT,
-) -> str:
-    value = str(text or "")
-    if len(value) <= limit:
-        return value
-    keep = max(0, limit - len(_TRUNCATED_SUFFIX))
-    return value[:keep].rstrip() + _TRUNCATED_SUFFIX
-
-
 def compact_messages_for_deepseek(
     messages: list[dict[str, str]],
     *,
-    limit: int = _DEEPSEEK_MESSAGE_CHAR_LIMIT,
+    limit: int | None = None,
 ) -> list[dict[str, str]]:
-    """DeepSeek rejects overlong string fields; keep every content string bounded."""
-    compacted: list[dict[str, str]] = []
-    for msg in messages or []:
-        role = str(msg.get("role") or "user")
-        content = _truncate_message_content(str(msg.get("content") or ""), limit)
-        if content.strip():
-            compacted.append({"role": role, "content": content})
-    return compacted
+    """Drop empty messages; refuse, never truncate, an over-limit message.
+
+    ``limit`` defaults to the configured ``DEEPSEEK_MESSAGE_CHAR_LIMIT`` (unset
+    = no Titan limit). An over-limit message raises ``LlmContextLimitError``
+    before any request is sent. The same policy applies to every DeepSeek
+    model (Flash and Pro).
+    """
+    return enforce_message_char_limit(messages, provider="deepseek", limit=limit)
 
 
 def _llm_capability(data_mode: str, *, quick_ping: bool = False) -> str:
@@ -910,6 +927,7 @@ async def test_connection(cfg: LlmCallConfig) -> dict[str, Any]:
 
 __all__ = [
     "LlmCallConfig",
+    "LlmContextOverflowError",
     "LlmExecutionIdentity",
     "LlmProviderRequestError",
     "LlmTransportTimeoutError",

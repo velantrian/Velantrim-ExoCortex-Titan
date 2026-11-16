@@ -447,6 +447,16 @@ core/code_structural_memory/                  CSM contracts + Stage C scanner li
 core/multilingual_router.py                   existing multilingual patch + lifecycle ownership
 core/pipeline.py                              existing runtime/query route owner
 
+MCP operational transport (wired server surface; no Canon authority)
+core/mcp_transport.py                         JSON-RPC handler + idempotency + session side-effect locks
+api/mcp_gateway.py                            authenticated StreamableHTTP / SSE gateway
+core/capability_plane.py                      read/diagnostic manifest/explain/doctor over ToolRegistry
+docs/ai/MCP_SIDE_EFFECT_IDEMPOTENCY_V0_1.md
+docs/ai/MCP_SESSION_SERIALIZATION_V0_1.md
+tests/test_mcp_idempotency*.py
+tests/test_mcp_session_serialization.py
+tests/test_capability_plane.py
+
 Hardened production local backup/restore (PH-2A) · DRAFT UNTIL MERGE · NOT PRODUCTION AUTHORIZED
 docker-compose.prod.yml                       named volume velantrim_prod_data
 docs/operations/hardened-production-profile.md §9–§10

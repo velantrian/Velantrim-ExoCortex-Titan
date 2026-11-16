@@ -214,12 +214,30 @@ def fact_to_highlight(fact: dict[str, Any], lang: str = "ru") -> dict[str, Any]:
 def build_block_memory_for_prompt(
     block_memory: list[dict[str, Any]] | None,
     lang: str = "ru",
+    *,
+    report: Any = None,
 ) -> str:
-    """Блок временной памяти (консоль, не POST /facts)."""
+    """Блок временной памяти (консоль, не POST /facts).
+
+    Notes are kept whole. At most ``CONSOLE_BLOCK_MEMORY_MAX_ITEMS`` notes
+    (default 40, ``off`` = all) are used; notes left out are recorded in
+    ``report`` (a ``core.llm_context_budget.ContextReport``).
+    """
+    from core.llm_context_budget import BLOCK_MEMORY_MAX_ITEMS_ENV, block_memory_max_items
+
     if not block_memory:
         return ""
+    cap = block_memory_max_items()
+    selected = block_memory if cap is None else block_memory[:cap]
+    if report is not None and cap is not None and len(selected) < len(block_memory):
+        report.record_applied(
+            setting=BLOCK_MEMORY_MAX_ITEMS_ENV,
+            value=cap,
+            affected="block_memory_notes",
+            omitted=len(block_memory) - len(selected),
+        )
     lines: list[str] = []
-    for item in block_memory[:40]:
+    for item in selected:
         claim = " ".join((item.get("claim") or "").split())
         if not claim:
             continue
@@ -238,33 +256,87 @@ def build_block_memory_for_prompt(
     )
 
 
+def _explicit_cut(text: str, limit: int | None, lang: str) -> tuple[str, bool]:
+    """Cut only under an explicitly configured limit, and say so in the text."""
+    if limit is None or len(text) <= limit:
+        return text, False
+    marker = (
+        f" [... shortened to {limit} characters by Titan setting]"
+        if lang == "en"
+        else f" [... сокращено до {limit} символов настройкой Titan]"
+    )
+    return text[:limit].rstrip() + marker, True
+
+
 def build_chat_context_for_prompt(
     history: list[dict[str, Any]] | None,
     previous_summary: str | None,
     lang: str = "ru",
     block_memory: list[dict[str, Any]] | None = None,
+    *,
+    report: Any = None,
 ) -> str:
-    """Блок контекста диалога для system prompt."""
+    """Блок контекста диалога для system prompt.
+
+    No silent cuts. Defaults: the previous-chat summary and each dialogue turn
+    are passed whole; the dialogue keeps the most recent
+    ``LLM_CHAT_HISTORY_MAX_TURNS`` turns (default 20). Optional caps
+    ``CONSOLE_PREVIOUS_SUMMARY_MAX_CHARS`` / ``CONSOLE_HISTORY_TURN_MAX_CHARS``
+    shorten with a visible marker. Every applied limit is recorded in
+    ``report`` (a ``core.llm_context_budget.ContextReport``) when given.
+    """
+    from core.llm_context_budget import (
+        HISTORY_MAX_TURNS_ENV,
+        HISTORY_TURN_MAX_CHARS_ENV,
+        PREVIOUS_SUMMARY_MAX_CHARS_ENV,
+        history_max_turns,
+        history_turn_max_chars,
+        previous_summary_max_chars,
+    )
+
     parts: list[str] = []
-    block_ctx = build_block_memory_for_prompt(block_memory, lang)
+    block_ctx = build_block_memory_for_prompt(block_memory, lang, report=report)
     if block_ctx:
         parts.append(block_ctx)
     if previous_summary and previous_summary.strip():
+        summary_cap = previous_summary_max_chars()
+        summary, cut = _explicit_cut(previous_summary.strip(), summary_cap, lang)
+        if cut and report is not None and summary_cap is not None:
+            report.record_applied(
+                setting=PREVIOUS_SUMMARY_MAX_CHARS_ENV,
+                value=summary_cap,
+                affected="previous_chat_summary",
+                shortened=1,
+            )
         if lang == "en":
             parts.append(
                 "PREVIOUS CHAT (user started a new session; keep continuity):\n"
-                + previous_summary.strip()[:4000]
+                + summary
             )
         else:
             parts.append(
                 "ПРЕДЫДУЩИЙ ЧАТ (пользователь открыл новую сессию; сохраняй связность):\n"
-                + previous_summary.strip()[:4000]
+                + summary
             )
     if history:
         lines: list[str] = []
-        for turn in history[-20:]:
+        turns_cap = history_max_turns()
+        turn_chars_cap = history_turn_max_chars()
+        selected = history if turns_cap is None else history[-turns_cap:]
+        if report is not None and turns_cap is not None and len(selected) < len(history):
+            report.record_applied(
+                setting=HISTORY_MAX_TURNS_ENV,
+                value=turns_cap,
+                affected="dialogue_block_turns",
+                omitted=len(history) - len(selected),
+            )
+        shortened = 0
+        for turn in selected:
             role = (turn.get("role") or "user").lower()
-            content = " ".join((turn.get("content") or "").split())[:600]
+            content, cut = _explicit_cut(
+                " ".join((turn.get("content") or "").split()), turn_chars_cap, lang
+            )
+            shortened += int(cut)
             if not content:
                 continue
             if lang == "en":
@@ -279,6 +351,13 @@ def build_chat_context_for_prompt(
                 else "ТЕКУЩИЙ ДИАЛОГ (эта сессия):"
             )
             parts.append(header + "\n" + "\n".join(lines))
+        if shortened and report is not None and turn_chars_cap is not None:
+            report.record_applied(
+                setting=HISTORY_TURN_MAX_CHARS_ENV,
+                value=turn_chars_cap,
+                affected="dialogue_block_turns",
+                shortened=shortened,
+            )
     return "\n\n".join(parts)
 
 

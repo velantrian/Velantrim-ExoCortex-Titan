@@ -1,5 +1,65 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
+
+Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
+
+Contract, explicit and opt-in: `QueryRequest.evidence_labels` (default `false`). When it is `false`, nothing changes: the records part of the prompt is byte-identical to before (tested against the unlabelled builder). When it is `true`:
+- The code creates labels `[ev_1]`, `[ev_2]`, ... in fact order and prefixes each record line with its label; one instruction sentence tells the model to cite by label and that a label does not mean the record supports the statement. A record without a real `fact_id` gets no label.
+- The map label -> `fact_id` belongs to this request only: it is returned as `evidence_labels`, stored in this request's trace metadata, and never shared.
+- Internal ids and epistemic fields still stay out of the prompt.
+- Label-like text inside a record (for example `[ev_2]` in an imported document) is neutralized in every text field that is inserted into the prompt (the claim and the source): `[ev_2]` becomes `[ ev_2]`, any case and spacing. The neutralization runs on the line **after** the source has been wrapped in brackets, because a source that starts with `ev_2]` becomes a fake `[ev_2]` once the template adds `[`; the one real label of the line is added outside that pass. A reference is valid only if the exact ASCII label (`[ev_N]`, N from 1 to 9999, no leading zero) is in this request's map.
+- A label belongs to one presented record. An exact repeat (same `fact_id`, same claim and source) reuses its label. The same `fact_id` with different shown content gets a separate label for each, and every such label is `ambiguous`: the id alone does not say which presented record an answer relied on.
+- `reference_check` reports which labels in the answer exist in the map (`valid`), which do not (`unknown`) and which valid ones are `ambiguous`. It checks **existence only**.
+- Only the exact form `[ev_N]` is a reference. Label-like text in any other form (`[ev_1, ev_2]`, `(ev_3)`, `[EV_4]`, `ev_5` without brackets) is not counted as a reference; it is listed in `reference_check.malformed` (at most 20 items of 24 characters), so it is never silently ignored. The prompt instruction asks for one label per pair of brackets and uses only letter placeholders (`[ev_N]`), so it adds no real-looking label to the prompt.
+- The opt-in is the switch, not the presence of labels: when no record has a real `fact_id`, or every labelled record was omitted by a size limit, the record text is still neutralized, the prompt carries a short instruction not to invent labels (`PROMPT_EMPTY_INSTRUCTION`, not longer than the labelled one, because the size-limit selection reserves room for that), the response carries an empty `evidence_labels` map, and a label in the answer is reported as `unknown`.
+- The map describes the records that were **sent**, numbered `ev_1..ev_k` without gaps. `_prepare_evidence_prompt` selects the records that fit a configured message-size limit (#516), numbers only those, and rebuilds the prompt for exactly them, keeping the "N of M records were not sent" notice and the limit report. A label for an omitted record does not exist, so a reference to it is `unknown`.
+- The map is published only for an answer the model produced. `evidence_lifecycle` says why it is absent otherwise: `disabled` (opt-in off), `model_not_called` (`use_llm=false`, a pipeline error, or a truth-policy block), `prompt_rejected` (the prompt could not be built or sent, for example the mandatory instructions do not fit the limit), `model_failed` (the call was made and failed), `no_answer` (the call returned, but without model-authored text: an empty or whitespace-only string, or Titan's own Gemini placeholder `(пустой ответ Gemini)`), `published` (the model answered with text; `evidence_labels` and `reference_check` are set). In every other state both are `null` and the trace metadata carries no map. The `[LLM error: ...]` text is never presented as a cited answer.
+- A label shown to the model is identified by the claim, the source and the confidence the prompt shows; two records with one `fact_id` that differ in any of them get separate, ambiguous labels.
+
+Tests: `tests/test_evidence_labels.py` (58 tests, with a targeted mutation control of 33 mutants, 32 killed and 1 equivalent (returning the first-pass report instead of the rebuilt one: with a forced selection both hold the same data), each killed one failing at least one test: no neutralization of the claim or the source, an empty map that stops neutralizing, loses its instruction or stops the check, the renumbering pass skipped or keeping the full map or losing the omission report, the map published before the model answered or although it was not called, a failed model reported as a rejected prompt, a trace that keeps the map of an unanswered prompt, a fingerprint that ignores content or confidence, ambiguity not built or not reported, malformed text not reported, exact labels reported as malformed, an unknown label reported valid, compatibility forms not folded or not neutralized, an instruction that points below the records or contains a real-looking label): label order and skipped ids, independent maps per request, neutralization, the exact-label rule, default prompt unchanged, opt-in prompt, a forged label from a source document is `unknown`, the map is stored with the trace.
+
+Remaining limits:
+- A valid label shows which record an answer points at; it does not show that the record supports the statement. A claim-level support check is still open (#512). Nothing here blocks or changes an answer: `reference_check` is reported only.
+- Only `/query` is covered; `/chat`, `/chat/stream` and `/query/roles` are not.
+- The model may ignore the labels or cite them wrongly; there is no measurement of how often. A grouped citation such as `[ev_1, ev_2]` is reported as `malformed`, not resolved to its records.
+- A sentence of the answer that consists of labels only is counted by the lexical faithfulness checker as an unsupported sentence (measured: 3 sentences, one of them labels only, score 0.667 instead of 1.0). With Observer on, an answer that puts labels in separate sentences can get a lower faithfulness score. Not changed here.
+- Neutralization and the malformed report fold each character with NFKC first, so full-width forms such as `［ｅｖ＿１］` are covered. Homoglyphs from other scripts (for example a Cyrillic `е`) and zero-width characters are not.
+- Records that share a `fact_id` but differ in content do not arise through `/query` (the pipeline takes content by `fact_id`); the ambiguity handling covers other callers of the builder.
+- When the model fails or is not called, the map of what would have been sent is not kept anywhere (neither in the response nor in the trace); only `evidence_lifecycle` is recorded.
+- Label order follows the order of the facts of that request, so the same record can carry a different label in another request.
+- The stored map holds internal `fact_id`s in the trace metadata, like `source_fact_ids` already does.
+
+## Reduced risk — silent truncation of LLM context (fixed 4000-character DeepSeek cut removed)
+
+Until this change `core/llm_router.py` cut **every** DeepSeek message (system, history and the current question) to 4000 characters (`_DEEPSEEK_MESSAGE_CHAR_LIMIT`), for every DeepSeek model (Flash and Pro), on all router paths: `chat_complete` (`/query`, Reader, other `chat_complete` callers), `chat_complete_messages` (`/chat`) and `stream_chat_events` (`/chat/stream`). The cut happened after the prompt was assembled, so the tail of the question, of the instructions or of the memory block could disappear with only an in-text `...[truncated by Velantrim console]` suffix; the caller and the user were not told. `tests/test_evidence_use_contract.py` documented the loss (tail evidence and an F2 exception lost at the S -> T boundary). The console also cut `previous_chat_summary` to 4000 characters, dialogue-block turns to 600 characters, and silently capped history at 20 turns and `block_memory` at 40 notes.
+
+Now (`core/llm_context_budget.py`):
+- **Off by default:** no Titan per-message limit. `DEEPSEEK_MESSAGE_CHAR_LIMIT` (positive integer) opts in. There is no replacement universal number.
+- **When set, never truncation:** the current question and mandatory instructions must fit or the request is refused before sending (`llm_context_limit: …`, HTTP 413 on `/chat`, an SSE `error` on `/chat/stream`, `[LLM error: llm_context_limit …]` on `/query`; no offline substitute). Memory records and history turns are left out **whole**; the system prompt then says how many records were not sent, and the request's `context_report` lists them (position and `fact_id`, never text).
+- **Report:** `context_report` on `/chat`, `/query` and the final `/chat/stream` event, plus an SSE `context` event before tokens; the console shows a toast when `limits_applied` is true. `ContextReport.sent_facts()` is the list any per-request citation map (`[ev_N]`, draft PR #515) must be built from.
+- **Console limits are separate settings**, not model response limits (`max_tokens` is unchanged): `LLM_CHAT_HISTORY_MAX_TURNS` (default 20, now reported; `off` = all), `CONSOLE_BLOCK_MEMORY_MAX_ITEMS` (default 40, now reported; `off` = all), `CONSOLE_PREVIOUS_SUMMARY_MAX_CHARS` and `CONSOLE_HISTORY_TURN_MAX_CHARS` (default off; when set, the cut is marked in the prompt and reported).
+- **Provider context window:** Titan does not count tokens (`token_count: not_computed`). A provider "context too long" rejection becomes `LlmContextOverflowError` (`llm_context_overflow: …`, not retryable) on the normal and streaming paths. Detection is by provider error text and may miss unfamiliar wordings.
+- **Reader:** without a limit, chunks use `LlmReaderLimits.chunk_chars` (6000) instead of being shrunk to fit 4000; with a limit, chunks are planned to fit. Overlapping chunks cover the whole source; a tail beyond `max_chunks` is still reported as `CHUNK_BUDGET_EXHAUSTED` (PARTIAL). A configured limit smaller than the Reader instructions is refused at construction.
+- **Gemini explicit cache:** the cache key hashes the whole system text (was its first 8000 characters) and the cached system is no longer cut to 30000 characters.
+
+Remaining limits: no token counting or pre-flight context-window check; the overflow match is heuristic; only DeepSeek has a configurable per-message limit (other providers had none and still have none); `/query/roles` and other `chat_complete` callers get the router guard but no `context_report`; the opt-in `[ev_N]` map of draft PR #515 is not on main and must be built from sent records when it lands; `app/telegram_ingest.py` still stores Telegram text cut to 4000 characters (ingest, not an LLM request). Tests: `tests/test_llm_context_no_silent_truncation.py` (fake HTTP client, exact request bodies, Flash and Pro, normal and streaming, `/chat`, `/chat/stream`, `/query`, Reader).
+
+## Reduced risk — MCP same-session side-effect interleaving (process-local)
+
+Competing side-effecting MCP `tools/call` runs that share an explicit
+`Mcp-Session-Id` (or the anonymous caller+capability fallback) are now
+serialized by a process-local lock. Idempotency remains a separate retry
+shield. An audit of PR #497 reproduced a delete-during-call race: deleting the
+session lock entry let a later request with the same ID enter a replacement
+lock while the first operation still ran. A follow-up change is proposed to
+retain the entry until current and waiting operations leave; deterministic
+unit and authenticated HTTP regression tests cover the case. This correction
+is not merged until its follow-up PR is accepted. Remaining limits: no
+cross-worker/multi-process lock, no cancel-on-supersede generation tokens, and
+sandbox runtime policy/elevated split still unwired. See
+[`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md).
+
 ## 2026-10-28 — Fixed-payload connectivity probe boundary
 
 The general chat API rejects metadata-only `data_mode="none"`. Connectivity

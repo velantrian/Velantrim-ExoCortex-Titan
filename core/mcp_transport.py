@@ -9,13 +9,15 @@ import threading
 import uuid
 from collections import OrderedDict
 from collections.abc import Mapping
+from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field as dataclass_field
+from typing import Any, ContextManager, Iterator
 
 from core.tool_registry import (
     CAPABILITY_CHAIN,
     PrincipalContext,
+    ToolDef,
     ToolRegistry,
     get_tool_registry,
 )
@@ -203,6 +205,7 @@ class _IdempotencyCache:
 class McpSessionManager:
     def __init__(self) -> None:
         self._sessions: dict[str, str] = {}
+        self._side_effect_locks = _SideEffectSessionLocks()
 
     def create(self, capability: str) -> str:
         sid = str(uuid.uuid4())
@@ -217,6 +220,89 @@ class McpSessionManager:
 
     def delete(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
+        self._side_effect_locks.discard(f"session:{session_id}")
+
+    def side_effect_lock(
+        self,
+        *,
+        session_id: str | None,
+        credential_fingerprint: str | None,
+        capability: str,
+    ) -> ContextManager[None]:
+        """Hold the process-local lock for one side-effect serialization scope."""
+        return self._side_effect_locks.hold(
+            _side_effect_scope(
+                session_id,
+                credential_fingerprint=credential_fingerprint,
+                capability=capability,
+            )
+        )
+
+
+class _SideEffectSessionLocks:
+    """Process-local per-scope mutex map for side-effecting MCP tool calls.
+
+    This serializes competing side-effecting runs that share a session (or the
+    anonymous caller+capability fallback). It is a concurrency shield only: it
+    does not admit Canon writes, grant permission, or claim cross-process,
+    multi-worker, or cancel-on-supersede semantics.
+    """
+
+    def __init__(self) -> None:
+        self._guard = threading.Lock()
+        self._locks: dict[str, _SideEffectLockEntry] = {}
+
+    @contextmanager
+    def hold(self, scope: str) -> Iterator[None]:
+        with self._guard:
+            entry = self._locks.get(scope)
+            if entry is None:
+                entry = _SideEffectLockEntry()
+                self._locks[scope] = entry
+            # Count waiters as well as the current holder so delete cannot
+            # replace the lock while an operation is queued behind it.
+            entry.users += 1
+
+        entry.lock.acquire()
+        try:
+            yield
+        finally:
+            entry.lock.release()
+            with self._guard:
+                entry.users -= 1
+                if entry.users == 0 and entry.discard_when_idle:
+                    if self._locks.get(scope) is entry:
+                        self._locks.pop(scope)
+
+    def discard(self, scope: str) -> None:
+        with self._guard:
+            entry = self._locks.get(scope)
+            if entry is None:
+                return
+            if entry.users:
+                entry.discard_when_idle = True
+            else:
+                self._locks.pop(scope, None)
+
+
+@dataclass
+class _SideEffectLockEntry:
+    lock: threading.RLock = dataclass_field(default_factory=threading.RLock)
+    users: int = 0
+    discard_when_idle: bool = False
+
+
+def _side_effect_scope(
+    session_id: str | None,
+    *,
+    credential_fingerprint: str | None,
+    capability: str,
+) -> str:
+    sid = (session_id or "").strip()
+    if sid:
+        return f"session:{sid}"
+    caller = credential_fingerprint or "api:anon"
+    return f"anon:{caller}:{capability}"
 
 
 class McpHandler:
@@ -269,6 +355,7 @@ class McpHandler:
                 msg_id,
                 capability,
                 params,
+                session_id=session_id,
                 credential_fingerprint=credential_fingerprint,
                 idempotency_key=idempotency_key,
             )
@@ -291,6 +378,7 @@ class McpHandler:
         capability: str,
         params: dict[str, Any],
         *,
+        session_id: str | None = None,
         credential_fingerprint: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
@@ -315,6 +403,44 @@ class McpHandler:
         else:
             return make_error(msg_id, -32602, "Tool arguments must be a JSON object")
 
+        if tool.side_effecting:
+            lock = self.sessions.side_effect_lock(
+                session_id=session_id,
+                credential_fingerprint=credential_fingerprint,
+                capability=capability,
+            )
+            with lock:
+                return self._execute_tools_call(
+                    msg_id,
+                    capability,
+                    name,
+                    tool,
+                    call_kwargs,
+                    credential_fingerprint=credential_fingerprint,
+                    idempotency_key=idempotency_key,
+                )
+
+        return self._execute_tools_call(
+            msg_id,
+            capability,
+            name,
+            tool,
+            call_kwargs,
+            credential_fingerprint=credential_fingerprint,
+            idempotency_key=idempotency_key,
+        )
+
+    def _execute_tools_call(
+        self,
+        msg_id: Any,
+        capability: str,
+        name: str,
+        tool: ToolDef,
+        call_kwargs: dict[str, Any],
+        *,
+        credential_fingerprint: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
         normalized_key: str | None = None
         request_fingerprint: str | None = None
         cache_scope: tuple[str, str, str] | None = None

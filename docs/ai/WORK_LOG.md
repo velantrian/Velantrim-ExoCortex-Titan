@@ -1,3 +1,57 @@
+## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
+
+## 2026-11-16 — PR #500 synchronized with current main
+
+Preserved missing-partner artifact guards and both partial-ESM regressions while merging main `485c4b0906ec35829ff7231c6276bf7d817f096f`. Resolved the test overlap using the current `REL_CONTRADICTS` contract, retaining both regression scenarios. **40 focused TruthMaintenance tests passed**; no main merge or runtime activation.
+
+- Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
+- Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.
+- Contract: default behaviour and the PR #453 prompt contract are unchanged. Full text in `KNOWN_RISKS.md`.
+- Review follow-up: the `source` field is neutralized like the claim; records that share a `fact_id` but differ in shown content get separate labels and are reported `ambiguous`. A targeted mutation control kills five mutants (see `KNOWN_RISKS.md`).
+- Second review (same day): three defects found by probing and fixed. (1) A grouped or otherwise inexact citation (`[ev_1, ev_9]`, `(ev_9)`, `[EV_9]`) was reported as nothing at all; it is now listed in `reference_check.malformed`. (2) With the opt-in on and no labelable record (or every labelled record omitted by a size limit), the record text was not neutralized and the answer was not checked; the opt-in is now the switch. (3) The prompt instruction said the labels were "below" although the records come before it; it now points at the records above, asks for one label per pair of brackets, and uses letter placeholders only. The targeted mutation control now has 14 mutants, all killed; the first run left one alive (the server-side check with an empty map), which got its own `/query` test.
+- External review (same day), verified against the code and by probes: (1) the map was published for any request with the opt-in, also when the model was not called, was blocked by the truth policy, rejected the prompt or failed; it is now published only for an answer the model produced, and `evidence_lifecycle` records why it is absent. (2) The map was built for all retrieved records and then restricted, which left gaps (`ev_1`, `ev_3`); it is now built for the records that were sent and numbered without gaps, while the "records not sent" notice and the limit report are kept (a proposed single-loop variant that shrinks the list lost both; shown with a probe). (3) An empty map now gets a short instruction not to invent labels. (4) Full-width and other NFKC-compatible forms of a label are neutralized in the prompt and reported as malformed. (5) The label identity includes the confidence the prompt shows. Not adopted from the review: the name `evidence_status` (the field is `evidence_lifecycle`); the claim that look-alike forms "disappear silently" was only partly true (a form with an ASCII `ev_1` inside was already reported).
+- Two commits by the repository owner (Velantim) on top of the review round, both reviewed and measured before this text was updated: (1) the caller creates the `ContextReport` and passes it to `_prepare_evidence_prompt`, so a context-limit refusal while the prompt is built still leaves `/query` with a report (five tests); (2) the line is neutralized after the source is wrapped in brackets, closing a case where a source starting with `ev_2]` produced a real-looking `[ev_2]`, and a new lifecycle value `no_answer` keeps the map unpublished when the call returned no model-authored text (empty, whitespace-only, or the Gemini placeholder), four tests. The new value is a contract addition: clients that switch on `evidence_lifecycle` must treat an unknown value as "not published".
+- Evidence: `tests/test_evidence_labels.py` (58 tests) and `tests/test_prompt_epistemic_boundary.py` pass; the default prompt is byte-identical to the unlabelled builder for the records part. Targeted mutation control: 33 mutants, 32 killed, 1 equivalent.
+- Not changed: no answer is blocked or rewritten; `/chat`, `/chat/stream`, `/query/roles` are not covered; reference existence is not claim support (issue #512 stays open).
+- Documentation impact: `GITHUB_ONLY`. Notion: not updated by this change.
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
+## 2026-11-09 — No silent LLM context truncation (fixed 4000-character DeepSeek cut removed)
+
+- Base: `main@1a7141c` (#502). Branch `fix/llm-context-no-silent-truncation-20261109`.
+- Found: `core/llm_router.py` cut every DeepSeek message to 4000 characters for all DeepSeek models on `chat_complete` (`/query`, Reader, other callers), `chat_complete_messages` (`/chat`) and `stream_chat_events` (`/chat/stream`); the Reader shrank chunks to fit it; `core/console_memory.py` cut the previous-chat summary (4000) and dialogue turns (600); history (20 turns) and `block_memory` (40 notes) were capped without a signal.
+- Changed: new `core/llm_context_budget.py`; per-message limit off by default, `DEEPSEEK_MESSAGE_CHAR_LIMIT` opt-in and enforced by refusal or whole-unit omission; `context_report` on `/chat`, `/query`, `/chat/stream` (`context` event + final event); console toast; `LlmContextOverflowError` for provider context rejections; Gemini explicit-cache key/text no longer prefix-cut. Response-length settings (`max_tokens`) unchanged. Access policy (egress lease, data mode, API-key auth) unchanged.
+- Tests: `tests/test_llm_context_no_silent_truncation.py` (new); `tests/test_evidence_use_contract.py`, `tests/test_llm_deepseek_thinking.py`, `tests/test_llm_reader_adapter.py` updated from the old truncation contract to the new one. No real model calls.
+- Status: implemented, tested; wired into `/chat`, `/chat/stream`, `/query` and the router. Not observed on a running instance. Merge is not deployment.
+- Documentation impact: `GITHUB_ONLY` (`docs/ai/KNOWN_RISKS.md`, this log, `config/llm.example.env`).
+
+---
+
+## 2026-11-06 — MCP session serialization merge reconciliation
+
+- Live GitHub confirms [PR #497](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/497) **MERGED** at 08:13:18 UTC as `8ff943a7d154f1c1a185917b107e08f89bcc3892` and [PR #504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504) **MERGED** at 09:56:00 UTC as `109de7be18e5e023d0b7fb6ad43ed47b97af0676`.
+- Main code in `core/mcp_transport.py` tracks holders and waiters per process-local lock entry and defers discard until idle. The contract in `docs/ai/MCP_SESSION_SERIALIZATION_V0_1.md` now describes the behavior and authenticated HTTP regression coverage.
+- PR #504 reports deterministic handler/HTTP regression tests and 63 MCP gateway and related integration tests passing; Ruff and mypy clean. The combined GitHub commit-status endpoint returned no status entries for merge SHA `109de7b…`, so this note does not claim post-merge Actions results.
+- Scope remains process-local. No multi-process/multi-worker serialization, automatic cancellation, runtime activation, Canon mutation, Operator GO, or production authorization is established.
+- The dated #504 Draft / no-merge entry below remains historical evidence of the state when written; this entry supersedes it for current status.
+- Documentation impact: `GITHUB_ONLY`; docs-only reconciliation, no runtime or authority change.
+
+---
+
+## 2026-11-03 — MCP session serialization for side-effecting tools
+
+- Base: `main@5f8bb8c4a4c72fab6b00762da5c3d0b9acf3b754` (#496 docs reconcile).
+- Closes the remaining OpenClaw-adoption invariant for process-local
+  per-session serialization of competing side-effecting MCP `tools/call`
+  runs. Read-only tools stay unlocked. Anonymous calls fall back to
+  `anon:<credential>:<capability>`.
+- Complements existing MCP idempotency; does not claim multi-worker,
+  cancel-on-supersede, sandbox runtime wiring, or Canon authority.
+- Contract: [`MCP_SESSION_SERIALIZATION_V0_1.md`](MCP_SESSION_SERIALIZATION_V0_1.md).
+- Focused tests: `tests/test_mcp_session_serialization.py`.
+- Docs: refresh stale capability-plane “idempotency/session not yet”
+  wording; update OpenClaw adoption required checklist.
+
 ## 2026-11-04 — TruthMaintenance.contradict fail-closed on False ESM
 
 - Base: live `main@fd7793a43967fdbc3640443a9e9a57589efd925b` (#498).
@@ -24,6 +78,29 @@
   notes for #473 (DRAFT/MERGEABLE) and #497 (OPEN/MERGEABLE).
 - Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
 - **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
+## 2026-11-06 — MCP session delete / active side-effect race audit
+
+- Audited PR #497 at `c8d9e3d08bd410eb94305d1ce94d68f2225980ec`.
+- Deterministic offline reproduction confirmed that `DELETE /mcp` removed a
+  held session lock from the map, allowing operation B with the same ID to
+  overlap operation A. The authorized HTTP gateway also reaches this path:
+  API-key-authenticated DELETE clears the binding, and an authenticated POST
+  can resolve the same ID using its supplied capability header.
+- Proposed minimal fix: count holders and waiters; defer lock-map cleanup until
+  the last operation leaves. Session deletion and authorization semantics are
+  otherwise unchanged.
+- Added deterministic handler and HTTP tests. Initial focused run against the
+  unfixed transport failed on overlap; after the fix, serialization, session
+  deletion, and MCP idempotency regression tests passed.
+- Follow-up Draft PR: [#504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504),
+  code/test checkpoint `9f00f7aa1b472bf2431bd59b25bb99bbe54d3f5a`.
+- Hosted CI at that exact code/test SHA: CI `42182682140` SUCCESS, Docker
+  `42182682137` SUCCESS, Stage 9 `42182682105` SUCCESS, Stage 10 `42182682156`
+  SUCCESS. The work-log-only follow-up commit records these results; it does not
+  change the tested code or tests.
+- No merge, runtime activation, expanded authority, or Canon change.
+- Documentation impact: `GITHUB_ONLY`. Notion: `NOT_REQUIRED`.
 
 ## 2026-11-03 — Bilingual docs + status reconciliation
 
