@@ -314,7 +314,9 @@ def plan_query(query: str, domain: str | None = None) -> CrossDomainPlan:
 
             return run_coroutine_sync(plan_query_async(query, domain))
         except Exception as exc:  # noqa: BLE001
-            logger.debug("cross_domain LLM plan fallback: %s", exc)
+            from core.llm_errors import describe_llm_failure, log_llm_failure
+
+            log_llm_failure(logger, describe_llm_failure(exc), exc, route="cross_domain", level="debug")
     return DomainOrchestrator().plan(query, domain)
 
 
@@ -352,7 +354,9 @@ async def plan_query_async(
             plan.llm_raw = raw
             return plan
     except Exception as exc:  # noqa: BLE001
-        logger.debug("plan_query_async: %s", exc)
+        from core.llm_errors import describe_llm_failure, log_llm_failure
+
+        log_llm_failure(logger, describe_llm_failure(exc), exc, route="plan_query_async", level="debug")
     return orch.plan(query, domain)
 
 
