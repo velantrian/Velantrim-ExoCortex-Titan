@@ -592,7 +592,7 @@ def _maybe_cognitive_rerank(
 
 
 def _narrow_candidates(
-    query: str, domain: str | None
+    query: str, domain: str | None, *, use_ngram: bool = True,
 ) -> list[dict[str, Any]]:
     """Шаг 0: NGramIndex pre-filter → filtered_facts.
 
@@ -606,7 +606,7 @@ def _narrow_candidates(
     """
     _RETRIEVE_CAP = 1_000
 
-    if _NGRAM_INDEX is not None and _NGRAM_INDEX.available:
+    if use_ngram and _NGRAM_INDEX is not None and _NGRAM_INDEX.available:
         candidate_ids = list(_NGRAM_INDEX.query(query, limit=50))
         if candidate_ids:
             filtered_facts = get_facts_by_ids(candidate_ids)

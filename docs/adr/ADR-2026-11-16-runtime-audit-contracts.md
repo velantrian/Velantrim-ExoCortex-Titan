@@ -35,6 +35,8 @@ The existing owners retain their decisions; this change repairs execution contra
   and bounded short-cycle DFS (10,000 expansions / 250 ms / 50 outputs). Cycle budget
   exhaustion is explicit, never evidence of acyclicity. Domain bridge filtering is
   rejected as unsupported; full domain semantics are not invented by this patch.
+- Multilingual startup wiring forwards domain and reuses the existing bounded candidate
+  and recall owners. It honors use_ngram and returns explicit lexical retrieval scores.
 - Role requests apply explicit domain/mode via the existing query policy before branch
   generation. Ordinary branch retrieval no longer loads the full store; operational
   failure is separate from empty evidence in BranchResult.retrieval_error_code.

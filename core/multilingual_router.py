@@ -107,6 +107,7 @@ def retrieve_multilingual(
     *,
     top_k: int = 5,
     use_ngram: bool = True,
+    domain: str | None = None,
 ) -> List[Dict[str, Any]]:
     """
     Поиск с учётом языка запроса.
@@ -126,12 +127,13 @@ def retrieve_multilingual(
     else:
         processed_query = query.lower()
 
-    # 2. Retrieval из основной БД
-    try:
-        from core.memory import get_all_facts
-        facts = get_all_facts() or []
-    except Exception:
-        facts = []
+    # Reuse the existing bounded candidate and recall owners. Never materialize
+    # the whole corpus or drop the caller's domain at this wrapper boundary.
+    from core.pipeline import _narrow_candidates
+    from core.recall_policy import filter_facts_for_recall
+    facts = filter_facts_for_recall(
+        _narrow_candidates(processed_query, domain, use_ngram=use_ngram)
+    )
 
     if not facts:
         return []
@@ -143,7 +145,9 @@ def retrieve_multilingual(
         claim = fact.get("claim", "")
         score = _relevance_score(processed_query, claim, lang)
         if score > 0:
-            scored.append((score, fact))
+            scored.append((score, {**fact, "id": fact.get("fact_id"),
+                                    "text": claim, "retrieval_score": score,
+                                    "origin": "multilingual", "retrieval_mode": "lexical"}))
 
     scored.sort(key=lambda x: -x[0])
     return [f for _, f in scored[:top_k]]
@@ -225,6 +229,8 @@ def patch_pipeline_retrieval() -> bool:
         def multilingual_retrieve(query, k=3, database=None, domain=None):
             if database is not None:
                 return original(query, k, database, domain)
+            if domain is not None:
+                return retrieve_multilingual(query, top_k=k, domain=domain)
             return retrieve_multilingual(query, top_k=k)
 
         pipeline.retrieve = multilingual_retrieve

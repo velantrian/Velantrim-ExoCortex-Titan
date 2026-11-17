@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — Preserve bounded retrieval and scope through multilingual wiring
+
+While verifying role scope through real startup wiring, the multilingual wrapper still called get_all_facts and dropped domain. It now reuses the existing bounded candidate owner, forwards domain, honors use_ngram, filters recall eligibility and returns an explicit lexical retrieval score. **69 focused tests passed**, including wrapper lifecycle, pipeline, restricted recall and runtime regressions; clean mypy core passed (356 files). The earlier full count predates this follow-up; a fresh complete suite is running.
+
 ## 2026-11-17 — Runtime clean type-check follow-up
 
 Remote mypy exposed a nullable GraphLab path that the incremental local cache had missed. The path now has an explicit final nonempty default. Clean mypy is rerun with `--no-incremental`; focused graph/bridge regressions are rerun. This does not change a configured nonempty store path. Fresh remote exact-head checks remain required.

@@ -269,3 +269,22 @@ def test_bounded_cycles_match_independent_networkx_oracle_on_small_graphs():
         actual = {normalize(c) for c in graph_lab.cycles(graph, max_len=3, limit=100)}
         expected = {normalize(c) for c in nx.simple_cycles(graph) if len(c) <= 3}
         assert actual == expected
+
+
+def test_multilingual_wrapper_preserves_scope_and_bounded_candidate_owner(monkeypatch):
+    from core import multilingual_router as router, pipeline
+    calls = []
+    def candidates(query, domain, *, use_ngram=True):
+        calls.append((query, domain, use_ngram))
+        return [{"fact_id": "candidate", "claim": "biology knowledge", "epistemic_state": "Validated"}]
+    monkeypatch.setattr(pipeline, "_narrow_candidates", candidates)
+    result = router.retrieve_multilingual("biology", domain="biology", use_ngram=False)
+    assert calls == [("biology", "biology", False)]
+    assert result[0]["fact_id"] == "candidate" and result[0]["retrieval_score"] > 0
+    router.unpatch_pipeline_retrieval()
+    try:
+        assert router.patch_pipeline_retrieval()
+        assert pipeline.retrieve("biology", domain="biology")[0]["fact_id"] == "candidate"
+        assert calls[-1][1:] == ("biology", True)
+    finally:
+        router.unpatch_pipeline_retrieval()
