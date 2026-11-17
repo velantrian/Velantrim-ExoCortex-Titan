@@ -222,7 +222,7 @@ class DenseRetriever:
     compute the same embedding once — harmless, no cache corruption results.
     """
 
-    _AVAILABLE: bool | None = None
+    _MODEL_CACHE_LOCK = threading.RLock()
     # Persistent across instances/candidate-sets — this is the fix: the model
     # is loaded once per process, and a fact's embedding is computed once ever.
     _MODEL_CACHE: dict[str, SentenceTransformer] = {}
@@ -244,6 +244,7 @@ class DenseRetriever:
         # Tensor row depending on backend).
         self._embeddings: list[Any] = []
         self._model: SentenceTransformer | None = None
+        self._available = False
         self._load()
 
     @staticmethod
@@ -284,11 +285,12 @@ class DenseRetriever:
         try:
             from sentence_transformers import SentenceTransformer
 
-            model = DenseRetriever._MODEL_CACHE.get(self._model_name)
-            if model is None:
-                model = SentenceTransformer(self._model_name)
-                DenseRetriever._MODEL_CACHE[self._model_name] = model
-                logger.info("DenseRetriever: загружена модель %s", self._model_name)
+            with DenseRetriever._MODEL_CACHE_LOCK:
+                model = DenseRetriever._MODEL_CACHE.get(self._model_name)
+                if model is None:
+                    model = SentenceTransformer(self._model_name)
+                    DenseRetriever._MODEL_CACHE[self._model_name] = model
+                    logger.info("DenseRetriever: загружена модель %s", self._model_name)
             self._model = model
 
             # Facts without a fact_id can't be cached safely (no stable key) —
@@ -332,24 +334,24 @@ class DenseRetriever:
                     resolved[i] = vec
 
             self._embeddings = [resolved[i] for i in range(len(self._facts))]
-            DenseRetriever._AVAILABLE = True
+            self._available = True
             logger.debug(
                 "DenseRetriever: %d/%d фактов закодировано заново (%d переиспользовано из кэша)",
                 len(missing_idx), len(self._facts), len(self._facts) - len(missing_idx),
             )
         except ImportError:
-            DenseRetriever._AVAILABLE = False
+            self._available = False
             logger.warning(
                 "sentence-transformers не установлен. Dense retrieval недоступен. "
                 "Установите: pip install sentence-transformers"
             )
         except Exception as exc:
-            DenseRetriever._AVAILABLE = False
+            self._available = False
             logger.warning("DenseRetriever: ошибка загрузки — %s", exc)
 
     @property
     def available(self) -> bool:
-        return DenseRetriever._AVAILABLE is True and self._model is not None
+        return self._available and self._model is not None
 
     def retrieve(self, query: str, top_k: int = 50) -> list[tuple[int, float]]:
         """Возвращает (index, cosine_similarity) отсортированные по убыванию."""
@@ -386,36 +388,12 @@ def reciprocal_rank_fusion(
     *ranked_lists: list[tuple[int, float]],
     k: int = 60,
 ) -> list[tuple[int, float]]:
+    """Rank-only RRF: RRF(d) = sum(1 / (k + rank(d))), ranks start at one.
+
+    Input magnitudes do not participate; scaling them cannot affect this fusion.
     """
-    RRF (Cormack et al., 2009) с калибровкой скора (V8.8).
-
-    Формула: RRF(d) = Σ 1/(k + rank(d))
-    k=60 — стандартное значение из оригинальной статьи.
-
-    V8.8 FIX: BM25 и cosine similarity в разных диапазонах
-    (BM25: 0..∞, cosine: -1..1). Перед RRF нормализуем каждый список
-    к единой шкале [0,1] через min-max scaling, чтобы один тип
-    retrieval не доминировал над другим.
-    """
-    # Нормализовать каждый список к [0,1]
-    normalized: list[list[tuple[int, float]]] = []
-    for ranked in ranked_lists:
-        if not ranked:
-            normalized.append([])
-            continue
-        scores = [s for _, s in ranked]
-        min_s, max_s = min(scores), max(scores)
-        if max_s == min_s:
-            # Все одинаковые — оставляем 0.5
-            normalized.append([(idx, 0.5) for idx, _ in ranked])
-        else:
-            normalized.append([
-                (idx, (s - min_s) / (max_s - min_s))
-                for idx, s in ranked
-            ])
-
     rrf_scores: dict[int, float] = {}
-    for ranked in normalized:
+    for ranked in ranked_lists:
         for rank, (idx, _score) in enumerate(ranked, start=1):
             rrf_scores[idx] = rrf_scores.get(idx, 0.0) + 1.0 / (k + rank)
 
@@ -612,13 +590,17 @@ class HybridRetriever:
 
         top_indices = [idx for idx, _ in fused[:top_k]]
 
-        # Stage 4: ego_net_expand — расширить топ-10 графовыми соседями
+        # Graph expansion is an explicit rank channel, never a confidence boost.
+        # Without it the score contract matches retrieve() exactly.
         if use_ego and ego_depth > 0:
             ego_indices = self._ego_net_expand(top_indices, depth=ego_depth)
-            # Объединить топ-indices + ego-соседей (без дубликатов)
-            all_indices = list(dict.fromkeys(top_indices + ego_indices))
-        else:
-            all_indices = top_indices
+            if ego_indices:
+                fused = reciprocal_rank_fusion(
+                    bm25_results, dense_results,
+                    [(idx, 1.0) for idx in ego_indices], k=self._rrf_k,
+                )
+        fused_map = dict(fused)
+        all_indices = [idx for idx, _ in fused]
 
         # Stage 5: greedy_select — собрать в рамках top_k
         retrieved: list[RetrievedFact] = []
@@ -633,8 +615,8 @@ class HybridRetriever:
                 confidence=f.get("confidence", 0.0),
                 bm25_score=bm25_map.get(idx, 0.0),
                 dense_score=dense_map.get(idx, 0.0),
-                rrf_score=next((s for i, s in fused if i == idx), 0.0),
-                final_score=0.0,
+                rrf_score=fused_map[idx],
+                final_score=fused_map[idx],
                 metadata=f.get("metadata", {}),
             ))
 
@@ -721,7 +703,7 @@ class HybridRetriever:
         }
         return [
             fact_index[nid]
-            for nid in neighbor_ids
+            for nid in sorted(neighbor_ids)
             if nid in fact_index
         ]
 
