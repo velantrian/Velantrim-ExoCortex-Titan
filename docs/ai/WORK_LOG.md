@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — TTS default control resolves live modules
+
+The full suite reloads core/API modules, so the unit now resolves them with importlib.import_module before patching the fake synthesizer and its isolated egress check. Production egress denial tests and policy are unchanged. Core-import/server/API order regression is recorded in the PR; no real provider is invoked.
+
 ## 2026-11-16 — Audit remediation: verification coverage and frozen acceptance dependencies (draft branch, not merged)
 
 Audit A20/A26/A27 and C10: Stage 9/10 use the frozen installer; Playwright is locked in browser-tests; Ruff 0.17.5 covers core plus HTTP/app/scripts/utils. Core mypy remains blocking and a Pydantic-aware HTTP profile is added. A separate frozen CI profile runs without BM25/dense models, while full embedding-enabled CI remains. The TruthGate projection test uses deterministic retrieval; TTS defaults and sync/async callback annotations are reconciled. Installed license metadata is recorded as an artifact; unknown metadata and optional PyMuPDF AGPL/commercial obligations remain explicit, without claiming legal certification. No runtime feature is activated.
