@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import threading
+import time
 import uuid
 from collections import OrderedDict
 from collections.abc import Mapping
@@ -203,24 +204,52 @@ class _IdempotencyCache:
 
 
 class McpSessionManager:
-    def __init__(self) -> None:
-        self._sessions: dict[str, str] = {}
+    def __init__(self, *, max_sessions: int = 4096, ttl_seconds: float = 3600) -> None:
+        if max_sessions < 1 or ttl_seconds <= 0:
+            raise ValueError("Session capacity and TTL must be positive")
+        self._sessions: OrderedDict[str, tuple[str, float]] = OrderedDict()
         self._side_effect_locks = _SideEffectSessionLocks()
+        self._guard = threading.RLock()
+        self._max_sessions = max_sessions
+        self._ttl_seconds = ttl_seconds
+
+    def _prune(self, now: float) -> None:
+        while self._sessions:
+            sid, (_, expires) = next(iter(self._sessions.items()))
+            if expires > now and len(self._sessions) <= self._max_sessions:
+                break
+            self._sessions.pop(sid)
+            self._side_effect_locks.discard(f"session:{sid}")
 
     def create(self, capability: str) -> str:
         sid = str(uuid.uuid4())
-        self._sessions[sid] = capability
+        self.bind(sid, capability)
         return sid
 
     def bind(self, session_id: str, capability: str) -> None:
-        self._sessions[session_id] = capability
+        with self._guard:
+            now = time.monotonic()
+            self._prune(now)
+            self._sessions[session_id] = (capability, now + self._ttl_seconds)
+            self._sessions.move_to_end(session_id)
+            self._prune(now)
 
     def get_capability(self, session_id: str) -> str | None:
-        return self._sessions.get(session_id)
+        with self._guard:
+            now = time.monotonic()
+            self._prune(now)
+            entry = self._sessions.get(session_id)
+            if entry is None:
+                return None
+            cap, _ = entry
+            self._sessions[session_id] = (cap, now + self._ttl_seconds)
+            self._sessions.move_to_end(session_id)
+            return cap
 
     def delete(self, session_id: str) -> None:
-        self._sessions.pop(session_id, None)
-        self._side_effect_locks.discard(f"session:{session_id}")
+        with self._guard:
+            self._sessions.pop(session_id, None)
+            self._side_effect_locks.discard(f"session:{session_id}")
 
     def side_effect_lock(
         self,
@@ -270,7 +299,7 @@ class _SideEffectSessionLocks:
             entry.lock.release()
             with self._guard:
                 entry.users -= 1
-                if entry.users == 0 and entry.discard_when_idle:
+                if entry.users == 0:
                     if self._locks.get(scope) is entry:
                         self._locks.pop(scope)
 

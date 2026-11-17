@@ -7,6 +7,13 @@ Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C1
 Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
 
 Focused runtime regressions: **95 passed**; earlier component suite: **104 passed, 5 skipped**. Additional bounded-cycle oracle test and full suite/coverage are running. Ruff core/changed server/tests and mypy core passed. Existing optional parser skips remain explicit. Operational limits: EventBus is volatile process-local delivery, not a durable outbox; mutable injected objects remain caller-owned; GraphLab truncation/budget exhaustion is not proof of no path/cycle.
+## 2026-11-16 — Audit remediation: MCP input and lifecycle budgets (draft branch, not merged)
+
+Audit C08/A18/A19: configurable streamed HTTP body, batch and JSON depth budgets reject before dispatch. Invalid JSON numbers/UTF-8 no longer produce HTTP 500. Synchronous tools use the existing bounded ASGI thread pool. Session metadata expires after one idle hour with a 4096-entry LRU bound; mutexes live only while held/waited on. Reader source-document size is unchanged. Authentication/capability and operation-owned idempotency remain authoritative; cross-process serialization, tool timeouts and credential quotas remain separate limitations.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+All MCP regressions: **71 passed**, including real Uvicorn chunked HTTP, bounds, event-loop responsiveness, TTL and capability/idempotency/session serialization. Ruff changed paths and mypy core passed. See ADR-2026-11-16-mcp-input-and-lifecycle-budgets.md.
 
 Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
 
