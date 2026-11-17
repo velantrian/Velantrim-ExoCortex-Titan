@@ -214,13 +214,9 @@ def test_dense_retriever_dimension_mismatch_happens_before_any_scoring() -> None
     retriever._model = _FakeModel()
     retriever._embeddings = [[_NoMultiply(1.0), _NoMultiply(2.0)]]
 
-    previous_available = DenseRetriever._AVAILABLE
-    DenseRetriever._AVAILABLE = True
-    try:
-        assert retriever.retrieve("query") == []
-        assert _NoMultiply.calls == 0
-    finally:
-        DenseRetriever._AVAILABLE = previous_available
+    retriever._available = True
+    assert retriever.retrieve("query") == []
+    assert _NoMultiply.calls == 0
 
 
 def test_dense_retriever_equal_dimensions_still_score_normally() -> None:
@@ -234,9 +230,5 @@ def test_dense_retriever_equal_dimensions_still_score_normally() -> None:
     retriever._model = _FakeModel()
     retriever._embeddings = [[1.0, 0.0], [0.0, 1.0]]
 
-    previous_available = DenseRetriever._AVAILABLE
-    DenseRetriever._AVAILABLE = True
-    try:
-        assert retriever.retrieve("query", top_k=2) == [(0, 0.5), (1, 0.5)]
-    finally:
-        DenseRetriever._AVAILABLE = previous_available
+    retriever._available = True
+    assert retriever.retrieve("query", top_k=2) == [(0, 0.5), (1, 0.5)]

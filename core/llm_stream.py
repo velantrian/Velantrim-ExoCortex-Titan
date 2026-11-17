@@ -15,6 +15,9 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
+import time
+from collections import OrderedDict
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -38,7 +41,6 @@ from core.llm_router import (
     _http_error,
     _openai_message_text,
     _openai_stream_delta_parts,
-    _openai_stream_delta_text,
     _resolve_model,
     assert_model_allowed,
 )
@@ -51,8 +53,37 @@ logger = logging.getLogger(__name__)
 
 _GEMINI_API_BASE = "https://generativelanguage.googleapis.com"
 
-# Кэш explicit Gemini: ключ → имя cachedContents
-_gemini_explicit_cache: dict[str, str] = {}
+# Provider cache handles are bounded, expiring process-local hints.
+_GEMINI_CACHE_MAX_ENTRIES = 128
+_GEMINI_CACHE_TTL_SECONDS = 3540.0  # provider TTL 3600s, one-minute safety margin
+_gemini_explicit_cache: OrderedDict[str, tuple[str, float]] = OrderedDict()
+_gemini_cache_lock = threading.RLock()
+
+
+def _gemini_cache_lookup(key: str) -> str | None:
+    with _gemini_cache_lock:
+        now = time.monotonic()
+        for stale in [k for k, (_, expires) in _gemini_explicit_cache.items() if expires <= now]:
+            _gemini_explicit_cache.pop(stale, None)
+        value = _gemini_explicit_cache.get(key)
+        if value is None:
+            return None
+        _gemini_explicit_cache.move_to_end(key)
+        return value[0]
+
+
+def _gemini_cache_store(key: str, name: str) -> None:
+    with _gemini_cache_lock:
+        _gemini_explicit_cache[key] = (name, time.monotonic() + _GEMINI_CACHE_TTL_SECONDS)
+        _gemini_explicit_cache.move_to_end(key)
+        while len(_gemini_explicit_cache) > _GEMINI_CACHE_MAX_ENTRIES:
+            _gemini_explicit_cache.popitem(last=False)
+
+
+def _gemini_cache_invalidate(key: str) -> None:
+    with _gemini_cache_lock:
+        _gemini_explicit_cache.pop(key, None)
+
 
 
 def normalize_chat_history(
@@ -190,8 +221,9 @@ async def _gemini_ensure_explicit_cache(
     if len(system) < min_chars:
         return None
     key = _gemini_cache_key(cfg, system)
-    if key in _gemini_explicit_cache:
-        return _gemini_explicit_cache[key]
+    cached = _gemini_cache_lookup(key)
+    if cached is not None:
+        return cached
 
     body = {
         "model": f"models/{model}",
@@ -224,7 +256,7 @@ async def _gemini_ensure_explicit_cache(
             data = resp.json()
             name = data.get("name")
             if name:
-                _gemini_explicit_cache[key] = name
+                _gemini_cache_store(key, name)
                 return name
     except Exception as exc:
         logger.info("Gemini explicit cache: %s", exc)
@@ -405,6 +437,15 @@ async def _gemini_complete_messages(
             model=model,
             body=body,
         )
+        if cached_name and resp.status_code == 404:
+            # A missing/expired cachedContents handle must not poison all future
+            # calls. Retry once without the cache, keeping the complete system.
+            _gemini_cache_invalidate(_gemini_cache_key(cfg, system))
+            cached_name = None
+            body.pop("cachedContent", None)
+            if system:
+                body["systemInstruction"] = {"parts": [{"text": system}]}
+            resp = await _gemini_post(cfg, api_version=api_version, model=model, body=body)
         if resp.status_code < 400:
             break
         if api_version == "v1beta" and resp.status_code in (403, 404):
@@ -421,22 +462,6 @@ async def _gemini_complete_messages(
     text = "\n".join(texts).strip() or "(пустой ответ Gemini)"
     return text, _usage_from_gemini_payload(data)
 
-
-def _parse_openai_sse_chunk(line: str) -> str | None:
-    if not line.startswith("data:"):
-        return None
-    payload = line[5:].strip()
-    if payload == "[DONE]":
-        return None
-    try:
-        data = json.loads(payload)
-    except json.JSONDecodeError:
-        return None
-    choices = data.get("choices") or []
-    if not choices:
-        return None
-    delta = choices[0].get("delta") or {}
-    return _openai_stream_delta_text(delta) or None
 
 
 async def stream_chat_events(
