@@ -51,16 +51,15 @@ def ingest_telegram_message(
     user_s = str(user_id) if user_id is not None else "unknown"
     source = f"telegram:{chat_s}"
 
-    from core.memory import get_fact
+    from core.memory import get_fact, store_raw_text
+    from core.cognitive_store import is_cognitive_store_enabled, save_fact_dict_result
+    from core.write_result import ACCEPTED_WRITE_STATUSES
 
-    fact_id = f"tg_{chat_s}_{message_id or uuid.uuid4().hex[:10]}"
-    if get_fact(fact_id):
-        fact_id = f"tg_{uuid.uuid4().hex[:12]}"
-
+    # Stable delivery identity; 0 is a valid message id. No random retry identity.
+    delivery = str(message_id) if message_id is not None else uuid.uuid4().hex
+    fact_id = f"tg_{chat_s}_{delivery}"
     metadata: dict[str, Any] = {
-        "channel": "telegram",
-        "chat_id": chat_s,
-        "user_id": user_s,
+        "channel": "telegram", "chat_id": chat_s, "user_id": user_s,
         "ingest_path": "telegram_l0",
     }
     if message_id is not None:
@@ -70,65 +69,32 @@ def ingest_telegram_message(
     if user_s != "unknown":
         metadata["somatic_marker"] = "neutral"
 
-    from core.cognitive_store import is_cognitive_store_enabled, save_fact_dict
-
-    if is_cognitive_store_enabled():
-        save_fact_dict(
-            {
-                "fact_id": fact_id,
-                "claim": body,
-                "source": source,
-                "confidence": 0.75,
-                "metadata": metadata,
-                "raw_input": body,
-            },
-            ensure_raw=True,
-        )
-        stored = get_fact(fact_id)
-        raw_id = (stored or {}).get("derived_from")
-        return {
-            "ok": True,
-            "raw_id": raw_id,
-            "fact_id": fact_id,
-            "source": source,
-            "fact": stored,
-            "deduplicated_raw": False,
-            "via": "cognitive_store",
-        }
-
-    from core.memory import link_raw_to_fact, store_fact, store_raw_text
-
-    raw_id = store_raw_text(
-        body,
-        source=source,
-        source_type="telegram",
+    # L0 is immutable and content-addressed. Its unique hash also deduplicates
+    # concurrent deliveries; it may remain as input evidence after L1 rejection.
+    raw_id = store_raw_text(body, source=source, source_type="telegram")
+    result = save_fact_dict_result(
+        {"fact_id": fact_id, "claim": body, "source": source,
+         "confidence": .75, "metadata": metadata, "raw_input": body,
+         "derived_from": raw_id},
+        ensure_raw=False, link_provenance=False, create_only=True,
     )
-
-    # Issue #288: do not pre-populate facts.derived_from through store_fact().
-    # The canonical linker below owns the first binding and its evidence.
-    store_fact(
-        {
-            "fact_id": fact_id,
-            "claim": body,
-            "source": source,
-            "confidence": 0.75,
-            "metadata": metadata,
-        }
-    )
-
-    try:
-        link_raw_to_fact(raw_id, fact_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("telegram provenance link: %s", exc)
-
     stored = get_fact(fact_id)
+    accepted = result.status in ACCEPTED_WRITE_STATUSES
+    matches = bool(stored and stored.get("claim") == body and stored.get("source") == source
+                   and stored.get("derived_from") == raw_id)
+    ok = accepted and matches
+    reason = result.safe_reason_code
+    if accepted and not matches:
+        reason = "telegram_delivery_conflict"
     return {
-        "ok": True,
-        "raw_id": raw_id,
-        "fact_id": fact_id,
-        "source": source,
-        "fact": stored,
-        "deduplicated_raw": False,
+        "ok": ok, "raw_id": raw_id, "fact_id": fact_id, "source": source,
+        "fact": stored if ok else None,
+        "write_status": result.status.value, "durable_write": result.durable_write,
+        "reason_code": reason,
+        # The L0 API returns an ID, not an insertion receipt; do not invent a metric.
+        "deduplicated_raw": None,
+        "deduplicated_delivery": accepted and not result.created and matches,
+        **({"via": "cognitive_store"} if is_cognitive_store_enabled() else {}),
     }
 
 
