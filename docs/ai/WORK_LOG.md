@@ -1,5 +1,9 @@
 ## 2026-11-14 — Observer compatibility revision prepared for Draft PR #522
 
+## 2026-11-17 — Observer HTTP type contract
+
+The new Pydantic-aware HTTP mypy profile in audit PR #526 identified that a boolean helper does not narrow Optional[str]. Added an explicit None guard in _observer_model_input at the lowest owning PR #522; successful-answer and sent-record semantics are unchanged. Existing prompt-record/Observer regressions are rerun; the aggregate candidate must pass the HTTP profile after synchronization.
+
 ## 2026-11-16 — Observer child synchronized to the tested availability parent
 
 PR #522 now includes parent #521 at `0e0be79`, itself stacked on #509. Kept named, content-free unavailable-check reporting and scoped only the semantic diagnostic to actually sent records; other passive checks still run. **106 focused tests passed**, including Observer, prompt records, evidence labels and prompt epistemic boundaries. No claim-level entailment verifier or main merge is implied.
