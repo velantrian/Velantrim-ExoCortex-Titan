@@ -9,19 +9,38 @@ Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in
 Focused regression suite: **110 passed** (new regressions plus pipeline, model-free core and consolidation contracts). Earlier full suite with admission/BM25: **4962 passed, 17 skipped, 1 xfailed**; that earlier run does not cover the later FactsPack/consolidation/mode changes. Ruff core and changed tests, mypy (356 core sources), branding, hygiene and project-state checks passed.
 
 Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+## Draft PR #522: Observer evidence alignment and semantic support (#512)
+
+When enabled, `/query` runs Observer even if the model was not called, failed, or
+returned no usable answer. Its applicable truth-policy, epistemic-scope and goal-
+alignment checks continue to use the pipeline facts. Only answer-support diagnostics
+require a successful non-empty model answer and a context report; that check receives
+only `ContextReport.sent_facts`, never records omitted from the prompt. Without a
+successful answer, those semantic/lexical diagnostics are skipped, but the other
+Observer observations remain available.
+
+No semantic verifier is implemented: a successful answer with prompt records yields
+`semantic_support=check_unavailable`; an empty prompt record set yields
+`insufficient_evidence`. The lexical word-overlap report is diagnostic only, not
+evidence of support. `details.faithfulness` is retained as a compatibility alias of
+`details.lexical_diagnostic` whenever the lexical report exists. Removing the
+lexical-only `unsupported_claim` flag is a separate API contract change; clients and
+alerts may depend on that flag. No answer is blocked or rewritten. Per-claim semantic
+checking, calibration and external consumer compatibility remain unverified.
 
 ## Observer semantic support remains unavailable (#512)
 
-The lexical faithfulness score is word overlap, not evidence of semantic support.
-Observer reports `semantic_support_unverified` / `check_unavailable` when a
-lexical result would otherwise be clean. Even a verbatim answer is not certified;
-the warning is expected for ordinary grounded answers too. A low lexical score
-still raises `unsupported_claim`. This conservative mitigation is not semantic
-contradiction detection and does not resolve #512. It changes Observer verdicts
-when enabled, but does not block or rewrite answers. The `/query` caller passes
-pipeline facts rather than the exact prompt subset; this warning does not check
-the evidence actually sent to the model. Per-claim semantic support, handling of
-insufficient evidence, and a calibrated verifier remain future work.
+The faithfulness score is lexical word overlap, not evidence of semantic support.
+For a successful non-empty model answer Observer reports
+`semantic_support_unverified` / `check_unavailable` when prompt records exist; even a
+verbatim answer is not certified. A low lexical score no longer emits
+`unsupported_claim`; removing that flag is a separate API contract change and may
+affect clients. The compatible `details.faithfulness` alias remains available next
+to `details.lexical_diagnostic`. This is not semantic contradiction detection and
+does not resolve #512. It changes Observer diagnostics when enabled, but does not
+block or rewrite answers. `/query` restricts support diagnostics to records actually
+sent in the prompt, while other applicable checks continue to see pipeline facts.
+Per-claim semantic support, calibration and a full verifier remain future work.
 
 ## Reduced risk — FactsPack silently dropped distinct records (PR #509, draft, not merged)
 

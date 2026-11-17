@@ -498,6 +498,25 @@ def _prepare_evidence_prompt(
     return system, rebuilt, final_map
 
 
+def _observer_model_input(
+    answer: str | None,
+    facts: list[dict],
+    context_report: Any,
+    *,
+    model_call_started: bool,
+    model_error: bool,
+) -> tuple[str, list[dict]] | None:
+    """Return only a successful model answer and memory records in its final prompt."""
+    if (
+        not model_call_started
+        or model_error
+        or context_report is None
+        or not _query_has_model_answer_text(answer)
+    ):
+        return None
+    return answer, context_report.sent_facts(facts)
+
+
 # ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
 
 @asynccontextmanager
@@ -2717,19 +2736,30 @@ async def query(req: QueryRequest):
         logger.debug("reasoning trace save skipped: %s", exc)
 
     # Observer P0 (пассивный мета-монитор). Аддитивно + за флагом (ENABLE_OBSERVER, default off).
-    # Работает ПОСЛЕ формирования ответа; пассивен — только вердикт, не пишет факты и не меняет поток.
+    # Семантическая диагностика ограничена успешным ответом и sent_facts; прочие проверки
+    # Observer сохраняются и при отсутствии ответа модели.
     observer_block: dict[str, Any] | None = None
     try:
         from core.runtime_flags import is_observer_enabled
 
         if is_observer_enabled():
+            observer_input = _observer_model_input(
+                llm_answer,
+                pipeline_facts,
+                context_report,
+                model_call_started=llm_call_started,
+                model_error=bool((llm_meta or {}).get("error")),
+            )
             from core.observer import observe as _observe
 
+            observer_answer = observer_input[0] if observer_input is not None else ""
+            semantic_facts = observer_input[1] if observer_input is not None else None
             observer_block = _observe(
                 req.query,
                 pipeline_facts,
-                llm_answer or pipeline_answer or "",
+                observer_answer,
                 mode=eff_mode,
+                semantic_facts=semantic_facts,
             ).to_dict()
     except Exception as exc:  # noqa: BLE001 — аддитивно; никогда не ломаем ответ
         logger.debug("observer skipped: %s", exc)
