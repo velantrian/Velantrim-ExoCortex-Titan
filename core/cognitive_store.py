@@ -55,6 +55,7 @@ class CognitiveFactStore:
         *,
         ensure_raw: bool = True,
         link_provenance: bool = True,
+        create_only: bool = False,
     ):
         """
         PR-C1: explicit, structured counterpart to save(). Returns a
@@ -96,7 +97,8 @@ class CognitiveFactStore:
         if link_provenance and raw_id:
             payload["derived_from"] = None
 
-        result = store_fact_result(payload)
+        result = (store_fact_result(payload, create_only=True)
+                  if create_only else store_fact_result(payload))
         accepted = result.status in ACCEPTED_WRITE_STATUSES
 
         if link_provenance and raw_id and accepted:
@@ -110,7 +112,7 @@ class CognitiveFactStore:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_store link_raw: %s", exc)
 
-        if accepted:
+        if accepted and (not create_only or result.durable_write):
             _emit_fact_event(fact.id, is_new=result.created)
 
         return result
@@ -349,10 +351,29 @@ def save_fact_dict(
     return store_fact(fact)
 
 
+def save_fact_dict_result(
+    fact: dict[str, Any], *, ensure_raw: bool = True,
+    link_provenance: bool = True, create_only: bool = False,
+):
+    """Structured counterpart of save_fact_dict; preserves the canonical owner."""
+    if is_cognitive_store_enabled():
+        from core.cognitive_fact import cognitive_fact_from_store
+        cf = cognitive_fact_from_store(fact, raw_input=fact.get("raw_input") or fact.get("claim"))
+        if fact.get("derived_from"):
+            cf.derived_from = str(fact["derived_from"])
+        return get_cognitive_store().save_result(
+            cf, ensure_raw=ensure_raw and not cf.derived_from,
+            link_provenance=link_provenance, create_only=create_only,
+        )
+    from core.memory import store_fact_result
+    return store_fact_result(fact, create_only=create_only)
+
+
 __all__ = [
     "CognitiveFactStore",
     "get_cognitive_store",
     "is_cognitive_store_enabled",
     "reset_cognitive_store",
     "save_fact_dict",
+    "save_fact_dict_result",
 ]

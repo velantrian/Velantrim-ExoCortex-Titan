@@ -1635,7 +1635,7 @@ class SQLiteGraphStore(GraphStore):
 
     # ── store_fact ──────────────────────────────────────────────────────────
 
-    def _store_fact_outcome(self, fact: dict) -> "WriteResult":
+    def _store_fact_outcome(self, fact: dict, *, create_only: bool = False) -> "WriteResult":
         """
         PR-C1: the detailed implementation behind store_fact()/store_fact_result().
 
@@ -1660,8 +1660,11 @@ class SQLiteGraphStore(GraphStore):
         if not fact_id:
             raise ValueError("store_fact: fact_id обязателен")
 
-        existing_preview = self.get_fact(fact_id)
+        existing_preview = self._get_fact_durable(fact_id) if create_only else self.get_fact(fact_id)
         is_new = existing_preview is None
+        if create_only and not is_new:
+            return WriteResult(status=WriteStatus.NOOP_EXISTING, fact_id=fact_id,
+                               created=False, canonical_exists=True, durable_write=False)
         if is_new:
             from core.memory_budget import check_before_write
 
@@ -1720,7 +1723,7 @@ class SQLiteGraphStore(GraphStore):
                 safe_reason_code=_wg_reason,
                 safe_message="Write rejected by write-protocol gate.",
             )
-        existing = self.get_fact(fact_id)
+        existing = self._get_fact_durable(fact_id) if create_only else self.get_fact(fact_id)
         state_for_checksum = (
             existing["epistemic_state"] if existing else requested_state
         )
@@ -1945,13 +1948,14 @@ class SQLiteGraphStore(GraphStore):
         with self._db() as ready_conn:
             AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
 
+        l1_record["create_only"] = int(create_only)
         with self._db() as conn:
             _bump = self._fact_version_bump_sql(conn) if _content_changed else ""
             _esm_set = (
                 ", epistemic_state = excluded.epistemic_state, history = excluded.history"
                 if _drift_detected else ""
             )
-            conn.execute(f"""
+            write_cursor = conn.execute(f"""
                 INSERT INTO facts
                     (fact_id, claim, source, confidence, epistemic_state,
                      created_at, updated_at, metadata, history,
@@ -1989,12 +1993,18 @@ class SQLiteGraphStore(GraphStore):
                     -- mutation of this row (same COALESCE convention as
                     -- update_state()/_promote_to_validated_cas()).
                     audit_subject_id = COALESCE(audit_subject_id, excluded.audit_subject_id)
+                WHERE NOT :create_only
                 -- epistemic_state, history, t_*_start, derived_from по умолчанию
                 -- исключены: управляются только через transition_esm() /
                 -- invalidate_edge(). Единственное исключение — drift
                 -- protection выше (_esm_set), легальность которой уже
                 -- проверена через ESM_TRANSITIONS до этого момента.
             """, l1_record)
+
+            if create_only and write_cursor.rowcount == 0:
+                # Atomic first-writer wins. No update, audit, version or projection intent.
+                return WriteResult(status=WriteStatus.NOOP_EXISTING, fact_id=fact_id,
+                                   created=False, canonical_exists=True, durable_write=False)
 
             # PR-C3 (same Codex P2 read-your-own-write lesson from PR-C2):
             # re-read the audit_subject_id that ACTUALLY won the COALESCE
@@ -2120,7 +2130,7 @@ class SQLiteGraphStore(GraphStore):
             )
             return False
 
-    def store_fact_result(self, fact: dict) -> "WriteResult":
+    def store_fact_result(self, fact: dict, *, create_only: bool = False) -> "WriteResult":
         """
         PR-C1: explicit, non-raising counterpart to store_fact().
 
@@ -2138,7 +2148,7 @@ class SQLiteGraphStore(GraphStore):
 
         fact_id = fact.get("fact_id")
         try:
-            return self._store_fact_outcome(fact)
+            return self._store_fact_outcome(fact, create_only=create_only)
         except WritesBlockedError as exc:
             logger.warning(
                 "store_fact_result: policy blocked write for fact %s (%s)",
@@ -4622,10 +4632,10 @@ def store_fact(fact: dict) -> bool:
     """Обёртка над SQLiteGraphStore.store_fact(). Возвращает True если новый INSERT."""
     return _GLOBAL_STORE.store_fact(fact)
 
-def store_fact_result(fact: dict):
+def store_fact_result(fact: dict, *, create_only: bool = False):
     """PR-C1: обёртка над SQLiteGraphStore.store_fact_result() — не бросает
     исключений, возвращает core.write_result.WriteResult."""
-    return _GLOBAL_STORE.store_fact_result(fact)
+    return _GLOBAL_STORE.store_fact_result(fact, create_only=create_only)
 
 def store_facts_batch(facts: list[dict]) -> dict[str, int]:
     """Batch insert: один SQLite transaction на N фактов. ~80% быстрее чем N×store_fact()."""
