@@ -162,6 +162,10 @@ Audit A03/A04: Telegram returns success only for an accepted canonical write wit
 Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
 
 Focused writes/provenance/runtime tests initially **52 passed**. Import-reload order regression: **353 passed**. Initial full run exposed stale test-module/enum references, not absent canonical writes; fixtures now resolve the live modules. Complete repeat: **4976 passed, 17 skipped, 1 xfailed** in 224.19 seconds. Final event/no-overclaim controls and clean mypy are rerun. No real Telegram messages were sent. Fresh exact-head CI/coverage is required.
+## 2026-11-17 — TTS default control resolves live modules
+
+The full suite reloads core/API modules, so the unit now resolves them with importlib.import_module before patching the fake synthesizer and its isolated egress check. Production egress denial tests and policy are unchanged. Core-import/server/API order regression is recorded in the PR; no real provider is invoked.
+
 ## 2026-11-16 — Audit remediation: verification coverage and frozen acceptance dependencies (draft branch, not merged)
 
 Audit A20/A26/A27 and C10: Stage 9/10 use the frozen installer; Playwright is locked in browser-tests; Ruff 0.17.5 covers core plus HTTP/app/scripts/utils. Core mypy remains blocking and a Pydantic-aware HTTP profile is added. A separate frozen CI profile runs without BM25/dense models, while full embedding-enabled CI remains. The TruthGate projection test uses deterministic retrieval; TTS defaults and sync/async callback annotations are reconciled. Installed license metadata is recorded as an artifact; unknown metadata and optional PyMuPDF AGPL/commercial obligations remain explicit, without claiming legal certification. No runtime feature is activated.
