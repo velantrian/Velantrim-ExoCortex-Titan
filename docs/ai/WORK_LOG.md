@@ -144,6 +144,10 @@ Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C1
 Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
 
 Focused runtime regressions: **95 passed**; earlier component suite: **104 passed, 5 skipped**. Additional bounded-cycle oracle test and full suite/coverage are running. Ruff core/changed server/tests and mypy core passed. Existing optional parser skips remain explicit. Operational limits: EventBus is volatile process-local delivery, not a durable outbox; mutable injected objects remain caller-owned; GraphLab truncation/budget exhaustion is not proof of no path/cycle.
+## 2026-11-17 — Dimension validation fixture follows instance availability
+
+Joint/full CI identified two manually constructed DenseRetriever fixtures still setting the removed class-wide availability bit. They now set the instance bit; dimension-mismatch-before-scoring and equal-dimension assertions remain unchanged. This fixes the old test contract at the lowest owning retrieval PR #527, without restoring shared availability.
+
 ## 2026-11-16 — Audit remediation: retrieval scores and model cache lifetime (draft branch, not merged)
 
 Audit C11/C13/C14 and the private SSE-parser part of A23: dense availability is instance-local; one locked model-cache construction prevents duplicate loads. RRF is explicitly rank-only and no longer computes ignored normalization. Five-stage retrieval publishes final_score and gives graph expansion an actual rank channel without changing confidence. Gemini handles are bounded to 128 LRU entries with a local TTL shorter than the requested provider TTL; a missing provider cache is invalidated and retried once with the complete approved system prompt. Removed the confirmed unused private SSE parser; public optional APIs are retained. This branch is stacked on #523.
