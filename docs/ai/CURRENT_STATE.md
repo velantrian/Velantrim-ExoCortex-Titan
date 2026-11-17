@@ -1,5 +1,16 @@
 # 📍 Current System State
 
+## 2026-11-16 — Audit remediation: verification coverage and frozen acceptance dependencies (draft branch, not merged)
+
+Audit A20/A26/A27 and C10: Stage 9/10 use the frozen installer; Playwright is locked in browser-tests; Ruff 0.17.5 covers core plus HTTP/app/scripts/utils. Core mypy remains blocking and a Pydantic-aware HTTP profile is added. A separate frozen CI profile runs without BM25/dense models, while full embedding-enabled CI remains. The TruthGate projection test uses deterministic retrieval; TTS defaults and sync/async callback annotations are reconciled. Installed license metadata is recorded as an artifact; unknown metadata and optional PyMuPDF AGPL/commercial obligations remain explicit, without claiming legal certification. No runtime feature is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Frozen minimal environment confirmed absence of rank_bm25 and sentence_transformers. Initial affected/fallback run: **194 passed**; additional API/callback/projection run including omitted Gemini TTS defaults: **79 passed**. Modern Ruff over the full expanded surface, mypy core (356 files), Pydantic-aware HTTP mypy (12 files), and branding/hygiene/state checks passed. License inventory generation and workflow YAML parsing passed. Fresh remote Chromium/full-model CI remains required.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 ## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
 
 Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.

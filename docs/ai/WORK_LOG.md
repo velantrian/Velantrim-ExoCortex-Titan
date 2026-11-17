@@ -1,5 +1,20 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — TTS default control resolves live modules
+
+The full suite reloads core/API modules, so the unit now resolves them with importlib.import_module before patching the fake synthesizer and its isolated egress check. Production egress denial tests and policy are unchanged. Core-import/server/API order regression is recorded in the PR; no real provider is invoked.
+
+## 2026-11-16 — Audit remediation: verification coverage and frozen acceptance dependencies (draft branch, not merged)
+
+Audit A20/A26/A27 and C10: Stage 9/10 use the frozen installer; Playwright is locked in browser-tests; Ruff 0.17.5 covers core plus HTTP/app/scripts/utils. Core mypy remains blocking and a Pydantic-aware HTTP profile is added. A separate frozen CI profile runs without BM25/dense models, while full embedding-enabled CI remains. The TruthGate projection test uses deterministic retrieval; TTS defaults and sync/async callback annotations are reconciled. Installed license metadata is recorded as an artifact; unknown metadata and optional PyMuPDF AGPL/commercial obligations remain explicit, without claiming legal certification. No runtime feature is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Frozen minimal environment confirmed absence of rank_bm25 and sentence_transformers. Initial affected/fallback run: **194 passed**; additional API/callback/projection run including omitted Gemini TTS defaults: **79 passed**. Modern Ruff over the full expanded surface, mypy core (356 files), Pydantic-aware HTTP mypy (12 files), and branding/hygiene/state checks passed. License inventory generation and workflow YAML parsing passed. Fresh remote Chromium/full-model CI remains required.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 ## 2026-11-16 — PR #523 final local regression evidence
 
 Commit `a4c03a27d6b692754c84e6d75c8b1a121acf6459`: **4969 passed, 17 skipped, 1 xfailed**, core coverage **78.49%** (blocking threshold 74%), Python 3.12, 393.51 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90 --cov=core --cov-report=term --cov-fail-under=74`. This fallback environment has BM25/numpy and no sentence-transformers; embedding-enabled remote CI remains separate. Optional parser skips and the existing expected failure are preserved. No provider request or production activation.
