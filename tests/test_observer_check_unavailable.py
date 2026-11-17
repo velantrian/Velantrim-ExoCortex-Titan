@@ -14,7 +14,7 @@ import importlib
 
 import pytest
 
-from core.observer import ALLOW, REJECT, WARN
+from core.observer import REJECT, WARN
 
 SECRET = "SECRET-EXCEPTION-DETAIL"
 
@@ -39,21 +39,22 @@ def _boom(*args, **kwargs):
     raise RuntimeError(SECRET)
 
 
-def test_clean_baseline_is_allow():
+def test_lexical_baseline_is_semantically_unverified():
     v = _live_observer().observe(
         "How does SQLite serialize writes?",
         _facts(),
         "SQLite serializes writes through explicit transactions.",
     )
-    assert v.decision == ALLOW
-    assert v.is_clean
+    assert v.decision == WARN
+    assert not v.is_clean
+    assert "semantic_support_unverified" in v.flags
 
 
 @pytest.mark.parametrize(
     ("target", "check_name"),
     [
         ("core.truth_policy.decide", "no_admissible_evidence"),
-        ("core.output_faithfulness.OutputFaithfulnessChecker.check", "unsupported_claim"),
+        ("core.observer._check_semantic_support", "semantic_support"),
         ("core.gap_detector.query_goal_alignment", "goal_drift"),
     ],
 )
@@ -88,7 +89,7 @@ def test_unavailable_check_does_not_mask_a_stronger_verdict(monkeypatch):
 
 
 ALL_CHECKS = [
-    ("core.output_faithfulness.OutputFaithfulnessChecker.check", "unsupported_claim"),
+    ("core.observer._check_semantic_support", "semantic_support"),
     ("core.truth_policy.decide", "no_admissible_evidence"),
     ("core.observer._check_truth_scope_leak", "truth_scope_leak"),
     ("core.gap_detector.query_goal_alignment", "goal_drift"),
@@ -112,7 +113,7 @@ def test_truth_scope_leak_check_failure_is_reported(monkeypatch):
 
     v = obs.observe("How does SQLite serialize writes?", _facts(), ANSWER)
 
-    assert v.flags == ["check_unavailable"]
+    assert v.flags == ["semantic_support_unverified", "check_unavailable"]
     assert v.decision == WARN
     assert v.details["unavailable_checks"] == [
         {"check": "truth_scope_leak", "error_type": "RuntimeError"},
@@ -136,7 +137,7 @@ def test_every_check_failing_reports_each_check_and_one_flag(monkeypatch):
 
 
 def test_clean_verdict_carries_no_unavailable_checks_key():
-    v = _live_observer().observe("How does SQLite serialize writes?", _facts(), ANSWER)
+    v = _live_observer().observe("How does SQLite serialize writes?", _facts(), "")
 
     assert v.is_clean
     assert "unavailable_checks" not in v.details
@@ -157,7 +158,7 @@ def test_audit_chain_receives_the_check_unavailable_flag(monkeypatch):
 
     assert chain.calls == [{
         "decision": WARN,
-        "flags": ["check_unavailable"],
+        "flags": ["semantic_support_unverified", "check_unavailable"],
         "actor": "observer",
-        "reason": "check_unavailable",
+        "reason": "semantic_support_unverified, check_unavailable",
     }]
