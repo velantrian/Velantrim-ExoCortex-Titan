@@ -76,6 +76,12 @@ Observer рассматривается последовательно: **#509 �
 
 ## Проверки и отрицательные контроли
 
+Финальный локальный code snapshot: `9270d78675d9d85502dea489776c53702732eca6`;
+последующие изменения этой проверочной ветки касаются отчётной документации.
+Полный прогон использовал `pytest tests/ -q -o addopts= --tb=short --timeout=90
+--cov=core --cov-report=term --cov-report=json --cov-fail-under=74`.
+Явный `addopts=` исключает скрытую deselection; skipped/xfail указаны отдельно.
+
 | Набор | Результат |
 |---|---|
 | Core integrity: полный suite на code a4c03a2 | 4969 passed, 17 skipped, 1 xfailed; core coverage 78.49%, threshold 74% |
@@ -87,7 +93,7 @@ Observer рассматривается последовательно: **#509 �
 | Fallback environment без rank_bm25/sentence_transformers | 194 passed; дополнительные API/callback/projection checks 79 passed |
 | Cleanup | 83 passed; AST identity проверена до извлечения общих функций |
 | Совместные repaired-path + import-order проверки | 452 passed; Ruff полного runtime/HTTP/scripts surface и clean mypy core (357) / HTTP (12) прошли |
-| Объединённый кандидат | Финальный полный прогон на source 9270d78 выполняется; результат не заявляется заранее |
+| Объединённый кандидат, source 9270d78675d9d85502dea489776c53702732eca6 | **5132 passed, 17 skipped, 1 xfailed**, 13 warnings, 532.24 s; core coverage **79.30% ≥ 74%** |
 
 Это разные наборы/версии, их числа **не суммируются**. Прогоны выполнены локально на
 Python 3.12; hosted CI использует свой профиль, включая Python 3.11 и дополнительные
@@ -99,12 +105,12 @@ Python 3.12; hosted CI использует свой профиль, включ�
 | PR | Выполненное действие / следующий шаг |
 |---|---|
 | #500 | Устранён конфликт с main, сохранены missing-partner и partial-ESM guards; 40 native tests passed; добавлена обязательная doc metadata. Не merged |
-| #506 | Обновлён base snapshot, проверен immutable CodeQL release commit; обновлён exact-pin policy test и doc metadata. Нужен свежий CI |
+| #506 | Обновлён base snapshot, проверен immutable CodeQL release commit; обновлён exact-pin policy test и doc metadata. Свежие lint/test/coverage/CodeQL и aggregate gate прошли |
 | #509 | Устранены конфликты с #515; 97 focused tests; исправлена изоляция после reload core modules; родитель Observer stack |
 | #514 | Сохранены safe errors вместе с merged evidence labels/lifecycle; 113 focused tests; конфликт устранён |
 | #517 | Устранён конфликт документации, proposal и отсутствие activation сохранены; это не архитектурное одобрение |
 | #521 | Согласован с #509, переназначен base на его ветку; 60 focused и 379 import-order checks; parent independently green перед #522 |
-| #522 | Синхронизирован с #521; 106 focused / 450 order checks; optional answer guard исправлен в owning child; свежий CI требуется |
+| #522 | Синхронизирован с #521; 106 focused / 450 order checks; optional answer guard исправлен в owning child; свежие lint/test/coverage прошли, Draft gate ожидается |
 | #520 | Отдельное обновление runtime dependency group: рассматривать после audit fixes, согласовать lock с #526 и повторить dependency/acceptance checks. Автоматически не влито |
 | #518 | Opt-in evidence labels для chat: отдельное расширение, не semantic verifier. Не активировано; согласовать финальный server diff после #514/#522/#525/#526 |
 | #508 | Документальное раскрытие hackathon: не исправление runtime. Сохранён draft; содержание не одобрялось этим аудитом |
@@ -133,11 +139,20 @@ MCP envelope budgets настраиваются. Они ограничивают
 
 Ветка `audit/integration-verification-20261117` объединяет перечисленные исправления и
 согласованные #500/#506/#509/#514/#517/#521/#522 только для проверки совместимости.
-Это отдельный draft-кандидат **DO NOT MERGE**: исправления предлагается принимать через
+Проверочный [PR #530](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/530) — отдельный draft-кандидат **DO NOT MERGE**: исправления предлагается принимать через
 их owning PR, а не обходить review всего стека. Main остаётся неизменённым.
 
 Первый совместный прогон: 5128 passed, 4 failed, 17 skipped, 1 xfailed. Он обнаружил
 старый CodeQL pin fixture (#506), два dimension fixtures с удалённым class flag (#527)
 и TTS mock/egress isolation (#526). Исправления перенесены в эти owning PR. Отдельно
 None guard для нового HTTP type profile внесён в owning #522. После синхронизации
-452 проверки repaired-path/import-order и все static gates прошли. Полный повтор идёт.
+452 проверки repaired-path/import-order и все static gates прошли. Финальный полный
+повтор: **5132 passed, 17 skipped, 1 xfailed**, core coverage **79.30%**. Branding,
+repo hygiene, architecture freeze, project-state и KB graph guards также прошли.
+Удалённая main повторно проверена через git ls-remote: исходный SHA не изменён.
+
+Hosted workflows проверяют собственные exact-head snapshots; актуальные результаты
+доступны в [checks PR #530](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/530/checks).
+Draft aggregate gate остаётся ожидающим по правилам репозитория и не снимается ради
+зелёного индикатора. Тестовый результат исходного code snapshot не переносится на
+будущие изменения runtime.

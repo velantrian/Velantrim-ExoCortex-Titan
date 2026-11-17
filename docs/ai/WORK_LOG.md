@@ -1,5 +1,14 @@
 ## 2026-11-14 — Observer compatibility revision prepared for Draft PR #522
 
+## 2026-11-17 — combined audit remediation verification (draft #530)
+
+- Owning fixes #523–#529 and synchronized #500/#506/#509/#514/#517/#521/#522 are combined only in `audit/integration-verification-20261117`, not main. Draft #530 is DO NOT MERGE; focused owning PRs remain the review path.
+- Source `9270d78675d9d85502dea489776c53702732eca6`: full local Python 3.12 pytest **5132 passed, 17 skipped, 1 xfailed**, 13 warnings, 532.24 s; core coverage **79.30%**, blocking minimum 74%. Expanded Ruff, clean core mypy (357 files), HTTP mypy (12), branding/hygiene/architecture/project-state/KB guards passed.
+- Initial integration-only failures were repaired in their owning branches: CodeQL pin fixture #506, Dense dimension fixtures #527, TTS mock/egress isolation #526; #522 received an explicit Optional answer guard. The repeated full suite passed; no egress restriction was disabled.
+- `docs/audits/2026-11-16-code-audit.md` preserves the original audit; `docs/audits/2026-11-17-remediation-register.md` maps all 42 findings, old PR disposition, exact evidence and residual work. Partial semantic/domain/distributed-delivery/license/refactoring limitations remain explicit.
+- User-authorized public PR/SHA/test evidence is synchronized to the existing Notion audit record. No main merge, research activation, deployment or real LLM/Telegram request; remote main remains `485c4b0906ec35829ff7231c6276bf7d817f096f`. Hosted candidate workflows provide separate exact-head evidence.
+
+
 ## 2026-11-17 — Observer HTTP type contract
 
 The new Pydantic-aware HTTP mypy profile in audit PR #526 identified that a boolean helper does not narrow Optional[str]. Added an explicit None guard in _observer_model_input at the lowest owning PR #522; successful-answer and sent-record semantics are unchanged. Existing prompt-record/Observer regressions are rerun; the aggregate candidate must pass the HTTP profile after synchronization.
