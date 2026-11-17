@@ -3,6 +3,9 @@ name: Stage 9 — Browser acceptance
 on:
   pull_request:
     paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/actions/sync-python-deps/**"
       - "scripts/stage9_browser_acceptance.py"
       - "static/console/**"
       - "server.py"
