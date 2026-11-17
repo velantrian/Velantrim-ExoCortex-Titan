@@ -252,9 +252,9 @@ async def test_roles_route_applies_domain_and_mode_before_branching(monkeypatch)
     monkeypatch.setattr(pipeline, "run", run)
     monkeypatch.setattr("core.branch_manager.get_branch_manager", Manager)
     monkeypatch.setattr(server, "_env_llm_config", lambda: None)
-    result = await server.query_with_roles(server._QueryRolesRequest(query="biology", domain="biology", cognitive_mode="PRECISION"))
-    assert seen == {"domain": "biology", "cognitive_mode": "PRECISION"}
-    assert result.effective_params["domain"] == "biology"
+    result = await server.query_with_roles(server._QueryRolesRequest(query="science", domain="science", cognitive_mode="PRECISION"))
+    assert seen == {"domain": "science", "cognitive_mode": "PRECISION"}
+    assert result.effective_params["domain"] == "science"
 
 
 def test_bounded_cycles_match_independent_networkx_oracle_on_small_graphs():
@@ -274,7 +274,7 @@ def test_bounded_cycles_match_independent_networkx_oracle_on_small_graphs():
 def test_multilingual_wrapper_preserves_scope_and_bounded_candidate_owner(monkeypatch):
     from core import multilingual_router as router, pipeline
     calls = []
-    def candidates(query, domain, *, use_ngram=True):
+    def candidates(query, domain, *, use_ngram=True, store=None, ngram=None):
         calls.append((query, domain, use_ngram))
         return [{"fact_id": "candidate", "claim": "biology knowledge", "epistemic_state": "Validated"}]
     monkeypatch.setattr(pipeline, "_narrow_candidates", candidates)
@@ -288,3 +288,29 @@ def test_multilingual_wrapper_preserves_scope_and_bounded_candidate_owner(monkey
         assert calls[-1][1:] == ("biology", True)
     finally:
         router.unpatch_pipeline_retrieval()
+
+
+def test_explicit_personal_memory_category_is_retrievable_in_personal_profile():
+    from core.domain_tags import apply_domain_to_metadata, filter_facts_by_domain
+    metadata = apply_domain_to_metadata({"memory_category": "personal"}, claim="my name is Ruslan", source="console_chat")
+    fact = {"metadata": metadata}
+    assert metadata["domain"] == "personal"
+    assert filter_facts_by_domain([fact], "personal") == [fact]
+    assert filter_facts_by_domain([fact], "science") == []
+
+
+def test_multilingual_function_words_cannot_select_unrelated_fact():
+    from core.multilingual_router import _relevance_score
+    claim = "The active project codename is T1_COBALT_ORCHARD_7F31."
+    assert _relevance_score("Tell me the capital of an imaginary planet called Nereid-9.", claim, "EN") == 0
+    assert _relevance_score("What is the active project codename?", claim, "EN") > 0
+    assert _relevance_score("what is my name?", "my name is Ruslan", "EN") > 0
+
+
+async def test_roles_route_rejects_unknown_domain_before_retrieval(monkeypatch):
+    import server
+    from fastapi import HTTPException
+    monkeypatch.setattr("core.pipeline.run", lambda *a, **k: pytest.fail("unsupported scope was executed"))
+    with pytest.raises(HTTPException) as caught:
+        await server.query_with_roles(server._QueryRolesRequest(query="test", domain="invented-domain"))
+    assert caught.value.status_code == 400
