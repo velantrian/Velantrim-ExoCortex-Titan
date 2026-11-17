@@ -14,7 +14,7 @@ import importlib
 
 import pytest
 
-from core.observer import ALLOW, REJECT, WARN, observe
+from core.observer import ALLOW, REJECT, WARN
 
 SECRET = "SECRET-EXCEPTION-DETAIL"
 
@@ -40,7 +40,7 @@ def _boom(*args, **kwargs):
 
 
 def test_clean_baseline_is_allow():
-    v = observe(
+    v = _live_observer().observe(
         "How does SQLite serialize writes?",
         _facts(),
         "SQLite serializes writes through explicit transactions.",
@@ -60,7 +60,7 @@ def test_clean_baseline_is_allow():
 def test_failed_check_is_reported_and_not_clean(monkeypatch, target, check_name):
     monkeypatch.setattr(target, _boom)
 
-    v = observe(
+    v = _live_observer().observe(
         "How does SQLite serialize writes?",
         _facts(),
         "SQLite serializes writes through explicit transactions.",
@@ -80,7 +80,7 @@ def test_failed_check_is_reported_and_not_clean(monkeypatch, target, check_name)
 def test_unavailable_check_does_not_mask_a_stronger_verdict(monkeypatch):
     monkeypatch.setattr("core.gap_detector.query_goal_alignment", _boom)
 
-    v = observe("anything", [], "an answer with no admissible evidence")
+    v = _live_observer().observe("anything", [], "an answer with no admissible evidence")
 
     assert v.decision == REJECT
     assert "no_admissible_evidence" in v.flags
@@ -136,7 +136,7 @@ def test_every_check_failing_reports_each_check_and_one_flag(monkeypatch):
 
 
 def test_clean_verdict_carries_no_unavailable_checks_key():
-    v = observe("How does SQLite serialize writes?", _facts(), ANSWER)
+    v = _live_observer().observe("How does SQLite serialize writes?", _facts(), ANSWER)
 
     assert v.is_clean
     assert "unavailable_checks" not in v.details
@@ -153,7 +153,7 @@ def test_audit_chain_receives_the_check_unavailable_flag(monkeypatch):
     monkeypatch.setattr("core.truth_policy.decide", _boom)
     chain = _Chain()
 
-    observe("How does SQLite serialize writes?", _facts(), ANSWER, audit_chain=chain)
+    _live_observer().observe("How does SQLite serialize writes?", _facts(), ANSWER, audit_chain=chain)
 
     assert chain.calls == [{
         "decision": WARN,
