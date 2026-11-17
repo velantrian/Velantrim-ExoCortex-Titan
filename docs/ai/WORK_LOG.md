@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — Dimension validation fixture follows instance availability
+
+Joint/full CI identified two manually constructed DenseRetriever fixtures still setting the removed class-wide availability bit. They now set the instance bit; dimension-mismatch-before-scoring and equal-dimension assertions remain unchanged. This fixes the old test contract at the lowest owning retrieval PR #527, without restoring shared availability.
+
 ## 2026-11-16 — Audit remediation: retrieval scores and model cache lifetime (draft branch, not merged)
 
 Audit C11/C13/C14 and the private SSE-parser part of A23: dense availability is instance-local; one locked model-cache construction prevents duplicate loads. RRF is explicitly rank-only and no longer computes ignored normalization. Five-stage retrieval publishes final_score and gives graph expansion an actual rank channel without changing confidence. Gemini handles are bounded to 128 LRU entries with a local TTL shorter than the requested provider TTL; a missing provider cache is invalidated and retried once with the complete approved system prompt. Removed the confirmed unused private SSE parser; public optional APIs are retained. This branch is stacked on #523.
