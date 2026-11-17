@@ -10,6 +10,18 @@ Focused regression suite: **110 passed** (new regressions plus pipeline, model-f
 
 Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
 
+## Observer semantic support remains unavailable (#512)
+
+The lexical faithfulness score is word overlap, not evidence of semantic support.
+Observer reports `semantic_support_unverified` / `check_unavailable` when a
+lexical result would otherwise be clean. Even a verbatim answer is not certified;
+the warning is expected for ordinary grounded answers too. A low lexical score
+still raises `unsupported_claim`. This conservative mitigation is not semantic
+contradiction detection and does not resolve #512. It changes Observer verdicts
+when enabled, but does not block or rewrite answers. The `/query` caller passes
+pipeline facts rather than the exact prompt subset; this warning does not check
+the evidence actually sent to the model. Per-claim semantic support, handling of
+insufficient evidence, and a calibrated verifier remain future work.
 
 ## Reduced risk — FactsPack silently dropped distinct records (PR #509, draft, not merged)
 

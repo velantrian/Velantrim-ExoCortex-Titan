@@ -1,3 +1,13 @@
+## 2026-11-14 — Observer lexical-confidence mitigation (#512)
+
+## 2026-11-16 — Observer availability and semantic-support integration
+
+PR #521 is stacked on tested PR #509 (`0f1097e`) so an unavailable control cannot become clean while lexical overlap is marked semantically unverified. Renamed the internal support check at the lowest owning parent and updated inherited availability regressions to the new passive contract. **60 focused tests passed** (Observer, unavailable controls, golden evaluation, distinct records). No semantic verifier or answer blocking is introduced. Dependency order: #509 → #521 → #522; main is unchanged.
+
+- Base: main `485c4b0906ec35829ff7231c6276bf7d817f096f`. A lexical match no longer produces a clean Observer verdict: the semantic support check is explicitly unavailable. Low overlap still produces the existing unsupported-claim flag. A failure of the lexical check also returns an unverified warning.
+- The warning intentionally applies even to genuinely supported answers: it prevents an unsupported semantic assurance but is not a semantic checker. No answer is blocked or rewritten. #512 remains open; per-claim assessment against the exact records sent to the model is not implemented.
+- Documentation impact: `GITHUB_AND_NOTION`; the accompanying Notion record tracks the review and limitations. Local checks and hosted CI are recorded in the PR rather than inferred here.
+
 ## 2026-11-08 — FactsPack keeps distinct records; Observer reports unavailable checks
 
 ## 2026-11-17 — Observer regression isolation

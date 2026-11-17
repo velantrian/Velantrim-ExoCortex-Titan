@@ -74,16 +74,24 @@ class ObserverVerdict:
         }
 
 
-def _check_unsupported_claim(answer: str, facts: list, details: dict):
+def _check_semantic_support(answer: str, facts: list, details: dict):
     if not answer or not facts:
         return None
-    from core.output_faithfulness import OutputFaithfulnessChecker
+    try:
+        from core.output_faithfulness import OutputFaithfulnessChecker
 
-    res = OutputFaithfulnessChecker().check(answer, facts)
+        res = OutputFaithfulnessChecker().check(answer, facts)
+    except Exception:  # noqa: BLE001 — expose failed check without breaking Observer
+        details["semantic_support"] = {"status": "check_unavailable"}
+        return WARN, "semantic_support_unverified"
     details["faithfulness"] = res.to_dict()
+    # Lexical overlap is not an entailment check. In particular, negation,
+    # numbers and conditions can change while overlap remains high. Until a
+    # semantic verifier is available, never present that result as verified.
+    details["semantic_support"] = {"status": "check_unavailable"}
     if res.total_claims and res.score < _FAITHFULNESS_MIN:
         return GAP_NOTICE, "unsupported_claim"
-    return None
+    return WARN, "semantic_support_unverified"
 
 
 def _check_admissible_evidence(query: str, facts: list, mode: str, details: dict):
@@ -139,7 +147,7 @@ def observe(
     decision = ALLOW
 
     checks = (
-        ("unsupported_claim", lambda: _check_unsupported_claim(answer, facts, details)),
+        ("semantic_support", lambda: _check_semantic_support(answer, facts, details)),
         ("no_admissible_evidence", lambda: _check_admissible_evidence(query, facts, mode, details)),
         ("truth_scope_leak", lambda: _check_truth_scope_leak(facts, details)),
         ("goal_drift", lambda: _check_goal_drift(query, user_id, details)),

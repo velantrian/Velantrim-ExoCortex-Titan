@@ -6,7 +6,7 @@ import sqlite3
 
 import pytest
 
-from core.observer import ALLOW, GAP_NOTICE, REJECT, WARN, ObserverVerdict, observe
+from core.observer import GAP_NOTICE, REJECT, WARN, ObserverVerdict, observe
 
 
 @pytest.fixture(autouse=True)
@@ -54,7 +54,33 @@ def test_observe_clean_grounded_answer():
     facts = [_fact("a", 0.95, claim, evidence=[{"source_id": "phys", "span": "1-9"}])]
     v = observe("при какой температуре кипит вода", facts, claim)
     assert isinstance(v, ObserverVerdict)
-    assert v.decision == ALLOW and v.flags == []
+    assert v.decision == WARN and "semantic_support_unverified" in v.flags
+    assert v.details["semantic_support"]["status"] == "check_unavailable"
+
+
+@pytest.mark.parametrize("answer", [
+    "Руслан одобрил миграцию на PostgreSQL.",
+    "Руслан не одобрил миграцию на PostgreSQL.",
+    "Миграцию на PostgreSQL отклонили.",
+])
+def test_lexical_similarity_does_not_claim_semantic_support(answer):
+    fact = _fact("a", 0.95, "Руслан одобрил миграцию на PostgreSQL")
+    verdict = observe("миграция", [fact], answer)
+    assert not verdict.is_clean
+    assert verdict.details["semantic_support"]["status"] == "check_unavailable"
+
+
+def test_faithfulness_failure_is_not_reported_as_clean(monkeypatch):
+    from core.output_faithfulness import OutputFaithfulnessChecker
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("unavailable")
+
+    monkeypatch.setattr(OutputFaithfulnessChecker, "check", fail)
+    verdict = observe("вопрос", [_fact("a", 0.95, "запись")], "ответ")
+    assert not verdict.is_clean
+    assert "semantic_support_unverified" in verdict.flags
+    assert verdict.details["semantic_support"]["status"] == "check_unavailable"
 
 
 # ── unsupported_claim (answer not grounded in facts) ─────────────────────────────
