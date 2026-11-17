@@ -4023,7 +4023,9 @@ async def telegram_ingest_endpoint(req: TelegramIngestRequest):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    if req.reply:
+    if not result.get("ok"):
+        raise HTTPException(status_code=422, detail={"code": result.get("reason_code") or "telegram_write_failed"})
+    if req.reply and not result.get("deduplicated_delivery"):
         from app.telegram_ingest import get_bot_token, send_telegram_reply
 
         if get_bot_token():
@@ -4083,7 +4085,9 @@ async def telegram_webhook_endpoint(
             await send_telegram_reply(parsed["chat_id"], f"❌ {exc}")
         raise HTTPException(status_code=400, detail=str(exc))
 
-    if get_bot_token():
+    if not result.get("ok"):
+        raise HTTPException(status_code=422, detail={"code": result.get("reason_code") or "telegram_write_failed"})
+    if get_bot_token() and not result.get("deduplicated_delivery"):
         await send_telegram_reply(
             parsed["chat_id"],
             f"✅ Память: {result['fact_id']}",

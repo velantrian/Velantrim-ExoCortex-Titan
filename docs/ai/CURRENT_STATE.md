@@ -14,6 +14,13 @@ Audit C11/C13/C14 and the private SSE-parser part of A23: dense availability is 
 Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
 
 Focused cache/ranking regressions: **45 passed**. Broader affected retrieval and LLM tests: **210 passed**. New tests cover a failed model not disabling another instance, competing model loads, five-stage scores/graph eligibility, rank-only invariance, TTL/LRU and missing-cache recovery with no system truncation. Ruff core/changed tests and mypy core passed. No real provider calls. Remote full-model CI remains required.
+## 2026-11-16 — Audit remediation: Telegram durable receipts and concurrent delivery identity (draft branch, not merged)
+
+Audit A03/A04: Telegram returns success only for an accepted canonical write with matching stored content/source/raw provenance. Stable delivery identity includes message_id=0. The existing canonical owner supports create_only: existing rows are not updated, and SQLite conflict handling provides atomic first-writer wins before audit/version/projection effects. Initial raw provenance binds inside that same canonical create transaction. Conflicting edits under the same delivery key are rejected; no random retry IDs or false saved replies. Replays do not emit a second fact event. The raw API cannot prove whether it inserted, so the legacy deduplicated_raw field is null (unknown); deduplicated_delivery is the explicit reliable bool. L0 remains immutable and content-addressed even if L1 is rejected. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused writes/provenance/runtime tests initially **52 passed**. Import-reload order regression: **353 passed**. Initial full run exposed stale test-module/enum references, not absent canonical writes; fixtures now resolve the live modules. Complete repeat: **4976 passed, 17 skipped, 1 xfailed** in 224.19 seconds. Final event/no-overclaim controls and clean mypy are rerun. No real Telegram messages were sent. Fresh exact-head CI/coverage is required.
 
 Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
 
