@@ -1,4 +1,18 @@
-## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
+## Historical 2026-11-09 proposal — evidence labels (merged #515 on 2026-11-14)
+
+## 2026-11-17 — Audit cleanup (draft child of runtime PR #525)
+
+Three backend spreading_activation implementations were AST-identical and now reuse the
+same existing algorithm on GraphStoreBackend. Removed the uncalled Prometheus probe/cache,
+a private unused stats argument and whole-file IO from the unimplemented MinerU adapter.
+MinerU/Vision are explicitly NOT_IMPLEMENTED; OCR/PDF fallbacks remain. Reserved compatibility
+hooks/public types are documented rather than assumed safe to delete. Corrected API-key,
+bootstrap and Graph-as-projection help; marked the #515 proposal as merged history.
+
+Focused backend/parser/runtime checks: **80 passed** before parent synchronization.
+No new authority, feature activation, main merge or broad function refactor. Documentation
+impact: GITHUB_ONLY; this is a focused cleanup under existing contracts.
+
 
 ## 2026-11-17 — Preserve bounded retrieval and scope through multilingual wiring
 

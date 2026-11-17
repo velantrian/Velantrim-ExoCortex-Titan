@@ -681,7 +681,7 @@ app = FastAPI(
     title="Velantrim Titan 9.0 API",
     description=(
         "Local-first verifiable memory runtime для AI-агентов с каузальным графом.\n\n"
-        "**Принципы:** Graph = Truth · LLM = Language · Memory = Physiology"
+        "**Принципы:** Canonical Memory + Evidence · LLM = Language · Graph = Projection"
     ),
     version=VELANTRIM_VERSION,
     lifespan=lifespan,

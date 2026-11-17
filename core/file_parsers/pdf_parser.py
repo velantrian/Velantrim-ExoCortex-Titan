@@ -30,7 +30,7 @@ def _check_available(module_name: str) -> bool:
 
 MARKER_AVAILABLE = _check_available("marker")
 DOCLING_AVAILABLE = _check_available("docling")
-MINERU_AVAILABLE = _check_available("magic_pdf")
+MINERU_AVAILABLE = False  # Adapter is NOT_IMPLEMENTED; package presence is not a capability.
 UNSTRUCTURED_AVAILABLE = _check_available("unstructured")
 PYMUPDF_AVAILABLE = _check_available("fitz")
 PYPDF_AVAILABLE = _check_available("pypdf")
@@ -259,13 +259,8 @@ class PDFParser(FileParser):
         }, len(doc.pages or [])
 
     def _parse_mineru(self, file_path: str) -> tuple[str, dict, int]:
-        """MinerU — лучший для CJK и научных статей."""
-        # Упрощённый вызов — реальный API требует больше настройки
-        with open(file_path, "rb") as f:
-            data = f.read()
-        # NOTE: real MinerU API сложнее — это упрощённая обёртка
-        text = ""  # full integration TODO
-        return text, {"raw_bytes": len(data)}, 0
+        """Reserved adapter; reject before reading an entire PDF into memory."""
+        raise NotImplementedError("MinerU adapter is not implemented")
 
     def _parse_unstructured(self, file_path: str) -> tuple[str, dict, int]:
         """Unstructured — широкая поддержка с typed elements."""
