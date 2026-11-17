@@ -98,7 +98,7 @@ def analyze_graph(
     """
     import os
 
-    db = db_path or os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+    db = db_path or os.getenv("VELANTRIM_DB_PATH") or "./data/velantrim.db"
 
     # NetworkX check
     if importlib.util.find_spec("networkx") is None:

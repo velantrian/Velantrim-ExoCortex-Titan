@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — Runtime clean type-check follow-up
+
+Remote mypy exposed a nullable GraphLab path that the incremental local cache had missed. The path now has an explicit final nonempty default. Clean mypy is rerun with `--no-incremental`; focused graph/bridge regressions are rerun. This does not change a configured nonempty store path. Fresh remote exact-head checks remain required.
+
 ## 2026-11-16 — Runtime final full regression
 
 On code commit `c3c2b90`: **4984 passed, 17 skipped, 1 xfailed**, Python 3.12, 225.33 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90`. The earlier coverage-instrumented run measured 78.74% but had two test failures; those were fixed and the full uninstrumented suite rerun green. Fresh remote coverage/CI is required at the published head. No production activation or merge.
