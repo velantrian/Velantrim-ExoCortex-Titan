@@ -3,6 +3,9 @@ name: Stage 10 — Bounded pilot
 on:
   pull_request:
     paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/actions/sync-python-deps/**"
       - "scripts/titan_v1_bounded_pilot.py"
       - "scripts/ingest_file.py"
       - "scripts/titan_tools.py"
