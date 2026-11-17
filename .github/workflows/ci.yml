@@ -46,10 +46,22 @@ jobs:
         run: python scripts/validate_kb_graph.py kb_graph.json
 
       - name: Ruff check (lint)
-        run: ruff check core/ --output-format=github
+        run: ruff check core/ server.py api/ app/ scripts/ utils/ --output-format=github
 
       - name: Mypy check (type safety · BLOCKING)
         run: mypy core/ --show-error-codes
+
+      - name: HTTP/API type contracts (Pydantic-aware)
+        run: mypy api/ app/ utils/ server.py --config-file .github/mypy-http.ini --show-error-codes
+
+      - name: Installed dependency license inventory
+        run: python scripts/dependency_licenses.py --output artifacts/installed-licenses.json
+
+      - name: Upload license inventory
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installed-dependency-licenses
+          path: artifacts/installed-licenses.json
 
       - name: Pytest
         run: python -m pytest tests/ -v --tb=short --timeout=300 -x
@@ -238,3 +250,29 @@ jobs:
           path: artifacts/reproducible-wheel
           if-no-files-found: error
           retention-days: 14
+
+  fallback-contracts:
+    name: Core contracts without optional retrieval models
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.11"
+      - uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server dev parsers
+      - name: Assert optional retrieval packages are absent
+        run: |
+          python -c "import importlib.util; assert importlib.util.find_spec('sentence_transformers') is None; assert importlib.util.find_spec('rank_bm25') is None"
+      - name: Admission, query, write and projection fallback regressions
+        run: >-
+          python -m pytest tests/test_admission_classification_fail_closed.py
+          tests/test_audit_evidence_integrity.py tests/test_write_gate.py
+          tests/test_write_result.py tests/test_pipeline.py tests/test_model_free_core.py
+          tests/test_embedding_projection.py -q --tb=short --timeout=60
+        env:
+          VELANTRIM_API_KEY: ci-test-key
+          VELANTRIM_DB_PATH: "${{ runner.temp }}/fallback.db"
+          VELANTRIM_NGRAM_DB: "${{ runner.temp }}/fallback-ngram.db"
