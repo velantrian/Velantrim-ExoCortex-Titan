@@ -1,5 +1,16 @@
 # ⚠️ Known Risks and Required Proof
 
+## 2026-11-16 — Audit remediation: retrieval scores and model cache lifetime (draft branch, not merged)
+
+Audit C11/C13/C14 and the private SSE-parser part of A23: dense availability is instance-local; one locked model-cache construction prevents duplicate loads. RRF is explicitly rank-only and no longer computes ignored normalization. Five-stage retrieval publishes final_score and gives graph expansion an actual rank channel without changing confidence. Gemini handles are bounded to 128 LRU entries with a local TTL shorter than the requested provider TTL; a missing provider cache is invalidated and retried once with the complete approved system prompt. Removed the confirmed unused private SSE parser; public optional APIs are retained. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused cache/ranking regressions: **45 passed**. Broader affected retrieval and LLM tests: **210 passed**. New tests cover a failed model not disabling another instance, competing model loads, five-stage scores/graph eligibility, rank-only invariance, TTL/LRU and missing-cache recovery with no system truncation. Ruff core/changed tests and mypy core passed. No real provider calls. Remote full-model CI remains required.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 ## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
 
 Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
