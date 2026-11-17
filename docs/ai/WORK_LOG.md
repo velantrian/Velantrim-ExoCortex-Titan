@@ -73,6 +73,25 @@ Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` into this PR without rewr
 - Second review (same day), after the merge with `main` (#516): `LlmErrorInfo` enforces the shape of its fields; the log line names the cause chain by type and the raising code location; `llm_empty_response` separates an empty provider answer from an invalid request; environment keys are stripped of surrounding whitespace like request keys. `tests/test_llm_error_redaction.py` now has 48 tests; a targeted mutation control of 17 mutants (the earlier ten plus seven for these changes) was re-run on the merged tree and every mutant fails at least one test.
 - External review (same day), verified against the code: (1) regression fixed: OpenAI `/tts/stream` no longer ends a failed stream as if it were complete (pre-start failure: HTTP error with code; mid-stream failure: aborted transfer with a code-only error; empty audio: `llm_empty_response`); there was no test for the OpenAI branch, only for Gemini. (2) Gemini TTS without audio in the answer: `llm_empty_response` instead of a plain `ValueError`. (3) Not changed: the `(пустой ответ Gemini)` placeholder (pre-existing; recorded in `KNOWN_RISKS.md`). Tests: 53; targeted mutation control: 22 mutants, all killed.
 - Not covered: see the remaining limits in `KNOWN_RISKS.md` (generic exception handler, other event sinks, coarse codes).
+## 2026-11-16 — PR #517 documentation base synchronization
+
+Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` without changing the proposal text or activating any integration. Preserved the merged evidence-label documentation and tests while resolving the WORK_LOG header overlap. This is base synchronization, not architecture approval.
+
+## 2026-11-09 — Governed environment / replaceable models (documentation proposal)
+
+- Base: `6b45854f57ca90516b86b2c48b284c88857bc2c2`.
+- Clarify project intent and Crystal/Titan boundaries in English/Russian README;
+  record the shared design rationale and proposed bridge acceptance requirements
+  in [GOVERNED_MODEL_ENVIRONMENT.md](../design/GOVERNED_MODEL_ENVIRONMENT.md).
+- Distinguish typed proposals from admitted state, local ownership from integration,
+  prepared messages from delivery, and receipts from answer support. The laboratory
+  bridge snapshot is evidence about its bounded harness, not a deployed connection.
+- Documentation impact: `GITHUB_AND_NOTION`. Dedicated Notion principle page and
+  visible hub reference saved; public reference is its safe title only.
+- Validation and exact proposed head/CI belong to this documentation PR. No new
+  runtime tests, model calls, feature enablement or implementation checkpoint.
+
+---
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 ## 2026-11-17 — Preserve bounded retrieval and scope through multilingual wiring
