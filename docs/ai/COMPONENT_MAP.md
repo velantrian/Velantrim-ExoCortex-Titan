@@ -500,3 +500,11 @@ live `main`, preserve the owners above, and require a separate bounded admission
 ### Local World Skills manifest resolver (unwired)
 
 `core/world_skills_review_manifest.py` adapts the existing typed evidence registry to a fixed local review manifest. It has no HTTP/ingest/promotion callers. Reference resolution and unverified review attestations are separate; see `docs/evidence/WORLD_SKILLS_LOCAL_RESOLVER.md`. Coverage: `tests/test_world_skills_review_manifest.py` and the source-metadata spoofing regression in `tests/test_memory_ops.py`.
+
+## 2026-11-17 draft cleanup: shared graph traversal
+
+The draft child of audit runtime PR #525 implements the existing read-only traversal
+in `core/graph_store.py::GraphStoreBackend.spreading_activation`. Memory/SQLite/Cypher
+adapters retain neighbor and storage behavior. The three former algorithm bodies were
+AST-identical. This is mechanism reuse; Canon, promotion and policy ownership do not move.
+See `docs/operations/reserved-extension-points.md` for retained APIs and placeholder status.
