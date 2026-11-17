@@ -90,6 +90,11 @@ async def test_gemini_tts_stream_supplies_defaults_when_omitted(monkeypatch):
         seen.append((voice, model))
         return b"synthetic-audio", "audio/wav"
     monkeypatch.setattr(tts_router, "gemini_tts_bytes", synthesize)
+    # This unit verifies argument defaults. Policy denial is covered separately;
+    # permit only this isolated fake-provider invocation, never a real request.
+    monkeypatch.setattr("core.remote_egress.ensure_remote_egress_allowed", lambda *a, **k: None)
+    if "ensure_remote_egress_allowed" in tts_stream_route.__globals__:
+        monkeypatch.setitem(tts_stream_route.__globals__, "ensure_remote_egress_allowed", lambda *a, **k: None)
     response = await tts_stream_route(TtsSpeakBody(provider="gemini", api_key="synthetic-key", text="hello"))
     chunks = [chunk async for chunk in response.body_iterator]
     assert chunks
