@@ -198,14 +198,22 @@ class TestSleepWorkerFix:
 class TestArchiveDepthFix:
     """FIX v8.5.1 Gemini Security: zip-bomb защита работает."""
 
-    def test_archive_parser_creates_deeper_instance(self):
-        """ArchiveParser создаёт новый инстанс с depth+1 для вложенных архивов."""
-        import inspect
-
-        from core.file_parsers.archive_parser import ArchiveParser
-        src = inspect.getsource(ArchiveParser.parse)
-        assert "_depth + 1" in src or "_depth+1" in src, \
-            "Depth не увеличивается при рекурсии — zip-bomb уязвимость!"
+    def test_nested_archives_stop_at_depth_budget(self, tmp_path):
+        """Exercise nested archives rather than matching source-code spelling."""
+        import io
+        import zipfile
+        from core.file_parsers.file_ingester import FileIngester
+        payload = b"leaf payload must not be reached past the nesting budget"
+        for depth in range(4):
+            stream = io.BytesIO()
+            with zipfile.ZipFile(stream, "w") as archive:
+                archive.writestr("leaf.txt" if depth == 0 else "nested.zip", payload)
+            payload = stream.getvalue()
+        path = tmp_path / "outer.zip"
+        path.write_bytes(payload)
+        result = FileIngester().ingest(str(path))
+        assert "leaf payload must not be reached" not in result.extracted_text
+        assert any("глубина" in warning or "глубины" in warning for warning in result.warnings)
 
     def test_max_depth_constant(self):
         from core.file_parsers.archive_parser import ArchiveParser

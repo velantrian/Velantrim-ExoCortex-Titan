@@ -75,6 +75,7 @@ def analyze_graph(
     db_path: str | None = None,
     max_nodes: int = 2000,
     top_k: int = 20,
+    max_cycle_len: int = 6,
 ) -> dict[str, Any]:
     """
     Полный структурный анализ графа через NetworkX.
@@ -89,7 +90,7 @@ def analyze_graph(
             "available": bool,
             "node_count": int,
             "edge_count": int,
-            "centrality": [{node_id, degree_c, betweenness_c}, ...],
+            "centrality": [{node_id, degree_c, betweenness}, ...],
             "communities": [{community_id, nodes, size}, ...],
             "cycles": [[node_id, ...], ...],
             "pagerank": [{node_id, score}, ...],
@@ -97,7 +98,7 @@ def analyze_graph(
     """
     import os
 
-    db = db_path or os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db")
+    db = db_path or os.getenv("VELANTRIM_DB_PATH") or "./data/velantrim.db"
 
     # NetworkX check
     if importlib.util.find_spec("networkx") is None:
@@ -111,22 +112,18 @@ def analyze_graph(
 
     # Запустить анализ
     try:
-        # Pre-existing signature mismatch: core.graph_lab.analyze() takes
-        # seed_fact_ids/top_k/max_nodes/conn — it has no db_path parameter. Caught
-        # below like any other analysis failure, so this currently always degrades
-        # to available=False. Not fixed here (wiring a real sqlite3.Connection from
-        # db_path is a behavior change out of scope for a typing-only pass) —
-        # tracked as a follow-up bug.
-        result = gl_analyze(  # type: ignore[call-arg]
-            db_path=db,
-            max_nodes=max_nodes,
-            top_k=top_k,
-        )
-        result["available"] = True
+        import sqlite3
+        from pathlib import Path
+        conn = sqlite3.connect(Path(db).resolve().as_uri() + "?mode=ro", uri=True)
+        try:
+            result = gl_analyze(conn=conn, max_nodes=max_nodes, top_k=top_k,
+                                max_cycle_len=max_cycle_len)
+        finally:
+            conn.close()
         return result
     except Exception as exc:
         logger.debug("NetworkX analysis failed: %s", exc)
-        return {"available": False, "reason": str(exc)[:200]}
+        return {"available": False, "reason": "graph_analysis_unavailable"}
 
 
 def get_bridge_concepts(
@@ -142,6 +139,8 @@ def get_bridge_concepts(
         bridges = get_bridge_concepts(domain_a="physics", domain_b="biology")
         # → концепты которые связывают физику и биологию
     """
+    if domain_a or domain_b:
+        return {"available": False, "reason": "domain_filter_not_supported"}
     result = analyze_graph(top_k=top_k)
     if not result.get("available"):
         return result
@@ -150,9 +149,9 @@ def get_bridge_concepts(
     centrality_list = result.get("centrality", [])
     bridges = [
         c for c in centrality_list
-        if c.get("betweenness_c", 0) > 0.05  # высокий betweenness = мост
+        if c.get("betweenness", 0) > 0.05  # высокий betweenness = мост
     ]
-    bridges.sort(key=lambda x: x.get("betweenness_c", 0), reverse=True)
+    bridges.sort(key=lambda x: x.get("betweenness", 0), reverse=True)
 
     return {
         "available": True,
@@ -195,7 +194,7 @@ def find_contradiction_cycles(
         cycles = find_contradiction_cycles()
         # → «есть ли A→B→C→A петли в causal relations?»
     """
-    result = analyze_graph()
+    result = analyze_graph(max_cycle_len=max_cycle_len)
     if not result.get("available"):
         return result
 

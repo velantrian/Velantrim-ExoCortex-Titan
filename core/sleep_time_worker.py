@@ -101,7 +101,6 @@ class CoreMemoryBlocks:
 
     def __init__(self, db_path: str = CORE_BLOCKS_DB_PATH) -> None:
         self.db_path = db_path
-        self.blocks: dict[str, CoreMemoryBlock] = {}
         self._init_db()
         self._load()
 
@@ -146,16 +145,22 @@ class CoreMemoryBlocks:
                     "SELECT name, content, last_updated FROM core_blocks"
                 ).fetchall()
                 conn.commit()
-            # Publish the actual stored rows only after default creation commits.
-            for name, content, last_updated in rows:
-                self.blocks[name] = CoreMemoryBlock(name, content, last_updated)
+        finally:
+            conn.close()
+
+    @property
+    def blocks(self) -> dict[str, CoreMemoryBlock]:
+        """A fresh committed snapshot, coherent across worker instances/processes."""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            rows = conn.execute("SELECT name, content, last_updated FROM core_blocks").fetchall()
+            return {name: CoreMemoryBlock(name, content, updated) for name, content, updated in rows}
         finally:
             conn.close()
 
     def update(self, name: str, content: str) -> None:
         """Явное обновление блока. Не auto-overwrite."""
         now = datetime.now(UTC).isoformat()
-        block = CoreMemoryBlock(name=name, content=content, last_updated=now)
         conn = sqlite3.connect(self.db_path)
         try:
             conn.execute("""
@@ -166,8 +171,6 @@ class CoreMemoryBlocks:
                     last_updated = excluded.last_updated
             """, (name, content, now))
             conn.commit()
-            # Publish only a committed value; failed writes leave the cache unchanged.
-            self.blocks[name] = block
         finally:
             conn.close()
         logger.debug("CoreMemoryBlocks: обновлён блок '%s'", name)
@@ -314,6 +317,7 @@ class SleepTimeWorker:
         self._notebook: ResearchNotebook | None = None
         self._lock          = asyncio.Lock()
         self._task: asyncio.Task | None = None
+        self._bg_tasks: set[asyncio.Task] = set()
         self._stopped       = False
         self._last_activity = time.monotonic()
         self._last_cycle_at = 0.0  # RISK-5 (PDR-033): отдельный счётчик цикла
@@ -322,7 +326,9 @@ class SleepTimeWorker:
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def start(self) -> None:
-        """Запустить фоновый цикл."""
+        """Запустить фоновый цикл (повторный start не создаёт второй цикл)."""
+        if self._task is not None and not self._task.done():
+            return
         self._stopped = False
         self._notebook = self._nb_store.load(self.project_id) or ResearchNotebook(
             project_id=self.project_id
@@ -337,12 +343,16 @@ class SleepTimeWorker:
         BUG-3 (PDR-033): stop() должен cancel() task + await CancelledError.
         """
         self._stopped = True
-        if self._task and not self._task.done():
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
+        tasks = set(self._bg_tasks)
+        if self._task is not None:
+            tasks.add(self._task)
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._bg_tasks.clear()
+        self._task = None
         logger.info("SleepTimeWorker: остановлен")
 
     def notify_activity(self) -> None:
@@ -526,8 +536,8 @@ class SleepTimeWorker:
         self.notify_activity()
         # FIX v8.5.1 (Gemini): сохраняем ссылку на task —
         # иначе Python GC может уничтожить task прямо во время выполнения
-        if not hasattr(self, "_bg_tasks"):
-            self._bg_tasks: set = set()
+        if self._stopped or self._bg_tasks:
+            return  # Coalesce episode bursts into the one owned background cycle.
         bg_task = asyncio.create_task(self._background_think())
         self._bg_tasks.add(bg_task)
         bg_task.add_done_callback(self._bg_tasks.discard)

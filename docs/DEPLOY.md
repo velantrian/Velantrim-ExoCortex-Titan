@@ -160,6 +160,10 @@ sudo certbot --nginx -d your-domain.com
 
 ## API Endpoints
 
+Ниже — выборка основных маршрутов. Полный актуальный перечень и схемы доступны
+в `/openapi.json` и `/docs`, включая `/health/recovery`, `/chat`, `/runtime/status`
+и `/memory/inbox`.
+
 | Метод | URL | Описание |
 |-------|-----|----------|
 | GET | `/` | Инфо о сервере |
