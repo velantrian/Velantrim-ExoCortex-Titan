@@ -501,7 +501,8 @@ def _observer_model_input(
 ) -> tuple[str, list[dict]] | None:
     """Return only a successful model answer and memory records in its final prompt."""
     if (
-        not model_call_started
+        answer is None
+        or not model_call_started
         or model_error
         or context_report is None
         or not _query_has_model_answer_text(answer)
