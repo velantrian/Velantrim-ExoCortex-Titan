@@ -79,3 +79,18 @@ def test_tts_probe_route_rejects_smuggled_payload(client, monkeypatch):
         },
     )
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_gemini_tts_stream_supplies_defaults_when_omitted(monkeypatch):
+    from api.llm_routes import TtsSpeakBody, tts_stream_route
+    from core import tts_router
+    seen = []
+    async def synthesize(api_key, text, *, voice, model):
+        seen.append((voice, model))
+        return b"synthetic-audio", "audio/wav"
+    monkeypatch.setattr(tts_router, "gemini_tts_bytes", synthesize)
+    response = await tts_stream_route(TtsSpeakBody(provider="gemini", api_key="synthetic-key", text="hello"))
+    chunks = [chunk async for chunk in response.body_iterator]
+    assert chunks
+    assert seen == [(tts_router.DEFAULT_GEMINI_TTS_VOICE, tts_router.DEFAULT_GEMINI_TTS_MODEL)]

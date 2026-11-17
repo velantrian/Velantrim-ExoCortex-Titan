@@ -42,7 +42,7 @@ import logging
 import os
 import sqlite3
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -303,7 +303,7 @@ class SleepTimeWorker:
         sleep_interval: int = DEFAULT_SLEEP_INTERVAL,
         core_blocks: CoreMemoryBlocks | None = None,
         notebook_store: NotebookStore | None = None,
-        llm_fn: Callable[[str], str] | None = None,
+        llm_fn: Callable[[str], str | Awaitable[str]] | None = None,
     ) -> None:
         self.project_id     = project_id
         self.idle_timeout   = idle_timeout
@@ -706,8 +706,10 @@ class SleepTimeWorker:
             try:
                 # AUDIT-FIX v8.4.0: правильно обрабатываем async и sync callables
                 result = self._llm_fn(prompt)
-                if inspect.iscoroutine(result):
+                if inspect.isawaitable(result):
                     result = await result
+                if not isinstance(result, str):
+                    raise TypeError("LLM callback must return text")
                 if is_json:
                     try:
                         return json.loads(result)
@@ -759,7 +761,7 @@ def make_sleep_time_worker(
     project_id: str = "velantrim-core",
     core_blocks_db: str = CORE_BLOCKS_DB_PATH,
     notebook_db: str = NOTEBOOK_DB_PATH,
-    llm_fn: Callable[[str], str] | None = None,
+    llm_fn: Callable[[str], str | Awaitable[str]] | None = None,
 ) -> SleepTimeWorker:
     """
     Создать SleepTimeWorker с изолированными хранилищами.

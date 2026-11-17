@@ -27,8 +27,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Titan bounded runtime
-        run: python -m pip install --disable-pip-version-check -e '.[server,parsers]'
+      - name: Install frozen Titan dependencies
+        uses: ./.github/actions/sync-python-deps
+        with:
+          extras: server parsers
 
       - name: Run bounded Titan V1 pilot
         run: python scripts/titan_v1_bounded_pilot.py

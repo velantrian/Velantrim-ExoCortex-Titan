@@ -261,7 +261,7 @@ async def _run_stt_test(req: SttTestBody):
                 mime_type="audio/wav",
                 language_hint=lang,
             )
-            model_out = cfg.model or get_provider_info(provider)["default_model"]
+            model_out = cfg.model or (get_provider_info(provider) or {})["default_model"]
         else:
             text = await transcribe_audio_openai(
                 cfg,
@@ -324,7 +324,7 @@ async def stt_transcribe(req: SttTranscribeBody):
             text = await transcribe_audio_gemini(
                 cfg, req.audio_base64, mime_type=mime, language_hint=lang
             )
-            model_out = cfg.model or get_provider_info(provider)["default_model"]
+            model_out = cfg.model or (get_provider_info(provider) or {})["default_model"]
         else:
             text = await transcribe_audio_openai(
                 cfg, req.audio_base64, mime_type=mime, language_hint=lang
@@ -409,7 +409,7 @@ async def tts_test_route(req: TtsTestBody):
         return await test_tts_connection(
             req.provider,
             req.api_key.strip(),
-            voice=(req.voice or "").strip() or None,
+            voice=(req.voice or "").strip(),
             model=(req.model or "").strip() or None,
             language=req.language or "ru",
         )
@@ -428,7 +428,7 @@ async def tts_speak_chunk(req: TtsSpeakBody):
             req.provider,
             req.api_key.strip(),
             req.text,
-            voice=(req.voice or "").strip() or None,
+            voice=(req.voice or "").strip(),
             model=(req.model or "").strip() or None,
         )
         return {
@@ -501,6 +501,10 @@ async def tts_stream_route(req: TtsSpeakBody):
                 raise LlmStreamError(info) from None
 
         return StreamingResponse(audio_iter(), media_type="audio/mpeg")
+
+    from core.tts_router import DEFAULT_GEMINI_TTS_MODEL, DEFAULT_GEMINI_TTS_VOICE
+    voice = voice or DEFAULT_GEMINI_TTS_VOICE
+    model = model or DEFAULT_GEMINI_TTS_MODEL
 
     async def ndjson_iter():
         try:

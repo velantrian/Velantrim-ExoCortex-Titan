@@ -348,11 +348,16 @@ def test_pipeline_still_reaches_truth_gate_regardless_of_projection_state(monkey
             return ["tg-1"]
 
     monkeypatch.setattr(pipeline, "_NGRAM_INDEX", _StubNGram())
-    # Same reasoning for the HybridRetriever singleton (also process-wide).
-    monkeypatch.setattr(pipeline, "_HYBRID_RETRIEVER", None)
-    monkeypatch.setattr(pipeline, "_HYBRID_DIRTY", True)
-    monkeypatch.setattr(pipeline, "_HYBRID_FACTS_COUNT", 0)
-    monkeypatch.setattr(pipeline, "_HYBRID_FACT_IDS", frozenset())
+    # Deterministic retrieval candidate: this is a TruthGate/projection contract
+    # test, not a model download or small-corpus BM25 integration test.
+    from core.hybrid_retriever import RetrievedFact
+    class _StubHybrid:
+        def retrieve(self, query, top_k=3):
+            fact = real_store.get_fact("tg-1")
+            return [RetrievedFact(fact_id="tg-1", claim=fact["claim"], source=fact["source"],
+                                  confidence=fact["confidence"], final_score=1.)]
+    monkeypatch.setattr(pipeline, "_HYBRID_AVAILABLE", True)
+    monkeypatch.setattr(pipeline, "_get_hybrid_retriever", lambda facts: _StubHybrid())
     # core.multilingual_router.patch_pipeline_retrieval() replaces
     # pipeline.retrieve with a module-level (non-monkeypatch) assignment when
     # some other test in the session invokes it, and that replacement is

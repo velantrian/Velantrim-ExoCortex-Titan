@@ -24,7 +24,10 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Annotated, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional
+
+if TYPE_CHECKING:
+    from core.llm_router import LlmCallConfig
 
 from core.recall_policy import filter_facts_for_recall
 from dotenv import load_dotenv
@@ -127,6 +130,7 @@ from core.promotion_gateway import PromotionGateway, PromotionRequest
 from core.mhi import MHICalculator, MHIStatus, check_mhi
 from core.pipeline import run as pipeline_run
 
+_ngram: "NGramIndex | None" = None
 try:
     from core.ngram_index import NGramIndex, set_global_ngram
     _ngram = NGramIndex(NGRAM_DB)
@@ -408,6 +412,7 @@ def _build_system_prompt(
         return len(sanitize_remote_system_prompt(text)) <= limit
 
     kept: list[int] = []
+    notice: str | None = None
     if selected_positions is not None:
         kept = [i for i in selected_positions if 0 <= i < len(facts)]
     else:
@@ -1817,7 +1822,7 @@ async def chat_endpoint(req: ChatRequest):
         except Exception as exc:
             _raise_if_context_error(exc)
             raise
-        llm_usage: dict[str, Any] | None = None
+        llm_usage = None
         try:
             from core.llm_stream import chat_complete_messages
 
