@@ -1,5 +1,13 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — CodeQL policy allowlist follows verified release pin
+
+The first refreshed #506 CI exposed an expected-hash fixture still pinned to v4.39.1. Updated the policy test to enforce the verified v4.39.3 commit `33d7b85da1a04171e211befe2c739303b9a4c066` for both action steps; bounded permissions checks remain intact. GitHub annotated release tag was dereferenced and matched that exact commit. No pin check was weakened.
+
+## 2026-11-16 — PR #506 CodeQL dependency base synchronization
+
+Merged current main to refresh obsolete failing CI evidence without changing the proposed CodeQL v4.39.3 action pins. Both init/analyze use the same immutable 40-character commit. Workflow YAML parsed locally. Fresh GitHub CI and dependency audit remain required; no main merge. Documentation impact GITHUB_ONLY; no new workflow authority or runtime activation.
+
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
 - Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.
 - Contract: default behaviour and the PR #453 prompt contract are unchanged. Full text in `KNOWN_RISKS.md`.
