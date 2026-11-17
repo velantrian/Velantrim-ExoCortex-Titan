@@ -205,7 +205,7 @@ async def debug_llm_catalog():
 
 @secure_router.post("/llm/test")
 async def llm_test_route(req: LlmTestBody):
-    """Проверка ключа LLM (без X-Api-Key)."""
+    """Проверка ключа LLM; требуется серверный X-Api-Key."""
     return await _run_llm_test(req)
 
 

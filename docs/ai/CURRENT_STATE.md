@@ -1,5 +1,19 @@
 # 📍 Current System State
 
+## 2026-11-17 — Audit cleanup (draft child of runtime PR #525)
+
+Three backend spreading_activation implementations were AST-identical and now reuse the
+same existing algorithm on GraphStoreBackend. Removed the uncalled Prometheus probe/cache,
+a private unused stats argument and whole-file IO from the unimplemented MinerU adapter.
+MinerU/Vision are explicitly NOT_IMPLEMENTED; OCR/PDF fallbacks remain. Reserved compatibility
+hooks/public types are documented rather than assumed safe to delete. Corrected API-key,
+bootstrap and Graph-as-projection help; marked the #515 proposal as merged history.
+
+Focused backend/parser/runtime checks: **80 passed** before parent synchronization.
+No new authority, feature activation, main merge or broad function refactor. Documentation
+impact: GITHUB_ONLY; this is a focused cleanup under existing contracts.
+
+
 ## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.

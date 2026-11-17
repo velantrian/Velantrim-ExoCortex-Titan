@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from core.graph_store import ActivatedNode, GraphStoreBackend
+from core.graph_store import GraphStoreBackend
 
 
 class SQLiteGraphStore(GraphStoreBackend):
@@ -138,45 +138,6 @@ class SQLiteGraphStore(GraphStoreBackend):
             finally:
                 conn.close()
 
-    def spreading_activation(
-        self,
-        seeds: list[str],
-        *,
-        max_hops: int = 2,
-        top_k: int = 10,
-        decay: float = 0.65,
-    ) -> list[ActivatedNode]:
-        scores: dict[str, tuple[float, int]] = {}
-        frontier: dict[str, tuple[float, int]] = {s: (1.0, 0) for s in seeds if s}
-        visited: set[str] = set()
-
-        for hop in range(max_hops + 1):
-            if not frontier:
-                break
-            nxt: dict[str, tuple[float, int]] = {}
-            for nid, (act, h) in frontier.items():
-                if nid in visited:
-                    continue
-                visited.add(nid)
-                prev = scores.get(nid)
-                if prev is None or act > prev[0]:
-                    scores[nid] = (act, h)
-                if hop >= max_hops:
-                    continue
-                for nb in self.get_neighbors(nid):
-                    na = act * decay
-                    if na < 0.01:
-                        continue
-                    old = nxt.get(nb)
-                    if old is None or na > old[0]:
-                        nxt[nb] = (na, hop + 1)
-            frontier = nxt
-
-        ranked = sorted(scores.items(), key=lambda x: x[1][0], reverse=True)
-        return [
-            ActivatedNode(node_id=n, score=s, hops=h)
-            for n, (s, h) in ranked[:top_k]
-        ]
 
     def create_snapshot(
         self,
