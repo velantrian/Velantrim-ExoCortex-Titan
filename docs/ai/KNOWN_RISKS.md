@@ -1,5 +1,19 @@
 # ⚠️ Known Risks and Required Proof
 
+## 2026-11-17 — Audit cleanup (draft child of runtime PR #525)
+
+Three backend spreading_activation implementations were AST-identical and now reuse the
+same existing algorithm on GraphStoreBackend. Removed the uncalled Prometheus probe/cache,
+a private unused stats argument and whole-file IO from the unimplemented MinerU adapter.
+MinerU/Vision are explicitly NOT_IMPLEMENTED; OCR/PDF fallbacks remain. Reserved compatibility
+hooks/public types are documented rather than assumed safe to delete. Corrected API-key,
+bootstrap and Graph-as-projection help; marked the #515 proposal as merged history.
+
+Focused backend/parser/runtime checks: **80 passed** before parent synchronization.
+No new authority, feature activation, main merge or broad function refactor. Documentation
+impact: GITHUB_ONLY; this is a focused cleanup under existing contracts.
+
+
 ## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
@@ -197,8 +211,9 @@ Remaining limits:
 - Not changed, pre-existing: when Gemini returns a candidate without text (`parts` missing or empty, for example a blocked or truncated candidate), `core/llm_router.py` and `core/llm_stream.py` return the placeholder text `(пустой ответ Gemini)` as a successful answer, while a response without any candidate is `llm_empty_response`. The two cases are inconsistent; turning the placeholder into an error changes what the console shows and was left out of this PR.
 - Separate, pre-existing: `/tts/stream` with `provider=gemini` and no explicit model fails, because `gemini_tts_bytes` rejects an empty Gemini model id.
 ## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
+## Historical proposal — opt-in evidence labels (merged as PR #515 on 2026-11-14)
 
-Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
+At the 2026-11-09 proposal baseline, the `/query` prompt carried record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
 
 Contract, explicit and opt-in: `QueryRequest.evidence_labels` (default `false`). When it is `false`, nothing changes: the records part of the prompt is byte-identical to before (tested against the unlabelled builder). When it is `true`:
 - The code creates labels `[ev_1]`, `[ev_2]`, ... in fact order and prefixes each record line with its label; one instruction sentence tells the model to cite by label and that a label does not mean the record supports the statement. A record without a real `fact_id` gets no label.

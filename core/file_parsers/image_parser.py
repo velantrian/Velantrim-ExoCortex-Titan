@@ -38,7 +38,7 @@ class ImageParser(FileParser):
     Конфигурация через ENV:
         VELANTRIM_OCR_LANG=rus+eng+jpn   — языки Tesseract (default: rus+eng)
         VELANTRIM_OCR_OSD=true            — автоопределение поворота
-        VELANTRIM_VISION_LLM=true         — использовать Vision-LLM
+        VELANTRIM_VISION_LLM=true         — сообщает NOT_IMPLEMENTED, затем OCR
     """
 
     file_type = "image"
@@ -99,12 +99,8 @@ class ImageParser(FileParser):
 
             # Метод 1: Vision-LLM (опционально)
             if os.getenv("VELANTRIM_VISION_LLM", "false").lower() == "true":
-                try:
-                    extracted_text = self._parse_vision_llm(file_path)
-                    result.extraction_method = "Vision-LLM"
-                except Exception as exc:
-                    logger.warning(f"Vision-LLM failed: {exc}, fallback to OCR")
-                    result.warnings.append("vision_llm_failed")
+                result.warnings.append("vision_llm_not_implemented")
+                logger.warning("Vision-LLM adapter is not implemented; using OCR fallback")
 
             # Метод 2: Tesseract OCR с multilang
             if not extracted_text and TESSERACT_AVAILABLE:
