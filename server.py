@@ -2317,17 +2317,22 @@ async def query_with_roles(req: _QueryRolesRequest):
     Если не указан — система выберет автоматически по запросу.
     """
     role_list = [r.strip().upper() for r in (req.roles or "").split(",") if r.strip()] or None
+    from core.domain_tags import normalize_domain
+    from core.truth_gate import CognitiveMode
+    resolved_domain = None
+    if req.domain is not None:
+        resolved_domain = normalize_domain(req.domain)
+        if resolved_domain == "general" and req.domain.strip().lower() not in {"", "general"}:
+            raise HTTPException(status_code=400, detail="Unknown domain")
+    try:
+        resolved_mode = CognitiveMode((req.cognitive_mode or "BALANCED").upper()).value
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Unknown cognitive mode") from exc
     scoped_facts = None
     if req.domain is not None or req.cognitive_mode is not None:
-        from core.truth_gate import CognitiveMode
-        if req.cognitive_mode is not None:
-            try:
-                CognitiveMode(req.cognitive_mode.upper())
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="Unknown cognitive mode") from exc
         from core.pipeline import run as run_policy_query
         scoped = await asyncio.to_thread(
-            run_policy_query, req.query, cognitive_mode=req.cognitive_mode, domain=req.domain,
+            run_policy_query, req.query, cognitive_mode=resolved_mode, domain=resolved_domain,
         )
         scoped_facts = scoped.get("facts") or []
     try:
@@ -2375,8 +2380,8 @@ async def query_with_roles(req: _QueryRolesRequest):
                 "all_branches_used_llm": synthesis.all_branches_used_llm,
             },
             effective_params={
-                "cognitive_mode": req.cognitive_mode,
-                "domain": req.domain,
+                "cognitive_mode": resolved_mode,
+                "domain": resolved_domain,
                 "roles": roles_used,
             },
         )
