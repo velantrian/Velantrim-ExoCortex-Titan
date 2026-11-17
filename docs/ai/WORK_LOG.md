@@ -22,6 +22,10 @@ PR #521 is stacked on tested PR #509 (`0f1097e`) so an unavailable control canno
 
 ## 2026-11-08 — FactsPack keeps distinct records; Observer reports unavailable checks
 
+## 2026-11-17 — Observer regression isolation
+
+Use the live Observer module in all availability regressions. The full suite reloads core modules; an early imported observe function can retain stale globals and miss a monkeypatch on the live private check. This is fixed in the lowest owning PR #509 before #521/#522 are synchronized. No production behavior change.
+
 ## 2026-11-16 — PR #509 synchronized with merged evidence labels
 
 Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` into this PR without rewriting its history. Preserved the #515 evidence-label implementation and tests. Resolved documentation conflicts by retaining both records. Focused regression suite: **97 passed** on Python 3.12; no provider calls. Main and deployment remain unchanged. Fresh exact-head CI remains required.
