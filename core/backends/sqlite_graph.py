@@ -90,11 +90,15 @@ class SQLiteGraphStore(GraphStoreBackend):
     ) -> None:
         if not from_id or not to_id or from_id == to_id:
             return
-        self.upsert_node(from_id)
-        self.upsert_node(to_id)
         with self._lock:
             conn = self._connect()
             try:
+                # Ensure endpoints without replacing an existing label/payload.
+                conn.executemany(
+                    "INSERT INTO gs_nodes (node_id, label, props_json, updated_at) "
+                    "VALUES (?, 'Entity', '{}', ?) ON CONFLICT(node_id) DO NOTHING",
+                    [(from_id, time.time()), (to_id, time.time())],
+                )
                 conn.execute(
                     """
                     INSERT INTO gs_edges (from_id, to_id, relation, weight)

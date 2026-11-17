@@ -63,6 +63,7 @@ class EmbeddingStore:
 
     def ensure_table(self) -> None:
         """Создать таблицу gs_vectors если её нет (идемпотентно)."""
+        conn: sqlite3.Connection | None = None
         try:
             db_dir = os.path.dirname(self._db_path)
             if db_dir:
@@ -86,9 +87,11 @@ class EmbeddingStore:
                 ON gs_vectors(model_name, computed_at)
             """)
             conn.commit()
-            conn.close()
         except Exception as exc:
             logger.warning("EmbeddingStore.ensure_table: %s", exc)
+        finally:
+            if conn is not None:
+                conn.close()
 
     # ── Запись ──────────────────────────────────────────────────────────────
 
@@ -112,6 +115,7 @@ class EmbeddingStore:
         Returns:
             True если успешно, False при ошибке
         """
+        conn: sqlite3.Connection | None = None
         try:
             blob = embedding.astype(np.float32).tobytes()
             dims = embedding.shape[0]
@@ -126,11 +130,13 @@ class EmbeddingStore:
                 (node_id, model_name, blob, dims, now, content_hash),
             )
             conn.commit()
-            conn.close()
             return True
         except Exception as exc:
             logger.error("EmbeddingStore.store(%s): %s", node_id, exc)
             return False
+        finally:
+            if conn is not None:
+                conn.close()
 
     def store_batch(
         self,
@@ -149,6 +155,7 @@ class EmbeddingStore:
             return 0
 
         count = 0
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.execute("PRAGMA journal_mode=WAL")
@@ -165,13 +172,17 @@ class EmbeddingStore:
                         (node_id, model_name, blob, dims, now),
                     )
                     count += 1
-                except Exception:
+                except Exception as exc:
+                    logger.warning("EmbeddingStore batch item failed (%s)", type(exc).__name__)
                     continue
 
             conn.commit()
-            conn.close()
         except Exception as exc:
-            logger.error("EmbeddingStore.store_batch: %s", exc)
+            count = 0  # Failed commit/transaction means no durable batch progress.
+            logger.error("EmbeddingStore.store_batch: %s", type(exc).__name__)
+        finally:
+            if conn is not None:
+                conn.close()
         return count
 
     # ── Чтение ──────────────────────────────────────────────────────────────
@@ -181,13 +192,13 @@ class EmbeddingStore:
         Загрузить эмбеддинг одного факта.
         Возвращает numpy-вектор или None.
         """
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             row = conn.execute(
                 "SELECT embedding_blob, dims FROM gs_vectors WHERE node_id = ? AND model_name = ?",
                 (node_id, model_name),
             ).fetchone()
-            conn.close()
             if row is None:
                 return None
             blob, dims = row
@@ -195,6 +206,9 @@ class EmbeddingStore:
         except Exception as exc:
             logger.debug("EmbeddingStore.load(%s): %s", node_id, exc)
             return None
+        finally:
+            if conn is not None:
+                conn.close()
 
     def load_all(self, model_name: str = "default") -> Dict[str, np.ndarray]:
         """
@@ -202,13 +216,13 @@ class EmbeddingStore:
         Возвращает dict[fact_id, ndarray].
         """
         result: Dict[str, np.ndarray] = {}
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             rows = conn.execute(
                 "SELECT node_id, embedding_blob, dims FROM gs_vectors WHERE model_name = ?",
                 (model_name,),
             ).fetchall()
-            conn.close()
             for node_id, blob, dims in rows:
                 try:
                     result[node_id] = np.frombuffer(blob, dtype=np.float32).reshape(dims)
@@ -216,6 +230,9 @@ class EmbeddingStore:
                     continue
         except Exception as exc:
             logger.error("EmbeddingStore.load_all: %s", exc)
+        finally:
+            if conn is not None:
+                conn.close()
         return result
 
     def load_batch(
@@ -226,6 +243,7 @@ class EmbeddingStore:
             return {}
 
         result: Dict[str, np.ndarray] = {}
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             placeholders = ", ".join("?" for _ in node_ids)
@@ -234,7 +252,6 @@ class EmbeddingStore:
                 f"WHERE node_id IN ({placeholders}) AND model_name = ?",
                 (*node_ids, model_name),
             ).fetchall()
-            conn.close()
             for node_id, blob, dims in rows:
                 try:
                     result[node_id] = np.frombuffer(blob, dtype=np.float32).reshape(dims)
@@ -242,6 +259,9 @@ class EmbeddingStore:
                     continue
         except Exception as exc:
             logger.error("EmbeddingStore.load_batch: %s", exc)
+        finally:
+            if conn is not None:
+                conn.close()
         return result
 
     # ── Управление ──────────────────────────────────────────────────────────
@@ -251,6 +271,7 @@ class EmbeddingStore:
         Удалить все эмбеддинги для модели (при смене embedding-модели).
         Возвращает число удалённых записей.
         """
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             cur = conn.execute(
@@ -258,23 +279,28 @@ class EmbeddingStore:
                 (model_name,),
             )
             conn.commit()
-            conn.close()
             logger.info("Invalidated %d embeddings for model %s", cur.rowcount, model_name)
             return cur.rowcount
         except Exception as exc:
             logger.error("EmbeddingStore.invalidate_model: %s", exc)
             return 0
+        finally:
+            if conn is not None:
+                conn.close()
 
     def invalidate_node(self, node_id: str) -> bool:
         """Удалить эмбеддинг конкретного факта (при изменении claim)."""
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             conn.execute("DELETE FROM gs_vectors WHERE node_id = ?", (node_id,))
             conn.commit()
-            conn.close()
             return True
         except Exception:
             return False
+        finally:
+            if conn is not None:
+                conn.close()
 
     def purge_node(self, node_id: str) -> int:
         """GDPR Art. 17: delete every embedding for `node_id` (all models).
@@ -327,6 +353,7 @@ class EmbeddingStore:
         """Like `load()`, but also returns the stored `content_hash` column
         (None if the row predates content-hash tracking or was written
         without one)."""
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             row = conn.execute(
@@ -334,7 +361,6 @@ class EmbeddingStore:
                 "WHERE node_id = ? AND model_name = ?",
                 (node_id, model_name),
             ).fetchone()
-            conn.close()
             if row is None:
                 return None
             blob, dims, content_hash = row
@@ -343,6 +369,9 @@ class EmbeddingStore:
         except Exception as exc:
             logger.debug("EmbeddingStore.load_with_content_hash(%s): %s", node_id, exc)
             return None
+        finally:
+            if conn is not None:
+                conn.close()
 
     def has_any(self, node_id: str) -> bool:
         """True if `node_id` still has an embedding under ANY model."""
@@ -357,19 +386,23 @@ class EmbeddingStore:
 
     def is_cached(self, node_id: str, model_name: str = "default") -> bool:
         """Проверить, есть ли эмбеддинг в кэше."""
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             row = conn.execute(
                 "SELECT 1 FROM gs_vectors WHERE node_id = ? AND model_name = ?",
                 (node_id, model_name),
             ).fetchone()
-            conn.close()
             return row is not None
         except Exception:
             return False
+        finally:
+            if conn is not None:
+                conn.close()
 
     def stats(self) -> Dict[str, Any]:
         """Статистика хранилища эмбеддингов."""
+        conn: sqlite3.Connection | None = None
         try:
             conn = sqlite3.connect(self._db_path, timeout=10.0)
             total = conn.execute("SELECT COUNT(*) FROM gs_vectors").fetchone()[0]
@@ -378,10 +411,12 @@ class EmbeddingStore:
                 "SELECT model_name, COUNT(*), AVG(dims) FROM gs_vectors GROUP BY model_name"
             ):
                 by_model[row[0]] = {"count": row[1], "avg_dims": round(row[2], 1) if row[2] else 0}
-            conn.close()
             return {"total_embeddings": total, "by_model": by_model}
         except Exception:
             return {"total_embeddings": 0, "by_model": {}}
+        finally:
+            if conn is not None:
+                conn.close()
 
 
 # ─── Глобальный экземпляр ────────────────────────────────────────────────────

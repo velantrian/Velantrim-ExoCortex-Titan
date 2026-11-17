@@ -592,7 +592,8 @@ def _maybe_cognitive_rerank(
 
 
 def _narrow_candidates(
-    query: str, domain: str | None
+    query: str, domain: str | None, *, use_ngram: bool = True,
+    store: Any = None, ngram: Any = None,
 ) -> list[dict[str, Any]]:
     """Шаг 0: NGramIndex pre-filter → filtered_facts.
 
@@ -605,21 +606,24 @@ def _narrow_candidates(
     При отсутствии NGramIndex: cap=1000 (вместо неограниченного SELECT *).
     """
     _RETRIEVE_CAP = 1_000
+    fetch_ids = store.get_fact_ids if store is not None else get_fact_ids
+    fetch_facts = store.get_facts_by_ids if store is not None else get_facts_by_ids
+    index = ngram if ngram is not None else _NGRAM_INDEX
 
-    if _NGRAM_INDEX is not None and _NGRAM_INDEX.available:
-        candidate_ids = list(_NGRAM_INDEX.query(query, limit=50))
+    if use_ngram and index is not None and index.available:
+        candidate_ids = list(index.query(query, limit=50))
         if candidate_ids:
-            filtered_facts = get_facts_by_ids(candidate_ids)
+            filtered_facts = fetch_facts(candidate_ids)
             if not filtered_facts:
-                filtered_facts = get_facts_by_ids(get_fact_ids(limit=_RETRIEVE_CAP))
+                filtered_facts = fetch_facts(fetch_ids(limit=_RETRIEVE_CAP))
                 logger.debug("NGramIndex: кандидаты не в store → bounded fallback")
             else:
                 logger.debug("NGramIndex(FTS5): %d кандидатов (прямой путь)", len(candidate_ids))
         else:
-            filtered_facts = get_facts_by_ids(get_fact_ids(limit=_RETRIEVE_CAP))
+            filtered_facts = fetch_facts(fetch_ids(limit=_RETRIEVE_CAP))
             logger.debug("NGramIndex: 0 кандидатов → bounded fallback (cap=%d)", _RETRIEVE_CAP)
     else:
-        filtered_facts = get_facts_by_ids(get_fact_ids(limit=_RETRIEVE_CAP))
+        filtered_facts = fetch_facts(fetch_ids(limit=_RETRIEVE_CAP))
 
     if not filtered_facts:
         return []
