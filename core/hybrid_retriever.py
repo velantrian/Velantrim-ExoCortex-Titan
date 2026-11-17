@@ -167,8 +167,13 @@ class BM25Retriever:
         else:
             scores = self._naive_scores(tokens)
 
-        indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
-        return [(i, float(s)) for i, s in indexed[:top_k] if s > 0]
+        # Okapi IDF can be zero/negative for matching terms in small corpora.
+        # Relevance is lexical presence, not the sign of this ranking score.
+        query_terms = set(tokens)
+        indexed = [(i, float(s)) for i, s in enumerate(scores)
+                   if query_terms.intersection(self._corpus[i])]
+        indexed.sort(key=lambda x: x[1], reverse=True)
+        return indexed[:top_k]
 
     def _naive_scores(self, tokens: list[str]) -> list[float]:
         """Naive TF fallback."""

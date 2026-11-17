@@ -1685,32 +1685,18 @@ class SQLiteGraphStore(GraphStore):
         new_claim = fact.get("claim", "")
         source_val = fact.get("source", "unknown")
 
-        # v8.7 P0: классификация модальности (детерминированная, без LLM)
-        from core.validators import normalize_claim_type, normalize_origin_type
-        _raw_ct = fact.get("claim_type")
-        _raw_ot = fact.get("origin_type")
-        if not _raw_ct or _raw_ct == "UNKNOWN":
-            # Auto-classify missing/placeholder values.  Passing the literal
-            # string "UNKNOWN" as an explicit override would freeze both axes
-            # at UNKNOWN and suppress deterministic source classification
-            # (notably USER_REPORTED for CognitiveFactStore payloads).
-            try:
-                from core.claim_classifier import classify_claim as _classify
-                _ct, _ot, _ = _classify(
-                    new_claim, source_val,
-                    explicit_claim_type=(
-                        None if _raw_ct in (None, "", "UNKNOWN") else _raw_ct
-                    ),
-                    explicit_origin_type=(
-                        None if _raw_ot in (None, "", "UNKNOWN") else _raw_ot
-                    ),
-                )
-            except Exception:
-                _ct = normalize_claim_type(_raw_ct)
-                _ot = normalize_origin_type(_raw_ot)
-        else:
-            _ct = normalize_claim_type(_raw_ct)
-            _ot = normalize_origin_type(_raw_ot) if not _raw_ot or _raw_ot == "UNKNOWN" else normalize_origin_type(_raw_ot)
+        from core.write_gate import resolve_admission_types
+
+        _ct, _ot, classification_error = resolve_admission_types(
+            new_claim, source_val, fact.get("claim_type"), fact.get("origin_type")
+        )
+        if classification_error:
+            return WriteResult(
+                status=WriteStatus.REJECTED_WRITE_GATE,
+                fact_id=fact_id, created=False, canonical_exists=not is_new,
+                durable_write=False, safe_reason_code=classification_error,
+                safe_message="Fact classification unavailable or invalid; write rejected.",
+            )
 
         # P0 local-first policy: WriteProtocolGate is a mandatory canonical
         # boundary, not an optional feature flag. WORLD_FACT requires
@@ -1734,15 +1720,6 @@ class SQLiteGraphStore(GraphStore):
                 safe_reason_code=_wg_reason,
                 safe_message="Write rejected by write-protocol gate.",
             )
-        if _ot == "UNKNOWN" and _raw_ot:
-            pass  # явное UNKNOWN — оставляем
-        elif not _raw_ot:
-            try:
-                from core.claim_classifier import classify_claim as _classify
-                _, _ot, _ = _classify(new_claim, source_val)
-            except Exception:
-                _ot = normalize_origin_type(None)
-
         existing = self.get_fact(fact_id)
         state_for_checksum = (
             existing["epistemic_state"] if existing else requested_state
@@ -3843,8 +3820,10 @@ class SQLiteGraphStore(GraphStore):
         elif isinstance(mode, str):
             try:
                 mode = CognitiveMode(mode.upper())
-            except ValueError:
-                mode = CognitiveMode.BALANCED
+            except ValueError as exc:
+                raise ValueError("Unknown cognitive mode") from exc
+        elif not isinstance(mode, CognitiveMode):
+            raise ValueError("Unknown cognitive mode")
 
         # Ring Zero проверяется здесь так же строго, как в transition_esm():
         # по fact_id, до любого чтения/gate — не зависит от того, существует
@@ -4286,34 +4265,14 @@ class SQLiteGraphStore(GraphStore):
                     from core.fact_integrity import compute_claim_dedup_key as _cdk
                     metadata_dict["claim_dedup_key"] = _cdk(new_claim)
 
-                # v8.7 P0: модальность
-                from core.validators import normalize_claim_type, normalize_origin_type
-                _raw_ct = fact.get("claim_type")
-                _raw_ot = fact.get("origin_type")
-                if not _raw_ct or _raw_ct == "UNKNOWN":
-                    try:
-                        from core.claim_classifier import classify_claim as _classify
+                from core.write_gate import resolve_admission_types
 
-                        _ct, _ot, _ = _classify(
-                            new_claim,
-                            fact.get("source", "unknown"),
-                            explicit_claim_type=(
-                                None
-                                if _raw_ct in (None, "", "UNKNOWN")
-                                else _raw_ct
-                            ),
-                            explicit_origin_type=(
-                                None
-                                if _raw_ot in (None, "", "UNKNOWN")
-                                else _raw_ot
-                            ),
-                        )
-                    except Exception:
-                        _ct = normalize_claim_type(_raw_ct)
-                        _ot = normalize_origin_type(_raw_ot)
-                else:
-                    _ct = normalize_claim_type(_raw_ct)
-                    _ot = normalize_origin_type(_raw_ot)
+                _ct, _ot, classification_error = resolve_admission_types(
+                    new_claim, fact.get("source", "unknown"),
+                    fact.get("claim_type"), fact.get("origin_type"),
+                )
+                if classification_error:
+                    raise ValueError(classification_error)
 
                 # Batch ingestion is not a privileged side door. The exact
                 # WriteProtocolGate used by store_fact() is applied per
