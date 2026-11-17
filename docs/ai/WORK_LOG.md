@@ -1,5 +1,9 @@
 ## Historical 2026-11-09 proposal — evidence labels (merged #515 on 2026-11-14)
 
+## 2026-11-17 — Cleanup parent synchronization evidence
+
+Merged runtime parent `2282007` without changing its fixes. Final focused backend/parser/runtime suite: **83 passed**. Clean mypy core: **356 files, no issues**; Ruff core/changed API/server/test paths passed. Shared traversal API semantics and reserved extension-point limitations are documented. Main remains unchanged.
+
 ## 2026-11-17 — Audit cleanup (draft child of runtime PR #525)
 
 Three backend spreading_activation implementations were AST-identical and now reuse the

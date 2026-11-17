@@ -62,6 +62,12 @@ class GraphStoreBackend(ABC):
         top_k: int = 10,
         decay: float = 0.65,
     ) -> list[ActivatedNode]:
+        """Return at most top_k nodes, seeds at hop zero, decaying each hop.
+
+        Reuses each backend's undirected neighbors, never changes node/fact state,
+        and preserves the historical insertion-order tie behavior. Activation is
+        a retrieval score, not evidence confidence or epistemic promotion.
+        """
         scores: dict[str, tuple[float, int]] = {}
         frontier: dict[str, tuple[float, int]] = {
             s: (1.0, 0) for s in seeds if s
