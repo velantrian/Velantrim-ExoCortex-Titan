@@ -1,3 +1,19 @@
+## 2026-11-14 — Observer compatibility revision prepared for Draft PR #522
+
+## 2026-11-17 — Observer HTTP type contract
+
+The new Pydantic-aware HTTP mypy profile in audit PR #526 identified that a boolean helper does not narrow Optional[str]. Added an explicit None guard in _observer_model_input at the lowest owning PR #522; successful-answer and sent-record semantics are unchanged. Existing prompt-record/Observer regressions are rerun; the aggregate candidate must pass the HTTP profile after synchronization.
+
+## 2026-11-16 — Observer child synchronized to the tested availability parent
+
+PR #522 now includes parent #521 at `0e0be79`, itself stacked on #509. Kept named, content-free unavailable-check reporting and scoped only the semantic diagnostic to actually sent records; other passive checks still run. **106 focused tests passed**, including Observer, prompt records, evidence labels and prompt epistemic boundaries. No claim-level entailment verifier or main merge is implied.
+
+- Preparation snapshot: PR #522 head `27192ec5aef7f8ef3fd4fa305bf9d4f7e400df63`, base / PR #521 head `5057904ce613a773e5eab585000dca55d8f41aa7`. The candidate diff was prepared only in a disposable detached copy; this preparation did not change either PR, a branch, a commit, or hosted CI.
+- Candidate behavior: when enabled, Observer continues applicable truth-policy, scope-leak and goal-drift checks over `pipeline_facts`, including when the model was not called, failed, or returned no usable answer. Only the semantic-support/lexical diagnostic is gated on a successful non-empty answer and uses `ContextReport.sent_facts`.
+- Candidate API contract: preserve `details.faithfulness` as an alias of `details.lexical_diagnostic`, explicitly lexical-only and not proof of support. Removal of the lexical-only `unsupported_claim` flag remains a separate client-visible contract change. No semantic verifier or answer blocking is added; #512 remains open.
+- Candidate checks, run locally in a locked disposable venv with Python 3.12.3: `tests/test_observer.py tests/test_eval_golden.py tests/test_observer_context.py` — **36 passed, 1 warning**. Ruff passed for `core/observer.py` and the two touched test modules; mypy passed for `core/observer.py`. Ruff `server.py` reports N812 at the pre-existing `__version__` import; the same finding reproduces on the exact base file. Hosted CI was not run on this unapproved diff. The user's separately reported 33-test result applies to original head `27192ec5…`, not this candidate diff.
+- Documentation impact: `GITHUB_AND_NOTION`; the existing Notion record “Titan #512 — предупреждение о непроверенной смысловой поддержке” was identified for later synchronization, without creating a duplicate or changing Notion during this approval-gated preparation.
+
 ## 2026-11-14 — Observer lexical-confidence mitigation (#512)
 
 ## 2026-11-16 — Observer availability and semantic-support integration

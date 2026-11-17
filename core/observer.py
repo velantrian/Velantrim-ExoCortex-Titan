@@ -13,7 +13,8 @@ Hard constraints (canon / ТЗ) — Observer is PASSIVE:
     audit_chain event, but only if a chain is explicitly handed to it.
 
 Increment-1 checks (each delegates to an existing module):
-  unsupported_claim      → core.output_faithfulness.OutputFaithfulnessChecker
+  semantic_support       → unavailable until a real semantic verifier exists
+  lexical diagnostic     → core.output_faithfulness.OutputFaithfulnessChecker
   no_admissible_evidence → core.truth_policy.decide (hard reject only)
   truth_scope_leak       → epistemic_state mix / known_false among the facts used
   goal_drift             → core.gap_detector.query_goal_alignment
@@ -46,7 +47,6 @@ CHECK_UNAVAILABLE = "check_unavailable"
 _SEVERITY = {ALLOW: 0, WARN: 1, GAP_NOTICE: 2, REJECT: 3}
 
 # Conservative tunables — calibrate before flipping the flag on by default.
-_FAITHFULNESS_MIN = 0.30      # answer grounding below this → unsupported_claim
 _GOAL_ALIGNMENT_MIN = 0.30    # query↔goal alignment below this → goal_drift
 _LEAK_STATES = {"Contradicted", "Deprecated", "Collapsed"}
 _TRUSTED_STATES = {"Validated", "ImmutableCore", "Supported"}
@@ -75,22 +75,36 @@ class ObserverVerdict:
 
 
 def _check_semantic_support(answer: str, facts: list, details: dict):
-    if not answer or not facts:
+    if not answer:
         return None
+    if not facts:
+        details["semantic_support"] = {
+            "status": "insufficient_evidence",
+            "records_checked": 0,
+        }
+        return WARN, "insufficient_evidence"
+
     try:
         from core.output_faithfulness import OutputFaithfulnessChecker
 
         res = OutputFaithfulnessChecker().check(answer, facts)
-    except Exception:  # noqa: BLE001 — expose failed check without breaking Observer
-        details["semantic_support"] = {"status": "check_unavailable"}
-        return WARN, "semantic_support_unverified"
-    details["faithfulness"] = res.to_dict()
-    # Lexical overlap is not an entailment check. In particular, negation,
-    # numbers and conditions can change while overlap remains high. Until a
-    # semantic verifier is available, never present that result as verified.
-    details["semantic_support"] = {"status": "check_unavailable"}
-    if res.total_claims and res.score < _FAITHFULNESS_MIN:
-        return GAP_NOTICE, "unsupported_claim"
+        # This is only a lexical diagnostic; it is not an entailment result and
+        # never changes the semantic-support status or Observer decision. Keep the
+        # historical field as a compatibility alias for existing API consumers.
+        diagnostic = res.to_dict()
+        details["lexical_diagnostic"] = diagnostic
+        details["faithfulness"] = dict(diagnostic)
+    except Exception:  # noqa: BLE001 — a failed diagnostic never breaks Observer
+        diagnostic = {"status": "check_unavailable"}
+        details["lexical_diagnostic"] = diagnostic
+        details["faithfulness"] = dict(diagnostic)
+
+    # No suitable local semantic verifier is available. Never infer support or
+    # contradiction from word overlap; both remain unknown until one is added.
+    details["semantic_support"] = {
+        "status": "check_unavailable",
+        "records_checked": len(facts),
+    }
     return WARN, "semantic_support_unverified"
 
 
@@ -139,15 +153,21 @@ def observe(
     mode: str = "BALANCED",
     user_id: str = "default",
     audit_chain: Any = None,
+    semantic_facts: Sequence[dict] | None = None,
 ) -> ObserverVerdict:
-    """Run the passive meta-checks and return one aggregated verdict. Never raises."""
+    """Run passive checks; ``semantic_facts`` limits only answer-support diagnostics.
+
+    Other checks use ``facts``. When ``semantic_facts`` is omitted, support diagnostics
+    retain the legacy behavior of using all ``facts``.
+    """
     facts = list(facts or [])
+    semantic_facts = facts if semantic_facts is None else list(semantic_facts)
     details: dict[str, Any] = {}
     flags: list[str] = []
     decision = ALLOW
 
     checks = (
-        ("semantic_support", lambda: _check_semantic_support(answer, facts, details)),
+        ("semantic_support", lambda: _check_semantic_support(answer, semantic_facts, details)),
         ("no_admissible_evidence", lambda: _check_admissible_evidence(query, facts, mode, details)),
         ("truth_scope_leak", lambda: _check_truth_scope_leak(facts, details)),
         ("goal_drift", lambda: _check_goal_drift(query, user_id, details)),
