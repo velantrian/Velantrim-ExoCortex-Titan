@@ -113,6 +113,10 @@ No new authority, feature activation, main merge or broad function refactor. Doc
 impact: GITHUB_ONLY; this is a focused cleanup under existing contracts.
 
 
+## 2026-11-17 — Final wired runtime full suite
+
+Code `2282007`: **4988 passed, 17 skipped, 1 xfailed**, Python 3.12, 261.32 seconds. This supersedes the earlier failing multilingual follow-up run and earlier green counts. Personal-domain, research-profile and irrelevant-query controls all remain asserted. Clean mypy core passed without incremental cache; actual startup/server integration and profile defaults were verified. Main is unchanged; fresh exact-head CI remains required.
+
 ## 2026-11-17 — Preserve bounded retrieval and scope through multilingual wiring
 
 While verifying role scope through real startup wiring, the multilingual wrapper still called get_all_facts and dropped domain. It now reuses the existing bounded candidate owner, forwards domain, honors use_ngram, filters recall eligibility and returns an explicit lexical retrieval score. **69 focused tests passed**, including wrapper lifecycle, pipeline, restricted recall and runtime regressions; clean mypy core passed (356 files). The earlier full count predates this follow-up; a fresh complete suite is running.
