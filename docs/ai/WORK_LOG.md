@@ -1,5 +1,9 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — CodeQL policy allowlist follows verified release pin
+
+The first refreshed #506 CI exposed an expected-hash fixture still pinned to v4.39.1. Updated the policy test to enforce the verified v4.39.3 commit `33d7b85da1a04171e211befe2c739303b9a4c066` for both action steps; bounded permissions checks remain intact. GitHub annotated release tag was dereferenced and matched that exact commit. No pin check was weakened.
+
 ## 2026-11-16 — PR #506 CodeQL dependency base synchronization
 
 Merged current main to refresh obsolete failing CI evidence without changing the proposed CodeQL v4.39.3 action pins. Both init/analyze use the same immutable 40-character commit. Workflow YAML parsed locally. Fresh GitHub CI and dependency audit remain required; no main merge. Documentation impact GITHUB_ONLY; no new workflow authority or runtime activation.
