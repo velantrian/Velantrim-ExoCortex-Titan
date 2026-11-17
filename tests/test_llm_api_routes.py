@@ -83,8 +83,11 @@ def test_tts_probe_route_rejects_smuggled_payload(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_gemini_tts_stream_supplies_defaults_when_omitted(monkeypatch):
-    from api.llm_routes import TtsSpeakBody, tts_stream_route
-    from core import tts_router
+    import importlib
+    routes = importlib.import_module("api.llm_routes")
+    tts_router = importlib.import_module("core.tts_router")
+    egress = importlib.import_module("core.remote_egress")
+    TtsSpeakBody, tts_stream_route = routes.TtsSpeakBody, routes.tts_stream_route
     seen = []
     async def synthesize(api_key, text, *, voice, model):
         seen.append((voice, model))
@@ -92,7 +95,7 @@ async def test_gemini_tts_stream_supplies_defaults_when_omitted(monkeypatch):
     monkeypatch.setattr(tts_router, "gemini_tts_bytes", synthesize)
     # This unit verifies argument defaults. Policy denial is covered separately;
     # permit only this isolated fake-provider invocation, never a real request.
-    monkeypatch.setattr("core.remote_egress.ensure_remote_egress_allowed", lambda *a, **k: None)
+    monkeypatch.setattr(egress, "ensure_remote_egress_allowed", lambda *a, **k: None)
     if "ensure_remote_egress_allowed" in tts_stream_route.__globals__:
         monkeypatch.setitem(tts_stream_route.__globals__, "ensure_remote_egress_allowed", lambda *a, **k: None)
     response = await tts_stream_route(TtsSpeakBody(provider="gemini", api_key="synthetic-key", text="hello"))
