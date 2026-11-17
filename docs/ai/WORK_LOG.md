@@ -1,3 +1,43 @@
+## 2026-11-08 — FactsPack keeps distinct records; Observer reports unavailable checks
+
+## 2026-11-17 — Observer regression isolation
+
+Use the live Observer module in all availability regressions. The full suite reloads core modules; an early imported observe function can retain stale globals and miss a monkeypatch on the live private check. This is fixed in the lowest owning PR #509 before #521/#522 are synchronized. No production behavior change.
+
+## 2026-11-16 — PR #509 synchronized with merged evidence labels
+
+Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` into this PR without rewriting its history. Preserved the #515 evidence-label implementation and tests. Resolved documentation conflicts by retaining both records. Focused regression suite: **97 passed** on Python 3.12; no provider calls. Main and deployment remain unchanged. Fresh exact-head CI remains required.
+
+- Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `ccr-21271488-mmapps`, draft [PR #509](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/509), not merged.
+- Origin: a cross-repository audit (Titan / Crystal / native-kernel) and its review. The review limited this first change to:
+  - provable repeats only;
+  - provenance preserved;
+  - the full path to the provider prompt;
+  - an explicit Observer failure status.
+
+  Claim-level answer support is a separate change.
+- **FactsPack** (`core/facts_pack.py`):
+  - `_dedup_semantic` (token overlap > 0.7, winner by confidence) is replaced by `_dedup_exact_record_repeats`. It collapses only the same real `fact_id` with an identical record payload (every `PackedFact` field except `retrieval_score`, enrichment fields included) and keeps the strongest `retrieval_score`. External review (same day): the first version left `context_applicability`, `causal_summary` and `living_context` out of the key; fixed, with tests per field, a guard against future fields, and a mutation control of 8 mutants (all killed).
+  - Before: records differing by negation, condition, `L1`/`L2`, status, number or argument order were dropped on `/query`, `/chat` and `/chat/stream` before the LLM, with no `excluded_facts` entry.
+- **Observer** (`core/observer.py`):
+  - Before: a raised check became `res = None`, so the verdict could stay `allow` / `clean`.
+  - Now: flag `check_unavailable`, decision at least `warn`, `details["unavailable_checks"]` with check name and exception type, no exception text.
+  - Observer is default-off in code, set to `1` in `docker-compose.prod.yml:100`, and passive (only `/query` calls it).
+- Reproduced before / passing after:
+  - `tests/test_facts_pack_distinct_records_preserved.py`: 10 failing on base.
+  - `tests/test_query_prompt_preserves_distinct_facts.py`: `server.query` → `pipeline.run` → FactsPack → `_build_system_prompt` → fake `core.llm_router.chat_complete`. It checks the provider-bound prompt line by line and after `sanitize_remote_system_prompt`. On base only the `*-a` records reached the API response (the prompt side was checked with a standalone script; the committed test stops at the API-response assertion).
+  - `tests/test_observer_check_unavailable.py`: 4 failing on base. With `truth_policy.decide` raising, the base verdict was `allow` / `clean`.
+- Not changed, deliberately:
+  - Prompt serialization still omits `fact_id` / `epistemic_state`. PR #453 pins that in `tests/test_prompt_epistemic_boundary.py`; changing it is an open policy decision.
+  - `OutputFaithfulnessChecker`, `ResponseGuardian` and the LLM answer path are unchanged.
+  - Residual risks recorded in `KNOWN_RISKS.md`: claim-level support, and prepared embedding batches after erasure.
+- Second-pass verification (2026-11-09; independent verifiers, some with a devil's-advocate second pass) corrected this entry and `KNOWN_RISKS.md`:
+  - The faithfulness checker is not pipeline-only: Observer runs it on the `/query` LLM answer when `ENABLE_OBSERVER=1`, which `docker-compose.prod.yml` sets. It reports a contradicting answer clean.
+  - The embedding-writer risk is latent: no non-test caller exists and the contract is marked `UNWIRED`.
+  - Tests were strengthened after a mutation check: key fields, empty-string id, max-score order, all four Observer checks, audit-chain path.
+  - Full-suite count: 4880 tests collected on the branch (4864 on main); the 4881 / 4865 in the first PR text counted one module skipped at collection.
+  - Separate issue: [#510](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/510), the BM25 `s > 0` filter. Its blast radius is the NGram candidate set (at most 50), not store size.
+- Documentation impact: `GITHUB_ONLY` (focused bug fixes plus narrowed / recorded risks). Notion: not updated by this change.
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 ## 2026-11-16 — PR #523 final local regression evidence
