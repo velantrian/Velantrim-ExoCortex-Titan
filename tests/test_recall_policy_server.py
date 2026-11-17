@@ -277,30 +277,11 @@ class TestBranchManagerCorpusExcludesRestricted:
             _fake_fact("f_restricted", RESTRICTED_MARKER, metadata={"restricted": True}),
         ]
 
-        class _FakeStore:
-            def get_all_facts(self):
-                return facts
-
-        captured_corpus: dict[str, list] = {}
-
-        class _FakeHybridRetriever:
-            def __init__(self, corpus, *args, **kwargs):
-                captured_corpus["facts"] = corpus
-
-            def retrieve(self, query, top_k=5):
-                return []
-
-            def retrieve_5stage(self, query, top_k=5, use_ego=False):
-                return []
-
-        monkeypatch.setattr("core.memory._GLOBAL_STORE", _FakeStore())
-        monkeypatch.setattr("core.hybrid_retriever.HybridRetriever", _FakeHybridRetriever)
-
+        # The branch now consumes the bounded query-policy result. Even a stale
+        # projection/result must be rechecked before role context is prepared.
+        monkeypatch.setattr("core.pipeline.run", lambda query: {"facts": facts})
         manager = BranchManager()
-        manager._retrieve_with_hints("query", {"retrieval_k": "5"})
-
-        assert "facts" in captured_corpus, "HybridRetriever was never constructed"
-        corpus_claims = [f["claim"] for f in captured_corpus["facts"]]
-
+        result = manager._retrieve_with_hints("query", {"retrieval_k": "5"})
+        corpus_claims = [fact["claim"] for fact in result]
         assert ALLOW_MARKER in corpus_claims
         assert RESTRICTED_MARKER not in corpus_claims

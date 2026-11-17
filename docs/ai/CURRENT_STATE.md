@@ -1,5 +1,69 @@
 # 📍 Current System State
 
+## 2026-11-17 — Audit cleanup (draft child of runtime PR #525)
+
+Three backend spreading_activation implementations were AST-identical and now reuse the
+same existing algorithm on GraphStoreBackend. Removed the uncalled Prometheus probe/cache,
+a private unused stats argument and whole-file IO from the unimplemented MinerU adapter.
+MinerU/Vision are explicitly NOT_IMPLEMENTED; OCR/PDF fallbacks remain. Reserved compatibility
+hooks/public types are documented rather than assumed safe to delete. Corrected API-key,
+bootstrap and Graph-as-projection help; marked the #515 proposal as merged history.
+
+Focused backend/parser/runtime checks: **80 passed** before parent synchronization.
+No new authority, feature activation, main merge or broad function refactor. Documentation
+impact: GITHUB_ONLY; this is a focused cleanup under existing contracts.
+
+
+## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
+
+Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused runtime regressions: **95 passed**; earlier component suite: **104 passed, 5 skipped**. Additional bounded-cycle oracle test and full suite/coverage are running. Ruff core/changed server/tests and mypy core passed. Existing optional parser skips remain explicit. Operational limits: EventBus is volatile process-local delivery, not a durable outbox; mutable injected objects remain caller-owned; GraphLab truncation/budget exhaustion is not proof of no path/cycle.
+## 2026-11-16 — Audit remediation: retrieval scores and model cache lifetime (draft branch, not merged)
+
+Audit C11/C13/C14 and the private SSE-parser part of A23: dense availability is instance-local; one locked model-cache construction prevents duplicate loads. RRF is explicitly rank-only and no longer computes ignored normalization. Five-stage retrieval publishes final_score and gives graph expansion an actual rank channel without changing confidence. Gemini handles are bounded to 128 LRU entries with a local TTL shorter than the requested provider TTL; a missing provider cache is invalidated and retried once with the complete approved system prompt. Removed the confirmed unused private SSE parser; public optional APIs are retained. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused cache/ranking regressions: **45 passed**. Broader affected retrieval and LLM tests: **210 passed**. New tests cover a failed model not disabling another instance, competing model loads, five-stage scores/graph eligibility, rank-only invariance, TTL/LRU and missing-cache recovery with no system truncation. Ruff core/changed tests and mypy core passed. No real provider calls. Remote full-model CI remains required.
+## 2026-11-16 — Audit remediation: Telegram durable receipts and concurrent delivery identity (draft branch, not merged)
+
+Audit A03/A04: Telegram returns success only for an accepted canonical write with matching stored content/source/raw provenance. Stable delivery identity includes message_id=0. The existing canonical owner supports create_only: existing rows are not updated, and SQLite conflict handling provides atomic first-writer wins before audit/version/projection effects. Initial raw provenance binds inside that same canonical create transaction. Conflicting edits under the same delivery key are rejected; no random retry IDs or false saved replies. Replays do not emit a second fact event. The raw API cannot prove whether it inserted, so the legacy deduplicated_raw field is null (unknown); deduplicated_delivery is the explicit reliable bool. L0 remains immutable and content-addressed even if L1 is rejected. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused writes/provenance/runtime tests initially **52 passed**. Import-reload order regression: **353 passed**. Initial full run exposed stale test-module/enum references, not absent canonical writes; fixtures now resolve the live modules. Complete repeat: **4976 passed, 17 skipped, 1 xfailed** in 224.19 seconds. Final event/no-overclaim controls and clean mypy are rerun. No real Telegram messages were sent. Fresh exact-head CI/coverage is required.
+## 2026-11-16 — Audit remediation: verification coverage and frozen acceptance dependencies (draft branch, not merged)
+
+Audit A20/A26/A27 and C10: Stage 9/10 use the frozen installer; Playwright is locked in browser-tests; Ruff 0.17.5 covers core plus HTTP/app/scripts/utils. Core mypy remains blocking and a Pydantic-aware HTTP profile is added. A separate frozen CI profile runs without BM25/dense models, while full embedding-enabled CI remains. The TruthGate projection test uses deterministic retrieval; TTS defaults and sync/async callback annotations are reconciled. Installed license metadata is recorded as an artifact; unknown metadata and optional PyMuPDF AGPL/commercial obligations remain explicit, without claiming legal certification. No runtime feature is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Frozen minimal environment confirmed absence of rank_bm25 and sentence_transformers. Initial affected/fallback run: **194 passed**; additional API/callback/projection run including omitted Gemini TTS defaults: **79 passed**. Modern Ruff over the full expanded surface, mypy core (356 files), Pydantic-aware HTTP mypy (12 files), and branding/hygiene/state checks passed. License inventory generation and workflow YAML parsing passed. Fresh remote Chromium/full-model CI remains required.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
+## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
+
+Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused regression suite: **110 passed** (new regressions plus pipeline, model-free core and consolidation contracts). Earlier full suite with admission/BM25: **4962 passed, 17 skipped, 1 xfailed**; that earlier run does not cover the later FactsPack/consolidation/mode changes. Ruff core and changed tests, mypy (356 core sources), branding, hygiene and project-state checks passed.
+## 2026-11-16 — Audit remediation: MCP input and lifecycle budgets (draft branch, not merged)
+
+Audit C08/A18/A19: configurable streamed HTTP body, batch and JSON depth budgets reject before dispatch. Invalid JSON numbers/UTF-8 no longer produce HTTP 500. Synchronous tools use the existing bounded ASGI thread pool. Session metadata expires after one idle hour with a 4096-entry LRU bound; mutexes live only while held/waited on. Reader source-document size is unchanged. Authentication/capability and operation-owned idempotency remain authoritative; cross-process serialization, tool timeouts and credential quotas remain separate limitations.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+All MCP regressions: **71 passed**, including real Uvicorn chunked HTTP, bounds, event-loop responsiveness, TTL and capability/idempotency/session serialization. Ruff changed paths and mypy core passed. See ADR-2026-11-16-mcp-input-and-lifecycle-budgets.md.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 **Verified:** 2026-11-06 (MCP serialization status rechecked against merged PRs and main code)  
 **Historical repository head at the 2026-11-04 reconciliation:** live `main` was `fd7793a43967fdbc3640443a9e9a57589efd925b` (#498) before the contradict fail-closed repair; this is not the 2026-11-06 head  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  

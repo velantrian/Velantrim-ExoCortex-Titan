@@ -1,8 +1,219 @@
 # ⚠️ Known Risks and Required Proof
 
-## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
+## 2026-11-17 — Audit cleanup (draft child of runtime PR #525)
 
-Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
+Three backend spreading_activation implementations were AST-identical and now reuse the
+same existing algorithm on GraphStoreBackend. Removed the uncalled Prometheus probe/cache,
+a private unused stats argument and whole-file IO from the unimplemented MinerU adapter.
+MinerU/Vision are explicitly NOT_IMPLEMENTED; OCR/PDF fallbacks remain. Reserved compatibility
+hooks/public types are documented rather than assumed safe to delete. Corrected API-key,
+bootstrap and Graph-as-projection help; marked the #515 proposal as merged history.
+
+Focused backend/parser/runtime checks: **80 passed** before parent synchronization.
+No new authority, feature activation, main merge or broad function refactor. Documentation
+impact: GITHUB_ONLY; this is a focused cleanup under existing contracts.
+
+
+## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
+
+Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused runtime regressions: **95 passed**; earlier component suite: **104 passed, 5 skipped**. Additional bounded-cycle oracle test and full suite/coverage are running. Ruff core/changed server/tests and mypy core passed. Existing optional parser skips remain explicit. Operational limits: EventBus is volatile process-local delivery, not a durable outbox; mutable injected objects remain caller-owned; GraphLab truncation/budget exhaustion is not proof of no path/cycle.
+## 2026-11-16 — Audit remediation: MCP input and lifecycle budgets (draft branch, not merged)
+
+Audit C08/A18/A19: configurable streamed HTTP body, batch and JSON depth budgets reject before dispatch. Invalid JSON numbers/UTF-8 no longer produce HTTP 500. Synchronous tools use the existing bounded ASGI thread pool. Session metadata expires after one idle hour with a 4096-entry LRU bound; mutexes live only while held/waited on. Reader source-document size is unchanged. Authentication/capability and operation-owned idempotency remain authoritative; cross-process serialization, tool timeouts and credential quotas remain separate limitations.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+All MCP regressions: **71 passed**, including real Uvicorn chunked HTTP, bounds, event-loop responsiveness, TTL and capability/idempotency/session serialization. Ruff changed paths and mypy core passed. See ADR-2026-11-16-mcp-input-and-lifecycle-budgets.md.
+## 2026-11-16 — Audit remediation: retrieval scores and model cache lifetime (draft branch, not merged)
+
+Audit C11/C13/C14 and the private SSE-parser part of A23: dense availability is instance-local; one locked model-cache construction prevents duplicate loads. RRF is explicitly rank-only and no longer computes ignored normalization. Five-stage retrieval publishes final_score and gives graph expansion an actual rank channel without changing confidence. Gemini handles are bounded to 128 LRU entries with a local TTL shorter than the requested provider TTL; a missing provider cache is invalidated and retried once with the complete approved system prompt. Removed the confirmed unused private SSE parser; public optional APIs are retained. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused cache/ranking regressions: **45 passed**. Broader affected retrieval and LLM tests: **210 passed**. New tests cover a failed model not disabling another instance, competing model loads, five-stage scores/graph eligibility, rank-only invariance, TTL/LRU and missing-cache recovery with no system truncation. Ruff core/changed tests and mypy core passed. No real provider calls. Remote full-model CI remains required.
+## 2026-11-16 — Audit remediation: Telegram durable receipts and concurrent delivery identity (draft branch, not merged)
+
+Audit A03/A04: Telegram returns success only for an accepted canonical write with matching stored content/source/raw provenance. Stable delivery identity includes message_id=0. The existing canonical owner supports create_only: existing rows are not updated, and SQLite conflict handling provides atomic first-writer wins before audit/version/projection effects. Initial raw provenance binds inside that same canonical create transaction. Conflicting edits under the same delivery key are rejected; no random retry IDs or false saved replies. Replays do not emit a second fact event. The raw API cannot prove whether it inserted, so the legacy deduplicated_raw field is null (unknown); deduplicated_delivery is the explicit reliable bool. L0 remains immutable and content-addressed even if L1 is rejected. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused writes/provenance/runtime tests initially **52 passed**. Import-reload order regression: **353 passed**. Initial full run exposed stale test-module/enum references, not absent canonical writes; fixtures now resolve the live modules. Complete repeat: **4976 passed, 17 skipped, 1 xfailed** in 224.19 seconds. Final event/no-overclaim controls and clean mypy are rerun. No real Telegram messages were sent. Fresh exact-head CI/coverage is required.
+## 2026-11-16 — Audit remediation: verification coverage and frozen acceptance dependencies (draft branch, not merged)
+
+Audit A20/A26/A27 and C10: Stage 9/10 use the frozen installer; Playwright is locked in browser-tests; Ruff 0.17.5 covers core plus HTTP/app/scripts/utils. Core mypy remains blocking and a Pydantic-aware HTTP profile is added. A separate frozen CI profile runs without BM25/dense models, while full embedding-enabled CI remains. The TruthGate projection test uses deterministic retrieval; TTS defaults and sync/async callback annotations are reconciled. Installed license metadata is recorded as an artifact; unknown metadata and optional PyMuPDF AGPL/commercial obligations remain explicit, without claiming legal certification. No runtime feature is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Frozen minimal environment confirmed absence of rank_bm25 and sentence_transformers. Initial affected/fallback run: **194 passed**; additional API/callback/projection run including omitted Gemini TTS defaults: **79 passed**. Modern Ruff over the full expanded surface, mypy core (356 files), Pydantic-aware HTTP mypy (12 files), and branding/hygiene/state checks passed. License inventory generation and workflow YAML parsing passed. Fresh remote Chromium/full-model CI remains required.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
+## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
+
+Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused regression suite: **110 passed** (new regressions plus pipeline, model-free core and consolidation contracts). Earlier full suite with admission/BM25: **4962 passed, 17 skipped, 1 xfailed**; that earlier run does not cover the later FactsPack/consolidation/mode changes. Ruff core and changed tests, mypy (356 core sources), branding, hygiene and project-state checks passed.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+## Draft PR #522: Observer evidence alignment and semantic support (#512)
+
+When enabled, `/query` runs Observer even if the model was not called, failed, or
+returned no usable answer. Its applicable truth-policy, epistemic-scope and goal-
+alignment checks continue to use the pipeline facts. Only answer-support diagnostics
+require a successful non-empty model answer and a context report; that check receives
+only `ContextReport.sent_facts`, never records omitted from the prompt. Without a
+successful answer, those semantic/lexical diagnostics are skipped, but the other
+Observer observations remain available.
+
+No semantic verifier is implemented: a successful answer with prompt records yields
+`semantic_support=check_unavailable`; an empty prompt record set yields
+`insufficient_evidence`. The lexical word-overlap report is diagnostic only, not
+evidence of support. `details.faithfulness` is retained as a compatibility alias of
+`details.lexical_diagnostic` whenever the lexical report exists. Removing the
+lexical-only `unsupported_claim` flag is a separate API contract change; clients and
+alerts may depend on that flag. No answer is blocked or rewritten. Per-claim semantic
+checking, calibration and external consumer compatibility remain unverified.
+
+## Observer semantic support remains unavailable (#512)
+
+The faithfulness score is lexical word overlap, not evidence of semantic support.
+For a successful non-empty model answer Observer reports
+`semantic_support_unverified` / `check_unavailable` when prompt records exist; even a
+verbatim answer is not certified. A low lexical score no longer emits
+`unsupported_claim`; removing that flag is a separate API contract change and may
+affect clients. The compatible `details.faithfulness` alias remains available next
+to `details.lexical_diagnostic`. This is not semantic contradiction detection and
+does not resolve #512. It changes Observer diagnostics when enabled, but does not
+block or rewrite answers. `/query` restricts support diagnostics to records actually
+sent in the prompt, while other applicable checks continue to see pipeline facts.
+Per-claim semantic support, calibration and a full verifier remain future work.
+
+## Reduced risk — FactsPack silently dropped distinct records (PR #509, draft, not merged)
+
+Base `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. `FactsPackBuilder._dedup_semantic`
+removed a record when its whitespace-token overlap with another exceeded 0.7, keeping the
+higher confidence. It is always on for every route that calls `pipeline.run`: `/query`,
+`/chat` and `/chat/stream` (`server.py` 2126, 1460, 1715). Records differing only by
+negation, condition, identifier (`L1`/`L2`), status, number or argument order were dropped
+before the LLM prompt, without an `excluded_facts` entry. Same text under different
+`fact_id`s lost separate provenance. The branch replaces it with
+`_dedup_exact_record_repeats`: only the same real `fact_id` with an identical record
+payload collapses (the first copy is kept, with the highest `retrieval_score`). The payload is
+every `PackedFact` field except `retrieval_score` (claim, epistemic_state, source, confidence,
+`context_applicability`, `causal_summary`, `living_context`); dict values are compared
+independent of key order, and a value that is not JSON-serializable never raises. An external
+review found that the first version ignored the last three fields, so two copies that differed
+only in enrichment collapsed and one copy's context was lost; today the production caller does
+not pass these fields, so this was an API-level defect. A test fails if a field is added to
+`PackedFact` without being covered by the key.
+
+Tests (fail on base, pass on the branch):
+`tests/test_facts_pack_distinct_records_preserved.py`,
+`tests/test_query_prompt_preserves_distinct_facts.py` (fake provider at
+`core.llm_router.chat_complete`; checks the provider-bound system prompt and the
+`sanitize_remote_system_prompt` output). Mutation check: dropping any one of fact_id,
+claim, source, confidence or epistemic_state from the key, dropping the empty-id guard, or
+keeping the last copy instead of the highest score each fails a test.
+
+Remaining limits:
+- Prompt growth is bounded by the retrieval `k`: 3 by default, up to 6 with the budget planner.
+- `core/pipeline.py::build_facts_pack` keys its metadata/modality/canonical lookups by
+  `fact_id`. Two records with one `fact_id` but different payload would share them.
+  Latent: canonical payloads come from `get_fact`, so one id gives one payload.
+- Prompt serialization still omits `fact_id` and `epistemic_state` by the PR #453 contract
+  (`tests/test_prompt_epistemic_boundary.py`). Whether to add them is an open policy
+  decision, not a bug fix.
+- Other context paths still trim silently (`core/llm_stream.py` history `[-20:]`,
+  `core/console_memory.py` caps). `WorkingMemoryGate`/`ContextPack` remain shadow-only.
+
+## Reduced risk — Observer folded a failed check into a clean verdict (PR #509, draft, not merged)
+
+`core/observer.py::observe` turned a check exception into `res = None`, so a broken check
+looked like `allow` / `clean`. On the branch a raised check adds flag `check_unavailable`
+(decision at least `warn`) and `details["unavailable_checks"]` = check name + exception
+type. Exception text is not included. Tests: `tests/test_observer_check_unavailable.py`
+(each of the four checks, all at once, audit chain, clean verdict).
+
+Reality status: default off in code (`enable_observer: False`), but
+`docker-compose.prod.yml:100` sets `ENABLE_OBSERVER=1`, so in that profile `/query`
+responses carry the `observer` block. Only `/query` calls it (`server.py:2288`). Observer
+stays passive: it does not change the delivered answer. The prod compose file is a profile,
+not an authorized deployment (see the P0 operator-GO risk).
+
+Consumer contract and limits:
+- The decision for an unavailable check is a flat `warn`, also for `no_admissible_evidence`,
+  whose normal failing outcome is `reject`. A future gate must key on `check_unavailable` in
+  `flags` (or `not is_clean`), not on `decision == reject`, or it fails open.
+- The audit event records the flags but not `details`, so it cannot say which check was down.
+- A failed check can leave its partial `details` entry in place. Latent: each current check
+  writes `details` as its last fallible step.
+
+## Open risk — LLM answers are not checked claim-by-claim against evidence
+
+- `core/output_faithfulness.py` uses word-set overlap with tokens of 3+ characters. It
+  scores negation, `L1`↔`L2`, `7`↔`30` days, `принято`↔`отменено` and a dropped condition
+  as fully grounded (1.0). Its docstring says TF-IDF; the code is plain overlap.
+- Where it runs:
+  - On the pipeline template answer, as `result["faithfulness"]` after `ResponseGuardian`
+    (`core/pipeline.py`). `QueryResponse` has no such field, so no production route returns it.
+  - Through Observer on the `/query` LLM answer (`core/observer.py:80`) when
+    `ENABLE_OBSERVER=1` (set in `docker-compose.prod.yml`), independent of
+    `ENABLE_OUTPUT_FAITHFULNESS`. Observer flags only when the overlap score is below 0.30,
+    so a contradicting answer is reported clean. On a Validated fact "Руслан одобрил
+    миграцию на PostgreSQL", the answers "Руслан не одобрил миграцию на PostgreSQL." and
+    "Миграцию на PostgreSQL отклонили." both give `allow` / `clean` (score 1.0).
+- `/chat`, `/chat/stream` and `/query/roles` have neither this checker nor Observer.
+- `ResponseGuardian` does not compare claims with evidence.
+- A claim-level support check is a separate proposed change: shadow-first, with distinct
+  `CHECK_UNAVAILABLE` and `INSUFFICIENT_EVIDENCE`, and never `SUPPORTED` merely because no
+  contradiction was found.
+
+## Latent risk — embedding writers can republish an erased fact if wired as-is (writers unwired)
+
+`EmbeddingProjectionStore.rebuild` (`core/embedding_projection.py`) and
+`EmbeddingStore.store` / `store_batch` (`core/embedding_store.py`, unconditional
+`INSERT OR REPLACE`) write caller-prepared vectors without re-checking erasure in the same
+transaction. `ErasureCoordinator` generations detect residual data after the fact; they do
+not prevent the write. No non-test caller of these writers exists today, and
+`docs/ai/PHASE3A_EMBEDDING_SPACE_IDENTITY.md` marks the projection contract `UNWIRED`, so no
+production path currently exposes it. Before any writer is wired it needs an atomic
+conditional write: a revision/tombstone check and the publish in one transaction. A late
+task must not resurrect an erased record, and that must stay distinct from a new,
+explicitly admitted input.
+## Reduced risk — LLM provider exception text and unsafe API keys (draft PR, not merged)
+
+Base `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`; issue #511. On `main`, text built from an LLM provider exception reached the caller, the logs, the persisted reasoning trace and the completion event. With a synthetic marker in the exception, the marker was present in `llm_answer`, `llm_meta`, log records, the `save_trace` kwargs and the `on_query_completed` kwargs. Surfaces: `/query`, `/chat` (HTTP 400 detail), `/chat/stream` and `core/llm_stream.py`, `/llm/*`, `/stt/transcribe`, `/tts/speak`, `/tts/stream`, Gemini model discovery, Gemini STT logs, the sleep-time worker log, the cross-domain and Gemini-cache logs. A key with a character that cannot go into an HTTP header (CR/LF/NUL, space, non-ASCII) made the HTTP layer raise an error containing the whole header value; TTS and model discovery built the request anyway.
+
+On the branch:
+- `core/llm_errors.py` maps an exception to a fixed code from its type (and a provider status), adds a random event id, and logs only route, code, event id and the exception type (no message, no traceback). Handlers return the code, a static hint and the event id. The egress policy's own reason code (for example `network_denied`) is passed through when it has a strict shape.
+- A key outside visible ASCII is rejected before any request is built: `chat_complete`, `test_connection`, both transcribers, both entry points of `core/llm_stream.py`, TTS, Gemini model discovery and the `/tts/stream` route.
+- Provider failures keep their type (`LlmProviderRequestError`) through the STT, TTS and streaming paths, so 401/402/404/429 still select their codes and statuses. HTTP 403 has its own code (`llm_access_denied`) and keeps the historical status 400.
+- `/chat/stream` forwards the stream's own error code and event id instead of re-classifying it.
+- The reader adapter treats the key and not-configured errors as permanent. `LlmCallConfig.api_key` is excluded from `repr`.
+- Second review (same day): the report object itself enforces the fixed shape of its fields (`LlmErrorInfo`: a code, event id or reason code of any other shape is replaced, whoever built it). The log line also names the cause chain by type and the code location that raised (`origin=file.py:line:function`, taken from the code, never from data), so a failure can be found without its text. An empty provider answer has its own code (`llm_empty_response`, seven raise sites) instead of `llm_request_invalid`. A key from the environment has surrounding whitespace removed, as a key sent in a request already had: a trailing space or CR from an env file made the HTTP layer fail (and, on `main`, print the header); a key with any other disallowed character is still rejected.
+
+- External review (same day) found a regression in this PR: the OpenAI branch of `/tts/stream` swallowed a provider error after the audio had started and ended the stream normally, so the client saw a short but valid-looking file (on `main` the exception aborted the transfer). Now the first chunk is taken before the response starts, so a failure there is a normal HTTP error with status, code and event id (an empty audio stream is `llm_empty_response`); a failure after audio has started aborts the transfer with a `LlmStreamError` that carries the code only (`raise ... from None`, so the original text is not chained into the server's traceback). Gemini TTS "no audio in the answer" is now `llm_empty_response` too (it was a plain `ValueError`).
+
+Tests: `tests/test_llm_error_redaction.py` (53 tests; targeted mutation control of 22 mutants, each fails at least one test) plants a synthetic marker in the exception text, its chained cause and the provider body (a provider that echoes the key), and asserts it is absent from the response, `llm_meta`, every log record (message and formatted traceback), the trace sink and the event; unsafe keys never create an HTTP client. Classes and functions are resolved from the live modules, because other tests reload `core.*`. Found by an independent leak audit (five hunters; the skeptic round and the events hunter did not complete, so each fix is covered by a test instead).
+
+Remaining limits:
+- The exception text is not stored anywhere, so an operator cannot recover the raw cause from a log line; the event id correlates a report with the code, the exception types and the raising code location. Provider-specific hints that were copied from a response body are replaced by static, code-keyed text.
+- Not changed: `server.py` generic handler (`logger.exception("Unhandled exception: %s", exc)`) still logs the text of any exception that escapes a route; no LLM call path is known to escape. Pipeline exceptions (`pipeline_error = str(exc)`) and the other `HTTPException(detail=str(exc))` for validation errors are not LLM provider text.
+- A key check is a character check; it does not prove the key is valid. The persisted trace was checked at the `save_trace` call seam, not read back from the database. Event consumers other than `on_query_completed` (response audit, welfare monitor, essence commit, console memory) were not audited.
+- Codes are coarse: a plain `ValueError` (other than an empty provider answer) is `llm_request_invalid`, and a `HTTPException` raised while resolving the request's LLM config inside `/query` is reported as `llm_internal_error`.
+- Not changed, pre-existing: when Gemini returns a candidate without text (`parts` missing or empty, for example a blocked or truncated candidate), `core/llm_router.py` and `core/llm_stream.py` return the placeholder text `(пустой ответ Gemini)` as a successful answer, while a response without any candidate is `llm_empty_response`. The two cases are inconsistent; turning the placeholder into an error changes what the console shows and was left out of this PR.
+- Separate, pre-existing: `/tts/stream` with `provider=gemini` and no explicit model fails, because `gemini_tts_bytes` rejects an empty Gemini model id.
+## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
+## Historical proposal — opt-in evidence labels (merged as PR #515 on 2026-11-14)
+
+At the 2026-11-09 proposal baseline, the `/query` prompt carried record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
 
 Contract, explicit and opt-in: `QueryRequest.evidence_labels` (default `false`). When it is `false`, nothing changes: the records part of the prompt is byte-identical to before (tested against the unlabelled builder). When it is `true`:
 - The code creates labels `[ev_1]`, `[ev_2]`, ... in fact order and prefixes each record line with its label; one instruction sentence tells the model to cite by label and that a label does not mean the record supports the statement. A record without a real `fact_id` gets no label.

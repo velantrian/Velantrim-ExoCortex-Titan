@@ -156,9 +156,8 @@ class ConsolidationEngine:
         report.discovered = len(candidates)
         batch = candidates[: self.max_batch]
 
-        # V8.8: corroboration boost — несколько независимых наблюдений
-        # одного и того же → взаимное усиление confidence
-        batch = self._apply_corroboration(batch)
+        # Repetition and lexical similarity are not independent evidence.
+        # Use durable confidence unchanged; the promotion gateway owns admission.
 
         # PR #27 accounting hardening: `scanned` is what this run ACTUALLY
         # processed (== len(batch)), not the pre-truncation candidate count
@@ -373,45 +372,6 @@ class ConsolidationEngine:
         except Exception:
             return 0
 
-    def _apply_corroboration(self, facts: list[dict]) -> list[dict]:
-        """
-        V8.8: Corroboration engine — semantic clustering observed facts.
-
-        Если 3+ факта утверждают ОДНО и ТО ЖЕ (Jaccard > 0.8),
-        каждый получает +0.1 confidence boost.
-        Меньше 3 — без изменений.
-        """
-        if len(facts) < 3:
-            return facts
-
-        # Кластеризация по Jaccard-сходству claims
-        result: list[dict] = list(facts)
-        tokens = [frozenset((f.get("claim", "") or "").lower().split()) for f in facts]
-        cluster: list[set[int]] = []
-
-        for i in range(len(facts)):
-            merged = False
-            for c in cluster:
-                for j in c:
-                    if tokens[i] and tokens[j]:
-                        overlap = len(tokens[i] & tokens[j]) / max(min(len(tokens[i]), len(tokens[j])), 1)
-                        if overlap > 0.8:
-                            c.add(i)
-                            merged = True
-                            break
-                if merged:
-                    break
-            if not merged:
-                cluster.append({i})
-
-        # Boost: кластеры размером >=3 → +0.1 confidence
-        for c in cluster:
-            if len(c) >= 3:
-                for idx in c:
-                    old_conf = float(result[idx].get("confidence", 0.5))
-                    result[idx]["confidence"] = min(1.0, old_conf + 0.1)
-
-        return result
 
 def run_consolidation(store: SQLiteGraphStore | None = None) -> Any:
     """

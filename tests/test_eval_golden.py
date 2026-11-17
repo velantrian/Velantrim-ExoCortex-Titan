@@ -170,12 +170,14 @@ def test_golden_observer_rejects_contradicted_answer(monkeypatch):
     assert v.decision == REJECT and "no_admissible_evidence" in v.flags
 
 
-def test_golden_observer_allows_grounded_evidenced_answer(monkeypatch):
+def test_golden_observer_does_not_certify_unchecked_support(monkeypatch):
     monkeypatch.setattr("core.gap_detector.query_goal_alignment", lambda q, u="default": 0.5)
     f = dict(GOLDEN_FACTS[0])  # ImmutableCore axiom, conf 1.0
     f["metadata"] = {"evidence_refs": [{"source_id": "codata", "span": "1-10"}]}
     v = observe_answer("q", [f], f["claim"])  # answer == claim → grounded
-    assert v.decision == ALLOW and v.flags == []
+    assert v.decision == "warn"
+    assert "semantic_support_unverified" in v.flags
+    assert v.details["semantic_support"]["status"] == "check_unavailable"
 
 
 # ── CognitiveDistance re-rank — measurement gate (the decision number) ───────────

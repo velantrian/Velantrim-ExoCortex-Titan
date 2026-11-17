@@ -1635,7 +1635,7 @@ class SQLiteGraphStore(GraphStore):
 
     # ── store_fact ──────────────────────────────────────────────────────────
 
-    def _store_fact_outcome(self, fact: dict) -> "WriteResult":
+    def _store_fact_outcome(self, fact: dict, *, create_only: bool = False) -> "WriteResult":
         """
         PR-C1: the detailed implementation behind store_fact()/store_fact_result().
 
@@ -1660,8 +1660,11 @@ class SQLiteGraphStore(GraphStore):
         if not fact_id:
             raise ValueError("store_fact: fact_id обязателен")
 
-        existing_preview = self.get_fact(fact_id)
+        existing_preview = self._get_fact_durable(fact_id) if create_only else self.get_fact(fact_id)
         is_new = existing_preview is None
+        if create_only and not is_new:
+            return WriteResult(status=WriteStatus.NOOP_EXISTING, fact_id=fact_id,
+                               created=False, canonical_exists=True, durable_write=False)
         if is_new:
             from core.memory_budget import check_before_write
 
@@ -1685,32 +1688,18 @@ class SQLiteGraphStore(GraphStore):
         new_claim = fact.get("claim", "")
         source_val = fact.get("source", "unknown")
 
-        # v8.7 P0: классификация модальности (детерминированная, без LLM)
-        from core.validators import normalize_claim_type, normalize_origin_type
-        _raw_ct = fact.get("claim_type")
-        _raw_ot = fact.get("origin_type")
-        if not _raw_ct or _raw_ct == "UNKNOWN":
-            # Auto-classify missing/placeholder values.  Passing the literal
-            # string "UNKNOWN" as an explicit override would freeze both axes
-            # at UNKNOWN and suppress deterministic source classification
-            # (notably USER_REPORTED for CognitiveFactStore payloads).
-            try:
-                from core.claim_classifier import classify_claim as _classify
-                _ct, _ot, _ = _classify(
-                    new_claim, source_val,
-                    explicit_claim_type=(
-                        None if _raw_ct in (None, "", "UNKNOWN") else _raw_ct
-                    ),
-                    explicit_origin_type=(
-                        None if _raw_ot in (None, "", "UNKNOWN") else _raw_ot
-                    ),
-                )
-            except Exception:
-                _ct = normalize_claim_type(_raw_ct)
-                _ot = normalize_origin_type(_raw_ot)
-        else:
-            _ct = normalize_claim_type(_raw_ct)
-            _ot = normalize_origin_type(_raw_ot) if not _raw_ot or _raw_ot == "UNKNOWN" else normalize_origin_type(_raw_ot)
+        from core.write_gate import resolve_admission_types
+
+        _ct, _ot, classification_error = resolve_admission_types(
+            new_claim, source_val, fact.get("claim_type"), fact.get("origin_type")
+        )
+        if classification_error:
+            return WriteResult(
+                status=WriteStatus.REJECTED_WRITE_GATE,
+                fact_id=fact_id, created=False, canonical_exists=not is_new,
+                durable_write=False, safe_reason_code=classification_error,
+                safe_message="Fact classification unavailable or invalid; write rejected.",
+            )
 
         # P0 local-first policy: WriteProtocolGate is a mandatory canonical
         # boundary, not an optional feature flag. WORLD_FACT requires
@@ -1734,16 +1723,7 @@ class SQLiteGraphStore(GraphStore):
                 safe_reason_code=_wg_reason,
                 safe_message="Write rejected by write-protocol gate.",
             )
-        if _ot == "UNKNOWN" and _raw_ot:
-            pass  # явное UNKNOWN — оставляем
-        elif not _raw_ot:
-            try:
-                from core.claim_classifier import classify_claim as _classify
-                _, _ot, _ = _classify(new_claim, source_val)
-            except Exception:
-                _ot = normalize_origin_type(None)
-
-        existing = self.get_fact(fact_id)
+        existing = self._get_fact_durable(fact_id) if create_only else self.get_fact(fact_id)
         state_for_checksum = (
             existing["epistemic_state"] if existing else requested_state
         )
@@ -1968,13 +1948,14 @@ class SQLiteGraphStore(GraphStore):
         with self._db() as ready_conn:
             AuditChain.verify_schema_ready(ready_conn, chain_id=chain_id)
 
+        l1_record["create_only"] = int(create_only)
         with self._db() as conn:
             _bump = self._fact_version_bump_sql(conn) if _content_changed else ""
             _esm_set = (
                 ", epistemic_state = excluded.epistemic_state, history = excluded.history"
                 if _drift_detected else ""
             )
-            conn.execute(f"""
+            write_cursor = conn.execute(f"""
                 INSERT INTO facts
                     (fact_id, claim, source, confidence, epistemic_state,
                      created_at, updated_at, metadata, history,
@@ -2012,12 +1993,18 @@ class SQLiteGraphStore(GraphStore):
                     -- mutation of this row (same COALESCE convention as
                     -- update_state()/_promote_to_validated_cas()).
                     audit_subject_id = COALESCE(audit_subject_id, excluded.audit_subject_id)
+                WHERE NOT :create_only
                 -- epistemic_state, history, t_*_start, derived_from по умолчанию
                 -- исключены: управляются только через transition_esm() /
                 -- invalidate_edge(). Единственное исключение — drift
                 -- protection выше (_esm_set), легальность которой уже
                 -- проверена через ESM_TRANSITIONS до этого момента.
             """, l1_record)
+
+            if create_only and write_cursor.rowcount == 0:
+                # Atomic first-writer wins. No update, audit, version or projection intent.
+                return WriteResult(status=WriteStatus.NOOP_EXISTING, fact_id=fact_id,
+                                   created=False, canonical_exists=True, durable_write=False)
 
             # PR-C3 (same Codex P2 read-your-own-write lesson from PR-C2):
             # re-read the audit_subject_id that ACTUALLY won the COALESCE
@@ -2143,7 +2130,7 @@ class SQLiteGraphStore(GraphStore):
             )
             return False
 
-    def store_fact_result(self, fact: dict) -> "WriteResult":
+    def store_fact_result(self, fact: dict, *, create_only: bool = False) -> "WriteResult":
         """
         PR-C1: explicit, non-raising counterpart to store_fact().
 
@@ -2161,7 +2148,7 @@ class SQLiteGraphStore(GraphStore):
 
         fact_id = fact.get("fact_id")
         try:
-            return self._store_fact_outcome(fact)
+            return self._store_fact_outcome(fact, create_only=create_only)
         except WritesBlockedError as exc:
             logger.warning(
                 "store_fact_result: policy blocked write for fact %s (%s)",
@@ -3843,8 +3830,10 @@ class SQLiteGraphStore(GraphStore):
         elif isinstance(mode, str):
             try:
                 mode = CognitiveMode(mode.upper())
-            except ValueError:
-                mode = CognitiveMode.BALANCED
+            except ValueError as exc:
+                raise ValueError("Unknown cognitive mode") from exc
+        elif not isinstance(mode, CognitiveMode):
+            raise ValueError("Unknown cognitive mode")
 
         # Ring Zero проверяется здесь так же строго, как в transition_esm():
         # по fact_id, до любого чтения/gate — не зависит от того, существует
@@ -4286,34 +4275,14 @@ class SQLiteGraphStore(GraphStore):
                     from core.fact_integrity import compute_claim_dedup_key as _cdk
                     metadata_dict["claim_dedup_key"] = _cdk(new_claim)
 
-                # v8.7 P0: модальность
-                from core.validators import normalize_claim_type, normalize_origin_type
-                _raw_ct = fact.get("claim_type")
-                _raw_ot = fact.get("origin_type")
-                if not _raw_ct or _raw_ct == "UNKNOWN":
-                    try:
-                        from core.claim_classifier import classify_claim as _classify
+                from core.write_gate import resolve_admission_types
 
-                        _ct, _ot, _ = _classify(
-                            new_claim,
-                            fact.get("source", "unknown"),
-                            explicit_claim_type=(
-                                None
-                                if _raw_ct in (None, "", "UNKNOWN")
-                                else _raw_ct
-                            ),
-                            explicit_origin_type=(
-                                None
-                                if _raw_ot in (None, "", "UNKNOWN")
-                                else _raw_ot
-                            ),
-                        )
-                    except Exception:
-                        _ct = normalize_claim_type(_raw_ct)
-                        _ot = normalize_origin_type(_raw_ot)
-                else:
-                    _ct = normalize_claim_type(_raw_ct)
-                    _ot = normalize_origin_type(_raw_ot)
+                _ct, _ot, classification_error = resolve_admission_types(
+                    new_claim, fact.get("source", "unknown"),
+                    fact.get("claim_type"), fact.get("origin_type"),
+                )
+                if classification_error:
+                    raise ValueError(classification_error)
 
                 # Batch ingestion is not a privileged side door. The exact
                 # WriteProtocolGate used by store_fact() is applied per
@@ -4663,10 +4632,10 @@ def store_fact(fact: dict) -> bool:
     """Обёртка над SQLiteGraphStore.store_fact(). Возвращает True если новый INSERT."""
     return _GLOBAL_STORE.store_fact(fact)
 
-def store_fact_result(fact: dict):
+def store_fact_result(fact: dict, *, create_only: bool = False):
     """PR-C1: обёртка над SQLiteGraphStore.store_fact_result() — не бросает
     исключений, возвращает core.write_result.WriteResult."""
-    return _GLOBAL_STORE.store_fact_result(fact)
+    return _GLOBAL_STORE.store_fact_result(fact, create_only=create_only)
 
 def store_facts_batch(facts: list[dict]) -> dict[str, int]:
     """Batch insert: один SQLite transaction на N фактов. ~80% быстрее чем N×store_fact()."""

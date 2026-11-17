@@ -91,18 +91,23 @@ async-backend = [
 
 # Dev-инструменты
 dev = [
+    # Projection contract tests require numpy even without optional dense models.
+    "numpy>=1.26",
     "pytest>=9.0.3,<10",
     "pytest-asyncio>=1.4.0,<2",
     "pytest-cov>=4.0,<8",
     "pytest-timeout>=2.3,<3",
     "mypy>=1.10,<2",
-    "ruff>=0.4,<0.5",
+    "ruff>=0.17.5,<0.18",
     "types-PyYAML>=6.0.12,<7",
     # PyYAML itself, not only its stubs: the production-profile validator and
     # tests parse docker-compose.prod.yml. Without it the validator raised
     # ModuleNotFoundError and those tests skipped silently (PR #63 review).
     "pyyaml>=6.0",
 ]
+
+# Browser acceptance tools are locked separately from runtime extras.
+browser-tests = ["playwright>=1.48,<2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -157,11 +162,11 @@ ignore = [
     "E731",   # lambda-assignment
     "I001",   # import-sort noise; keep semantic F-codes blocking
     "UP006",  # legacy typing.List/Dict/etc. is accepted in this codebase
+    "UP045",  # Optional spelling remains accepted, matching UP007 policy
     "UP007",  # legacy Optional/Union syntax is accepted in this codebase
     "UP015",  # explicit open mode kept for readability
     "UP017",  # datetime.UTC migration is not semantic audit priority
     "UP035",  # deprecated typing imports are style debt, not runtime defects
-    "UP038",  # isinstance tuple style is accepted here
     "W291",   # whitespace churn is handled separately
     "W293",   # whitespace churn is handled separately
 ]

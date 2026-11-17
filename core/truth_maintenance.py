@@ -393,8 +393,10 @@ def contradict(fact_id: str, source_id: str, reason: str = "") -> bool:
         except Exception:
             logger.debug("contradict: ESM skip for %s", fid)
 
-    # Ребро / registry only after at least one durable ESM transition.
-    if changed:
+    # A partial ESM success is valid, but pair artifacts need two facts.
+    # Do not register a contradiction with a missing participant.
+    # Preserve the independent ESM commits and the changed return value.
+    if changed and fact_a is not None and fact_b is not None:
         try:
             from core.causal_graph import get_causal_graph
             cg = get_causal_graph()

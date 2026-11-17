@@ -2,7 +2,6 @@
 """Исправление ошибочной замены ledger (бухгалтерия vs терраса)."""
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 RU = Path(__file__).resolve().parents[1] / "docs/knowledge/world_skills_core/ru"

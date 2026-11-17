@@ -19,6 +19,52 @@ cannot disable canonical admission checks.
 from __future__ import annotations
 
 
+def resolve_admission_types(
+    claim: str, source: str, claim_type=None, origin_type=None,
+) -> tuple[str, str, str | None]:
+    """Resolve both modality axes before admission; never turn failure into UNKNOWN.
+
+    UNKNOWN is an auto-classification sentinel. Explicit supported values remain
+    overrides. The returned reason is content-free and suitable for write results.
+    This helper makes no policy decision and performs no writes.
+    """
+    from core.validators import (
+        ClaimType, OriginType, normalize_claim_type, normalize_origin_type,
+    )
+
+    values = []
+    for raw, allowed, normalize in (
+        (claim_type, ClaimType.ALL, normalize_claim_type),
+        (origin_type, OriginType.ALL, normalize_origin_type),
+    ):
+        if raw is None or raw == "":
+            values.append("UNKNOWN")
+            continue
+        if not isinstance(raw, str):
+            return "UNKNOWN", "UNKNOWN", "invalid_modality_type"
+        normalized = normalize(raw)
+        if normalized not in allowed or (
+            normalized == "UNKNOWN" and raw.strip().upper() != "UNKNOWN"
+        ):
+            return "UNKNOWN", "UNKNOWN", "invalid_modality_type"
+        values.append(normalized)
+    ct, ot = values
+    if ct == "UNKNOWN" or ot == "UNKNOWN":
+        try:
+            from core.claim_classifier import classify_claim
+
+            ct, ot, _ = classify_claim(
+                claim, source,
+                explicit_claim_type=None if ct == "UNKNOWN" else ct,
+                explicit_origin_type=None if ot == "UNKNOWN" else ot,
+            )
+            if ct not in ClaimType.ALL or ot not in OriginType.ALL:
+                return "UNKNOWN", "UNKNOWN", "claim_classification_failed"
+        except Exception:
+            return "UNKNOWN", "UNKNOWN", "claim_classification_failed"
+    return ct, ot, None
+
+
 def is_write_gate_enabled() -> bool:
     """Compatibility readout: the mandatory gate is always enabled."""
     return True
@@ -92,6 +138,7 @@ def admit_fact(
 
 
 __all__ = [
+    "resolve_admission_types",
     "admit_fact",
     "is_write_gate_enabled",
     "check_writes_allowed",
