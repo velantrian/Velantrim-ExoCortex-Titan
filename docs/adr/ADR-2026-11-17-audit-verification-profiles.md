@@ -12,6 +12,9 @@ browser installation remains the version-selected Chromium bundle. Upgrade Ruff 
 Optional spelling remains accepted (UP045), preserving the existing UP007 style policy.
 Do not mass-reformat runtime code or weaken semantic F rules.
 
+Run the existing Python CodeQL workflow for stacked PR targets as well as main;
+its permissions, language, query suite and immutable action pins remain unchanged.
+
 Keep core mypy and add a Pydantic-aware HTTP profile, so default model fields are
 understood without suppressing real argument/None errors. Reconcile async callback
 annotations and omitted TTS arguments where this exposes existing contract drift.
