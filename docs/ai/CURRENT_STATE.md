@@ -14,6 +14,20 @@
 > checkpoints that remain useful historical evidence. Re-read live GitHub, current Actions
 > and the existing Notion page before using any SHA here as evergreen operational truth.
 
+## 2026-11-19 — Local FTS projection delivery
+
+At `main@485c4b0906ec35829ff7231c6276bf7d817f096f`, the transaction-bound
+outbox, FTS apply and `dispatch_once()` are implemented. Activated promotion,
+archival and PII redaction paths enqueue intents. The FastAPI lifecycle has no
+dispatcher caller at this checkpoint. Synchronous FTS maintenance already exists
+for selected writes. [Main CI](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/43616242243)
+passed at that SHA.
+
+The draft [runtime ADR](../adr/ADR-2026-11-19-local-fts-dispatch-runtime.md)
+adds a FastAPI lifecycle owner and authenticated diagnostics for local FTS delivery.
+The flag defaults to off. Operator approval is required for production activation.
+The draft PR carries isolated test and exact-head CI evidence separately.
+
 ## 2026-11-06 — MCP session serialization status refresh
 
 PR [#497](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/497) merged at 08:13 UTC as `8ff943a7d154f1c1a185917b107e08f89bcc3892`, implementing process-local per-session serialization for competing side-effecting MCP calls. Follow-up [#504](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/504) merged at 09:56 UTC as `109de7be18e5e023d0b7fb6ad43ed47b97af0676`. Its lock-entry user counting retains the same lock while holders or waiters remain, even when `DELETE /mcp` removes the session binding.

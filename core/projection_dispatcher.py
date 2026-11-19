@@ -384,6 +384,8 @@ def apply_claimed_work(
     try:
         conn.execute("BEGIN IMMEDIATE")
     except sqlite3.OperationalError as exc:
+        if getattr(exc, "sqlite_errorcode", None) == sqlite3.SQLITE_INTERRUPT:
+            raise
         code = _classify_sqlite_failure(exc)
         action = DispatchAction.RETRY if code == DispatchErrorCode.SQLITE_BUSY else DispatchAction.PARK
         return ApplyAttemptResult(claimed.outbox_id, action, code, LeaseValidationOutcome.VALID)
@@ -462,6 +464,11 @@ def apply_claimed_work(
         if intent_operation != ProjectionOperation.REFRESH.value:
             return _park(DispatchErrorCode.UNSUPPORTED_OPERATION)
 
+        # SQLite INTEGER affinity does not ensure a stored integer. Park an
+        # inconsistent durable version using the existing contract error.
+        if not isinstance(intent_canonical_version, int) or intent_canonical_version < 0:
+            return _park(DispatchErrorCode.INTERNAL_CONTRACT)
+
         try:
             # Policy v1 ALL resolves to exactly {FTS} — see
             # core.projection_apply. No other target exists to iterate.
@@ -483,6 +490,9 @@ def apply_claimed_work(
         except ProjectionApplyContractError:
             return _park(DispatchErrorCode.INTERNAL_CONTRACT)
         except sqlite3.Error as exc:
+            # A caller cancelling its SQLite pass leaves the lease recoverable.
+            if getattr(exc, "sqlite_errorcode", None) == sqlite3.SQLITE_INTERRUPT:
+                raise
             code = _classify_sqlite_failure(exc)
             return _retry(code) if code == DispatchErrorCode.SQLITE_BUSY else _park(code)
     except Exception:
