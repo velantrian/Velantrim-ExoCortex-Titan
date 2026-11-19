@@ -126,6 +126,76 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
+## handoff-pr-531
+
+### 2026-11-19 — Local FTS projection dispatcher lifecycle
+
+- **Status:** `HANDOFF_REQUIRED`
+- **Documentation impact:** `GITHUB_AND_NOTION`
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · [Draft PR #531](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/531)
+- **Base SHA:** `485c4b0906ec35829ff7231c6276bf7d817f096f`
+- **Head SHA:** `888aa5599822605c8bc8fa7d5e04c93a32b0c6ad`
+- **Intended Notion record:** `Velantrim Titan 9.0` · Local FTS projection delivery
+- **Notion access for originating actor:** `UNAVAILABLE`
+
+### Problem / opportunity
+
+The bounded local dispatcher was implemented as a callable. Participating Canon
+writes can commit intents for which the service has no automatic delivery path.
+
+### Material findings
+
+The audited FastAPI lifespan and middleware have no dispatcher caller. Policy v1
+resolves `all` to FTS and existing migrations own durable delivery state.
+SQLite column affinity can admit a non-integer canonical version. The draft uses
+the existing park transition so that row does not abort its delivery pass.
+
+### Decision and rationale
+
+Use FastAPI as the lifecycle owner because its startup already owns migration
+readiness. An explicit default-off switch keeps activation an operator decision.
+Existing leases and version-monotonic apply make restart recovery possible.
+
+### Rejected or deferred alternatives
+
+Eager startup drain, a separate scheduler, additional retry or dead-letter
+machinery, and Graph or Vector delivery are outside this draft.
+
+### Authority, safety, privacy, and Canon boundaries
+
+The runtime updates derived FTS state under the existing apply contract. It
+creates no Canon or ESM writer. Diagnostics expose counts and timestamps to the
+authenticated API. The PR authorizes review of the draft.
+
+### GitHub files updated
+
+`server.py`, `core/projection_dispatch_runtime.py`, `core/projection_dispatcher.py`,
+both test files below, this hand-off and the context documents.
+[Runtime ADR](../adr/ADR-2026-11-19-local-fts-dispatch-runtime.md).
+
+### Evidence
+
+- [Main CI passed at the audited SHA](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/43616242243).
+- Local runs at the code checkpoint passed 4 FastAPI lifecycle cases, 143
+  dispatcher and core regressions, and 52 server regressions. The dispatcher
+  suite covers lease recovery after a SQLite interruption. [Runtime suite](../../tests/test_projection_dispatch_runtime.py),
+  [dispatcher suite](../../tests/test_bounded_local_projection_dispatcher.py).
+
+### Known limitations
+
+Delivery covers intents written by participating Canon paths. The health snapshot
+is process-local. Service startup with multiple workers and production-scale
+backlog recovery remain unverified.
+
+### Next actions
+
+Verify the draft head and its checks, then synchronize the decision and evidence
+to the intended Notion record. Record any separate operator decision on deployment.
+
+### Synchronization result
+
+- Status `HANDOFF_REQUIRED`.
+
 ## handoff-pr-450
 
 ### 2026-09-08 — Epistemic memory prompt boundaries (FactsPack / ReasoningTrace wording)
