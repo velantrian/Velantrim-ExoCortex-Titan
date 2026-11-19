@@ -395,6 +395,45 @@ def test_crash_after_apply_before_ack_restart_reclaims_idempotently(tmp_path: Pa
     assert _integrity_ok(db_path)
 
 
+def test_sqlite_interrupt_during_apply_leaves_the_lease_recoverable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from contextlib import closing
+
+    from core import projection_dispatcher
+
+    db_path = tmp_path / "interrupted-apply.db"
+    _migrate(db_path)
+    store = SQLiteGraphStore(str(db_path))
+    _seed_fact(store, "interrupted", claim="recoverable SQLite projection")
+    _set_fact_version(db_path, "interrupted", 1)
+    real_apply = projection_dispatcher.apply_fts_projection
+
+    def interrupt_apply(conn, **kwargs):
+        conn.set_progress_handler(lambda: 1, 1)
+        try:
+            return real_apply(conn, **kwargs)
+        finally:
+            conn.set_progress_handler(None, 0)
+
+    with closing(_open(db_path)) as conn:
+        _insert_outbox(conn, outbox_id="ob_interrupted", aggregate_id="interrupted")
+        conn.commit()
+        with monkeypatch.context() as patched:
+            patched.setattr(projection_dispatcher, "apply_fts_projection", interrupt_apply)
+            with pytest.raises(sqlite3.OperationalError) as error:
+                dispatch_once(conn, batch_size=1, lease_duration_seconds=60, clock=lambda: _T0)
+        assert error.value.sqlite_errorcode == sqlite3.SQLITE_INTERRUPT
+        assert not conn.in_transaction
+        assert _dispatch_row(db_path, "ob_interrupted")[2] == "leased"
+        assert _checkpoint_row(db_path, "interrupted") is None
+
+        later = _T0 + timedelta(seconds=60)
+        result = dispatch_once(conn, batch_size=1, lease_duration_seconds=60, clock=lambda: later)
+        assert result.acknowledged == 1
+        assert _checkpoint_row(db_path, "interrupted") == (1,)
+
+
 # ── 9. Stale lease token cannot apply ────────────────────────────────────────
 
 def test_stale_lease_token_cannot_apply(tmp_path: Path) -> None:

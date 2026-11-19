@@ -25,7 +25,7 @@ def _recovery_startup_block(source: str) -> str:
 
 def test_recovery_runs_after_migrations_before_ngram_and_readiness() -> None:
     source = _source()
-    migrations = source.index("apply_migrations, Path(DB_PATH).resolve()")
+    migrations = source.index("apply_migrations, migration_path")
     recovery = source.index(
         "await asyncio.to_thread(\n"
         "        execute_and_record_startup_recovery,\n"

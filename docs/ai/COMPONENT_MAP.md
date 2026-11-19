@@ -210,6 +210,16 @@ projection-outbox workers and CSM structural snapshots are derived/rebuildable s
 Projection state never wins over Canon and cannot grant write, answer or permission
 authority by itself.
 
+| Local FTS delivery concern | Owner |
+|---|---|
+| Durable intent in a participating Canon transaction | [`core/projection_outbox.py`](../../core/projection_outbox.py) |
+| Lease, apply, acknowledge, retry and park | [`core/projection_dispatcher.py`](../../core/projection_dispatcher.py) |
+| Policy v1 and monotonic FTS checkpoint | [`core/projection_apply.py`](../../core/projection_apply.py) |
+| FastAPI lifespan, polling and diagnostics in the draft | [`server.py`](../../server.py) and [`core/projection_dispatch_runtime.py`](../../core/projection_dispatch_runtime.py) |
+
+The [draft runtime ADR](../adr/ADR-2026-11-19-local-fts-dispatch-runtime.md)
+documents the default-off activation boundary and `/health/projection`.
+
 Phase 3A does not change that rule. Persistent embedding projection remains derived,
 explicitly rebuildable and **not wired into the live pipeline route**.
 

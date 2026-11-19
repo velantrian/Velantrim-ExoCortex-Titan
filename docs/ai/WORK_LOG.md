@@ -1,3 +1,16 @@
+## 2026-11-19 — Local FTS projection dispatcher lifecycle (draft)
+
+- Base `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. The bounded dispatcher
+  has test callers and no invocation in FastAPI startup at this SHA.
+- The draft adds an opt-in FastAPI caller after existing migrations and a
+  content-free diagnostic endpoint protected by the service's API-key dependency.
+  It reuses the v1 FTS target set and durable lease, retry and park contracts.
+- Evidence and its exact SHA belong in the draft PR. The focused suites are
+  `tests/test_projection_dispatch_runtime.py` and
+  `tests/test_bounded_local_projection_dispatcher.py`.
+- [Runtime ADR](../adr/ADR-2026-11-19-local-fts-dispatch-runtime.md).
+  Documentation impact `GITHUB_AND_NOTION`, synchronization `HANDOFF_REQUIRED`.
+
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
