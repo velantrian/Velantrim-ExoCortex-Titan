@@ -126,6 +126,61 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
+## handoff-audit-2026-11-21
+
+### 2026-11-21 — Independent verification of the Astra 6 deep audit
+
+- **Status:** `HANDOFF_REQUIRED`
+- **Documentation impact:** `GITHUB_AND_NOTION` (material audit that changes engineering priorities)
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · branch `ccr-ec3ae487-mm4z0n` · no PR opened yet (rename this heading to `handoff-pr-<N>` if one is opened) · related #509, #510, #511, #512, #514, #521, #522, #523, #528, #531
+- **Base SHA:** `485c4b0906ec35829ff7231c6276bf7d817f096f`
+- **Head SHA:** branch head of `ccr-ec3ae487-mm4z0n` (the commit that adds this item)
+- **Intended Notion record:** `Titan independent verification audit — 2026-11-21` (child of `Velantrim Titan 9.0`)
+- **Notion access for originating actor:** `AVAILABLE` for read; page creation refused by Notion with `entitlement_required` (workspace free block limit reached). Not a privacy or target problem; the target page is resolved.
+
+### Problem / opportunity
+
+The Astra 6 audit made claims about `main@485c4b0`, 21 open PRs and 13 issues. They needed independent verification before they drive merge order.
+
+### Material findings
+
+See `docs/audits/audit-2026-11-21-independent-verification.md` §4–§5. Confirmed: domain loss after the NGram `LIMIT 50`; `/query` drops `reason_code`/`insufficient_evidence`; Observer failure ≡ disabled; dispatcher empty-poll cost linear in acknowledged history (15 038 / 150 038 / 1 500 038 VM steps); #528 idempotency depends on optional `message_id`. New: N1 no rank order in the NGram prefilter; N2 raw query text is FTS5 syntax; N3 fallback cap before domain filter; N4 `ENABLE_OBSERVER=1` in `docker-compose.prod.yml`; N5 raw internal exception text on `/chat` and `/chat/stream`; N6 stale #515 references.
+
+### Decision and rationale
+
+Keep the Astra 6 order (#514, #523, #509 first). Raise Observer/API check status priority because Observer is on in the production profile. Add one new owning fix for retrieval candidate selection.
+
+### Rejected or deferred alternatives
+
+Fixing domain loss inside #525/#530 (independent defect; #530 is DO NOT MERGE). Accepting `observer: null` on failure because Observer is passive.
+
+### Authority, safety, privacy, and Canon boundaries
+
+All new findings are read-path or API-boundary defects; none mutates Canon. N5 is a #511-class disclosure. No production data, providers or secrets used.
+
+### GitHub files updated
+
+`docs/audits/audit-2026-11-21-independent-verification.md`, `docs/ai/KNOWN_RISKS.md`, `docs/ai/WORK_LOG.md`, this file.
+
+### Evidence
+
+`main` full pytest without dense model: 5 failed, 4 930 passed, 18 skipped, 1 xfailed; the 5 pass on #523 (`fe992ae`). Ruff, mypy, KB-graph guard pass on `main`. Probes described in the audit record.
+
+### Known limitations
+
+No live providers, Docker build, production load or secret-history scan; `embeddings` extra not installed; #514 TTS streaming residual and #509 distinct-record claims not re-probed.
+
+### Next actions
+
+A connected actor with Notion write capacity creates the intended record from this item and the audit file, then marks this item `SYNCED`.
+
+### Synchronization result
+
+- Connected actor:
+- Notion record:
+- Status: `HANDOFF_REQUIRED`
+- Final PR / merge SHA / CI:
+
 ## handoff-pr-450
 
 ### 2026-09-08 — Epistemic memory prompt boundaries (FactsPack / ReasoningTrace wording)

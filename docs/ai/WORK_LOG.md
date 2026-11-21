@@ -1,3 +1,15 @@
+## 2026-11-21 — Independent verification of the Astra 6 deep audit
+
+- Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f` (merge of #515, 2026-11-14). Branch `ccr-ec3ae487-mm4z0n`. Docs-only; no code, runtime or authority change.
+- Record: `docs/audits/audit-2026-11-21-independent-verification.md` (claim-by-claim table, probes, new findings, merge order, required regression tests).
+- `main` gates (Python 3.11.18, frozen lock, no dense model): ruff and mypy pass; KB graph 32 302 / 95 404; full pytest 5 failed, 4 930 passed, 18 skipped, 1 xfailed. The 5 retrieval failures pass on #523 (`fe992ae`); full pytest on #523: 0 failed, 4 963 passed, 18 skipped, 1 xfailed.
+- Confirmed Astra 6 findings: NGram `LIMIT 50` before the domain filter (0 vs 1 candidate, reproduced); `/query` drops #523 `reason_code`/`insufficient_evidence`; Observer failure ≡ disabled; dispatcher empty poll 15 038 / 150 038 / 1 500 038 SQLite VM steps at 1k/10k/100k acknowledged rows; #528 idempotency depends on optional `message_id`; dead `_parse_openai_sse_chunk` / `_check_prometheus`; AST-identical `spreading_activation`; Cypher neighbors without `ORDER BY`; in-memory graph relabels `Fact` → `Entity`; 509 broad handlers; #501 fixed by #502.
+- New: NGram prefilter has no `ORDER BY rank`; raw query text is FTS5 syntax (quotes, `:`, `NOT`/`AND` silently switch to the 1 000-most-recent fallback); fallback cap applied before the domain filter; `ENABLE_OBSERVER=1` in `docker-compose.prod.yml`; `/chat` and `/chat/stream` return raw internal exception text (also on #514).
+- Docs: three open risks added at the top of `KNOWN_RISKS.md`; stale "draft PR #515" references corrected (merged as `485c4b0`).
+- Not re-verified: #514 TTS streaming residual, #509 distinct-record probes, targeted test counts for #524–#531, #530 coverage.
+- Documentation impact: `GITHUB_AND_NOTION`. Notion access: read available; write refused (workspace block limit). Notion synchronization: `HANDOFF_REQUIRED` — `docs/ai/NOTION_HANDOFF.md#handoff-audit-2026-11-21`.
+- **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.**
+
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.

@@ -1,6 +1,26 @@
 # ⚠️ Known Risks and Required Proof
 
-## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
+## Open risk — retrieval candidate selection loses in-scope facts before ranking (audit 2026-11-21)
+
+Verified on `main@485c4b0`; the same code is on #523, #525 and #530. Full record:
+`docs/audits/audit-2026-11-21-independent-verification.md`.
+
+- `core/pipeline.py::_narrow_candidates` takes `NGramIndex.query(query, limit=50)` and applies the domain filter **after** the cap; the "0 candidates → fallback" decision is also taken before the filter. Probe (real FTS5 trigram index): 50 `engineering` + 1 `science` match, `domain="science"` → 0 candidates with the prefilter, 1 without.
+- `core/ngram_index.py::query` has no `ORDER BY rank`: the 50 candidates are the first matches in storage order, not the best. Probe: 60 older matches + 1 target → target excluded for an unscoped query.
+- Raw query text is FTS5 syntax: `"`, `word:`, `NOT`, trailing `AND` raise `OperationalError`, which is caught as `[]` and silently switches to the bounded fallback (1 000 most recently updated facts, domain filter after the cap).
+- Required proof for closure: one owning fix in candidate selection with regression tests for scope, rank, budget and FTS5 syntax; the fallback reason visible in the trace.
+
+## Open risk — `/query` does not expose check status; Observer failure ≡ disabled (audit 2026-11-21)
+
+- #523 core returns `insufficient_evidence=True` and `reason_code` (e.g. `facts_pack_policy_unavailable`) with `error=None`; `server.py` (#523, #530) forwards only `error`, and `QueryResponse` has neither field. A policy refusal reaches the client as empty `facts` with `error: null`.
+- An Observer exception is caught and returned as `observer: null`, identical to the flag being off. `docker-compose.prod.yml` sets `ENABLE_OBSERVER=1`, so this applies to the selected production profile (see also #512).
+- Required proof: machine-readable status on the API boundary distinguishing no evidence, required-policy refusal, check disabled and check failed, with route tests.
+
+## Open risk — `/chat` and `/chat/stream` return raw internal exception text (audit 2026-11-21)
+
+On `main` and on #514: when `pipeline_run` raises and the console fallbacks find nothing, `pipeline_error = str(exc)` is returned in `error` (and in the final stream event). `/query` maps the same failure to `"Internal server error"`. Same disclosure class as #511, but internal text rather than provider text; not covered by #514's provider scope.
+
+## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; MERGED #515 as `485c4b0`, 2026-11-14)
 
 Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
 
@@ -37,13 +57,13 @@ Until this change `core/llm_router.py` cut **every** DeepSeek message (system, h
 Now (`core/llm_context_budget.py`):
 - **Off by default:** no Titan per-message limit. `DEEPSEEK_MESSAGE_CHAR_LIMIT` (positive integer) opts in. There is no replacement universal number.
 - **When set, never truncation:** the current question and mandatory instructions must fit or the request is refused before sending (`llm_context_limit: …`, HTTP 413 on `/chat`, an SSE `error` on `/chat/stream`, `[LLM error: llm_context_limit …]` on `/query`; no offline substitute). Memory records and history turns are left out **whole**; the system prompt then says how many records were not sent, and the request's `context_report` lists them (position and `fact_id`, never text).
-- **Report:** `context_report` on `/chat`, `/query` and the final `/chat/stream` event, plus an SSE `context` event before tokens; the console shows a toast when `limits_applied` is true. `ContextReport.sent_facts()` is the list any per-request citation map (`[ev_N]`, draft PR #515) must be built from.
+- **Report:** `context_report` on `/chat`, `/query` and the final `/chat/stream` event, plus an SSE `context` event before tokens; the console shows a toast when `limits_applied` is true. `ContextReport.sent_facts()` is the list any per-request citation map (`[ev_N]`, #515, merged as `485c4b0`) is built from.
 - **Console limits are separate settings**, not model response limits (`max_tokens` is unchanged): `LLM_CHAT_HISTORY_MAX_TURNS` (default 20, now reported; `off` = all), `CONSOLE_BLOCK_MEMORY_MAX_ITEMS` (default 40, now reported; `off` = all), `CONSOLE_PREVIOUS_SUMMARY_MAX_CHARS` and `CONSOLE_HISTORY_TURN_MAX_CHARS` (default off; when set, the cut is marked in the prompt and reported).
 - **Provider context window:** Titan does not count tokens (`token_count: not_computed`). A provider "context too long" rejection becomes `LlmContextOverflowError` (`llm_context_overflow: …`, not retryable) on the normal and streaming paths. Detection is by provider error text and may miss unfamiliar wordings.
 - **Reader:** without a limit, chunks use `LlmReaderLimits.chunk_chars` (6000) instead of being shrunk to fit 4000; with a limit, chunks are planned to fit. Overlapping chunks cover the whole source; a tail beyond `max_chunks` is still reported as `CHUNK_BUDGET_EXHAUSTED` (PARTIAL). A configured limit smaller than the Reader instructions is refused at construction.
 - **Gemini explicit cache:** the cache key hashes the whole system text (was its first 8000 characters) and the cached system is no longer cut to 30000 characters.
 
-Remaining limits: no token counting or pre-flight context-window check; the overflow match is heuristic; only DeepSeek has a configurable per-message limit (other providers had none and still have none); `/query/roles` and other `chat_complete` callers get the router guard but no `context_report`; the opt-in `[ev_N]` map of draft PR #515 is not on main and must be built from sent records when it lands; `app/telegram_ingest.py` still stores Telegram text cut to 4000 characters (ingest, not an LLM request). Tests: `tests/test_llm_context_no_silent_truncation.py` (fake HTTP client, exact request bodies, Flash and Pro, normal and streaming, `/chat`, `/chat/stream`, `/query`, Reader).
+Remaining limits: no token counting or pre-flight context-window check; the overflow match is heuristic; only DeepSeek has a configurable per-message limit (other providers had none and still have none); `/query/roles` and other `chat_complete` callers get the router guard but no `context_report`; the opt-in `[ev_N]` map of #515 (merged as `485c4b0`) is built from sent records; `app/telegram_ingest.py` still stores Telegram text cut to 4000 characters (ingest, not an LLM request). Tests: `tests/test_llm_context_no_silent_truncation.py` (fake HTTP client, exact request bodies, Flash and Pro, normal and streaming, `/chat`, `/chat/stream`, `/query`, Reader).
 
 ## Reduced risk — MCP same-session side-effect interleaving (process-local)
 
