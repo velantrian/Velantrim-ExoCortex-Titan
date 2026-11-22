@@ -191,6 +191,11 @@ def build_layers_status() -> dict[str, Any]:
                 "enabled": cfg.enable_response_guardian,
                 "note": "post-LLM quality gate — Titan HYPERIA-2",
             },
+            "titan_source_x_gate": {
+                "status": "on" if cfg.enable_source_x_gate else "available_off",
+                "enabled": cfg.enable_source_x_gate,
+                "note": "RESEARCH two-level source-X filter: figures BLOCK, name FLAG_REVIEW",
+            },
             "titan_actr_activation": {
                 "status": "on" if cfg.enable_actr_activation else "available_off",
                 "enabled": cfg.enable_actr_activation,
