@@ -964,6 +964,13 @@ class QueryResponse(BaseModel):
             "существование ссылки, не поддержка утверждения записью."
         ),
     )
+    source_x_gate: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "Решение кодового фильтра источника X по итоговому тексту (только при "
+            "ENABLE_SOURCE_X_GATE=1): status, blocked, rules. Без цитат и сырого текста."
+        ),
+    )
 
 
 class ChatRequest(BaseModel):
@@ -1104,6 +1111,100 @@ class ChatResponse(BaseModel):
         None,
         description="Граф эссенции диалога (узлы/связи) для панели мониторинга консоли",
     )
+    source_x_gate: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "Решение кодового фильтра источника X по итоговому тексту (только при "
+            "ENABLE_SOURCE_X_GATE=1): status, blocked, rules. Без цитат и сырого текста."
+        ),
+    )
+
+
+_SOURCE_X_FALLBACK_ERROR = (
+    "Ответ не возвращён: кодовый фильтр источника X не смог проверить текст. "
+    "Сырой текст модели пользователю не показывается."
+)
+
+
+def _source_x_env_flag_on() -> bool:
+    return os.environ.get("ENABLE_SOURCE_X_GATE", "").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+
+
+def _source_x_final_gate(
+    text: str | None, *, surface: str
+) -> tuple[str | None, dict[str, Any] | None]:
+    """Gate the final user-facing text (Codex audit 2026-11-23, item 1).
+
+    Returns ``(text_to_show, public_record)``. ``public_record`` is ``None``
+    when the gate is off, so responses are unchanged by default. Fail-closed
+    when the gate is on and cannot decide (item 3).
+    """
+    try:
+        from core.source_x_gate import gate_final_text
+
+        out = gate_final_text(text, surface=surface)
+        return out.text, (out.public() if out.enabled else None)
+    except Exception as exc:  # noqa: BLE001
+        if not _source_x_env_flag_on():
+            return text, None
+        logger.error("SOURCE_X_GATE GATE_ERROR surface=%s: %s", surface, type(exc).__name__)
+        return _SOURCE_X_FALLBACK_ERROR, {
+            "status": "GATE_ERROR",
+            "surface": surface,
+            "blocked": True,
+            "flagged": False,
+            "delivered": False,
+            "rules": [],
+        }
+
+
+class _FailClosedStreamOutcome:
+    def __init__(self, surface: str) -> None:
+        self.text = _SOURCE_X_FALLBACK_ERROR
+        self.status = "GATE_ERROR"
+        self.enabled = True
+        self.blocked = True
+        self._surface = surface
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "surface": self._surface,
+            "blocked": True,
+            "flagged": False,
+            "delivered": False,
+            "rules": [],
+        }
+
+
+class _FailClosedStreamBuffer:
+    """Used only if the gate module cannot load while the env flag is on."""
+
+    enabled = True
+
+    def __init__(self, surface: str) -> None:
+        self.surface = surface
+
+    def feed(self, chunk: str | None) -> None:
+        return None
+
+    def finalize(self, full_text: str | None = None) -> _FailClosedStreamOutcome:
+        return _FailClosedStreamOutcome(self.surface)
+
+
+def _source_x_stream_buffer(surface: str):
+    """Streaming hold buffer (item 2): pass-through when the gate is off."""
+    try:
+        from core.source_x_gate import SourceXStreamBuffer
+
+        return SourceXStreamBuffer(surface=surface)
+    except Exception as exc:  # noqa: BLE001
+        if _source_x_env_flag_on():
+            logger.error("SOURCE_X_GATE GATE_ERROR surface=%s: %s", surface, type(exc).__name__)
+            return _FailClosedStreamBuffer(surface)
+        return None
 
 
 def _chat_essence_snapshot(
@@ -1809,6 +1910,10 @@ async def chat_endpoint(req: ChatRequest):
     else:
         reply = _format_console_memory_reply(req.message, facts, pipeline_error, lang=req.ui_lang)
 
+    # Final user-facing text: gate after the reply is fully formed.
+    reply, source_x_public = _source_x_final_gate(reply, surface="chat")
+    reply = reply or ""
+
     from core.console_memory import (
         extract_memory_candidates,
         fact_to_highlight,
@@ -1847,6 +1952,7 @@ async def chat_endpoint(req: ChatRequest):
         memory_auto_status=memory_auto_status,
         llm_usage=llm_usage,
         dialogue_essence=dialogue_essence,
+        source_x_gate=source_x_public,
     )
 
 
@@ -2099,7 +2205,11 @@ def _context_refusal_text(code: str, provider: str) -> str:
 
 @app.post("/chat/stream", tags=["LLM"], dependencies=[Depends(require_api_key)])
 async def chat_stream_endpoint(req: ChatRequest):
-    """Потоковый чат (SSE): токены по мере генерации + память в конце."""
+    """Потоковый чат (SSE): токены по мере генерации + память в конце.
+
+    При ENABLE_SOURCE_X_GATE=1 токены модели удерживаются до вердикта фильтра
+    источника X; клиент получает один token-фрагмент с уже проверенным текстом.
+    """
     import json as _json
 
     t0 = time.time()
@@ -2114,6 +2224,12 @@ async def chat_stream_endpoint(req: ChatRequest):
         llm_usage: dict[str, Any] | None = None
         from_llm = False
         context_refusal: str | None = None
+        # Source-X gate (Codex audit 2026-11-23, item 2): with the flag on,
+        # model tokens are held here and nothing model-authored reaches the
+        # client until the gate has a verdict on the full reply.
+        sx_buffer = _source_x_stream_buffer("chat_stream")
+        sx_hold = bool(sx_buffer is not None and sx_buffer.enabled)
+        sx_public: dict[str, Any] | None = None
         try:
             yield ": connected\n\n"
             for phase in ("read", "link"):
@@ -2124,17 +2240,23 @@ async def chat_stream_endpoint(req: ChatRequest):
             if req.llm_enabled and cfg:
                 from core.llm_stream import stream_chat_events
 
+                held_done: dict[str, Any] | None = None
                 try:
                     async for ev in stream_chat_events(
                         cfg, system, req.message, req.chat_history,
                         report=context_report,
                     ):
-                        if ev.get("type") in ("token", "context"):
+                        if ev.get("type") == "token" and sx_hold:
+                            sx_buffer.feed(ev.get("text") or "")
+                        elif ev.get("type") in ("token", "context"):
                             yield f"data: {_json.dumps(ev, ensure_ascii=False)}\n\n"
                         elif ev.get("type") == "done":
                             reply = ev.get("reply") or ""
                             llm_usage = ev.get("usage")
-                            yield f"data: {_json.dumps(ev, ensure_ascii=False)}\n\n"
+                            if sx_hold:
+                                held_done = dict(ev)
+                            else:
+                                yield f"data: {_json.dumps(ev, ensure_ascii=False)}\n\n"
                         elif ev.get("type") == "error" and ev.get("code") in _CONTEXT_ERROR_CODES:
                             # Clear refusal; never replaced by an offline answer.
                             context_refusal = _context_refusal_text(
@@ -2144,6 +2266,18 @@ async def chat_stream_endpoint(req: ChatRequest):
                         elif ev.get("type") == "error":
                             raise RuntimeError(ev.get("message") or "LLM stream error")
                     from_llm = context_refusal is None
+                    if sx_hold and context_refusal is None:
+                        outcome = sx_buffer.finalize(reply if held_done is not None else None)
+                        reply = outcome.text or ""
+                        sx_public = outcome.public()
+                        yield f"data: {_json.dumps({'type': 'token', 'text': reply}, ensure_ascii=False)}\n\n"
+                        done_ev = {
+                            "type": "done",
+                            "reply": reply,
+                            "usage": llm_usage if llm_usage is not None else {},
+                            "source_x_gate": sx_public,
+                        }
+                        yield f"data: {_json.dumps(done_ev, ensure_ascii=False)}\n\n"
                 except Exception as exc:
                     offline = _console_offline_reply(req.message, facts, lang)
                     if not offline:
@@ -2151,6 +2285,9 @@ async def chat_stream_endpoint(req: ChatRequest):
                     reply = offline
                     from_llm = False
                     pipeline_error = None
+                    if sx_hold:
+                        reply, sx_public = _source_x_final_gate(reply, surface="chat_stream_offline")
+                        reply = reply or ""
                     yield f"data: {_json.dumps({'type': 'token', 'text': reply}, ensure_ascii=False)}\n\n"
                     yield f"data: {_json.dumps({'type': 'done', 'reply': reply, 'usage': {'offline_fallback': True}}, ensure_ascii=False)}\n\n"
                 if context_refusal is not None:
@@ -2165,6 +2302,9 @@ async def chat_stream_endpoint(req: ChatRequest):
                     return
             else:
                 reply = _format_console_memory_reply(req.message, facts, pipeline_error, lang)
+                if sx_hold:
+                    reply, sx_public = _source_x_final_gate(reply, surface="chat_stream_memory")
+                    reply = reply or ""
                 yield f"data: {_json.dumps({'type': 'token', 'text': reply}, ensure_ascii=False)}\n\n"
                 yield f"data: {_json.dumps({'type': 'done', 'reply': reply, 'usage': {}}, ensure_ascii=False)}\n\n"
 
@@ -2204,6 +2344,8 @@ async def chat_stream_endpoint(req: ChatRequest):
                     context_report.to_dict() if context_report is not None else None
                 ),
             }
+            if sx_public is not None:
+                final["source_x_gate"] = sx_public
             yield f"data: {_json.dumps(final, ensure_ascii=False)}\n\n"
         except Exception as exc:
             yield f"data: {_json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
@@ -2269,13 +2411,15 @@ async def query_with_roles(req: _QueryRolesRequest):
                 all_facts.append(fact)
 
         roles_used = [b.role.role_id for b in synthesis.branches]
+        roles_answer, roles_sx = _source_x_final_gate(synthesis.response, surface="query_roles")
 
         return QueryResponse(
             query=req.query,
-            answer=synthesis.response,
+            answer=roles_answer,
             llm_answer=(
-    synthesis.response if synthesis.all_branches_used_llm else None
+    roles_answer if synthesis.all_branches_used_llm else None
 ),
+            source_x_gate=roles_sx,
             facts=all_facts,
             total_facts=len(all_facts),
             mode="multi_perspective",
@@ -2574,6 +2718,23 @@ async def query(req: QueryRequest):
             llm_answer = f"[LLM error: {exc}]"
             llm_meta = {"error": str(exc)}
 
+    # Source-X gate on the FINAL user-facing texts (Codex audit 2026-11-23,
+    # item 1). pipeline.run() gates its own answer, but the lens formatter
+    # and the LLM step above produce text later; this is the last point
+    # before trace / event / response, so everything downstream sees only
+    # what the user may see.
+    pipeline_answer, _sx_pipeline = _source_x_final_gate(pipeline_answer, surface="query_answer")
+    llm_answer, _sx_llm = _source_x_final_gate(llm_answer, surface="query_llm_answer")
+    source_x_public: dict[str, Any] | None = None
+    if _sx_pipeline is not None or _sx_llm is not None:
+        source_x_public = {"answer": _sx_pipeline, "llm_answer": _sx_llm}
+        if _sx_llm is not None and _sx_llm.get("blocked"):
+            # The model text is withheld, so its citation map is not published.
+            evidence_map = None
+            reference_check = None
+            if evidence_lifecycle == "published":
+                evidence_lifecycle = "no_answer"
+
     latency = round((time.time() - t0) * 1000, 2)
     logger.info("query: '%s' | facts=%d | llm=%s | %.0fms",
                 req.query[:50], len(pipeline_facts),
@@ -2702,6 +2863,7 @@ async def query(req: QueryRequest):
         reference_check=reference_check,
         evidence_lifecycle=evidence_lifecycle,
         context_report=context_report.to_dict() if context_report is not None else None,
+        source_x_gate=source_x_public,
     )
 
 

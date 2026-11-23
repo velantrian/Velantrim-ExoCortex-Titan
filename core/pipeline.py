@@ -37,6 +37,7 @@
 import hashlib
 import logging
 import math
+import os
 import re
 import sqlite3
 import threading
@@ -1255,6 +1256,34 @@ def run_with_notebook(
     return result
 
 
+def _source_x_gate_fail_closed(result: dict[str, Any], exc: BaseException) -> dict[str, Any]:
+    """Gate wiring failed. Fail closed when the flag is on, else pass through."""
+    enabled = False
+    try:
+        from core.feature_config import get_config
+
+        enabled = bool(getattr(get_config().app, "enable_source_x_gate", False))
+    except Exception:  # noqa: BLE001
+        enabled = os.environ.get("ENABLE_SOURCE_X_GATE", "").strip().lower() in {
+            "1", "true", "yes", "on",
+        }
+    if not enabled:
+        logger.debug("source_x_gate unavailable while disabled: %s", type(exc).__name__)
+        return result
+    logger.error("SOURCE_X_GATE GATE_ERROR surface=pipeline_wiring: %s", type(exc).__name__)
+    try:
+        from core.source_x_gate import fail_closed_pipeline_result
+
+        return fail_closed_pipeline_result(result, reason=type(exc).__name__)
+    except Exception:  # noqa: BLE001
+        result["answer"] = (
+            "Ответ не возвращён: кодовый фильтр источника X не смог проверить текст."
+        )
+        result["source_x_gate_blocked"] = True
+        result["source_x_gate_error"] = True
+        return result
+
+
 def run(
     query: str,
     cognitive_mode: str | None = None,
@@ -1370,8 +1399,11 @@ def run(
         from core.source_x_gate import apply_to_pipeline_result as apply_source_x_gate
 
         result = apply_source_x_gate(result)
-    except Exception as exc:
-        logger.warning("source_x_gate: %s", exc)
+    except Exception as exc:  # noqa: BLE001
+        # apply_to_pipeline_result is itself fail-closed; this branch covers an
+        # import/config failure. With ENABLE_SOURCE_X_GATE on, withhold the
+        # answer instead of continuing with a warning (Codex audit 2026-11-23).
+        result = _source_x_gate_fail_closed(result, exc)
     try:
         from core.output_faithfulness import check_response_faithfulness
         fr = check_response_faithfulness(

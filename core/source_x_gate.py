@@ -32,6 +32,21 @@ Invariant, updated 2026-11-23 after Memory-Ruslan PR #62 (six-model run):
 Official Y/Z figures (14,2 and 3,1%) and near-miss numbers (21,85;
 7,61; 53,56; 121,8) must not trigger either level.
 
+Hardening after the Codex audit (2026-11-23, see the ADR amendment):
+
+* ``gate_final_text`` gates the FINAL user-facing text at the server
+  boundary (``/query`` ``answer`` and ``llm_answer``, ``/query/roles``,
+  ``/chat``), after the LLM step and the lens formatter, not only
+  ``pipeline.answer``.
+* ``SourceXStreamBuffer`` holds streamed tokens of ``/chat/stream`` while
+  the flag is on; only the gated full text is released.
+* Any exception while the flag is on is fail-closed (``GATE_ERROR``): the
+  answer is withheld behind ``USER_FACING_GATE_ERROR_MESSAGE`` and an error
+  is logged. If the config layer fails, the raw ``ENABLE_SOURCE_X_GATE``
+  environment value decides.
+* A figure followed by a sentence period ("21,8.") is a hit; a capitalised
+  word after an abbreviation period ("млн. Эту") starts a new sentence.
+
 The filter is config-driven and off by default (``ENABLE_SOURCE_X_GATE``).
 Pattern lists live on ``SourceXGateConfig``. Soft-L1 sentence and
 refusal logic follows ``research/related/six-model-two-level-2026-11-23/soft_l1.py``
@@ -43,6 +58,7 @@ This module does not call any model and does not read API keys.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Iterable
@@ -56,12 +72,26 @@ USER_FACING_BLOCK_MESSAGE = (
     "Сырой текст модели пользователю не показывается."
 )
 
+# Fail-closed stub: the gate is on but could not reach a verdict.
+USER_FACING_GATE_ERROR_MESSAGE = (
+    "Ответ не возвращён: кодовый фильтр источника X не смог проверить текст. "
+    "Сырой текст модели пользователю не показывается."
+)
+
+GATE_ERROR_EVENT = "GATE_ERROR"
+
 # Default numeric forms of source X. Trailing zero is allowed (21,80);
 # longer tails (21,85) and digits glued on either side (121,8) are not.
+# A sentence period or list comma right after the figure ("составила 21,8.",
+# "21,8, 7,6") is still a hit: only a separator followed by another digit
+# (21,85 / 21.8.2026 / 21.800) makes it a different number. Before
+# 2026-11-23 the right-hand guard was ``(?![\d.,])``, which let a figure at
+# the end of a sentence through (labeled corpus, Titan Gate hardening PR).
+_X_RIGHT_GUARD = r"(?!\d|[.,]\d)"
 DEFAULT_BLOCK_NUMBER_PATTERNS: tuple[tuple[str, str], ...] = (
-    ("x_number_21_8", r"(?<![\d.,])21[.,]80?(?![\d.,])"),
-    ("x_number_7_6", r"(?<![\d.,])7[.,]60?(?![\d.,])"),
-    ("x_number_53_5", r"(?<![\d.,])53[.,]50?\s*%?(?![\d.,])"),
+    ("x_number_21_8", r"(?<![\d.,])21[.,]80?" + _X_RIGHT_GUARD),
+    ("x_number_7_6", r"(?<![\d.,])7[.,]60?" + _X_RIGHT_GUARD),
+    ("x_number_53_5", r"(?<![\d.,])53[.,]50?\s*%?" + _X_RIGHT_GUARD),
 )
 
 # Name of source X. «Молниеносный бриф» without «Меридиана» still flags.
@@ -153,11 +183,41 @@ class SourceXGateConfig:
     block_number_patterns: tuple[tuple[str, str], ...] = DEFAULT_BLOCK_NUMBER_PATTERNS
     flag_name_patterns: tuple[tuple[str, str], ...] = DEFAULT_FLAG_NAME_PATTERNS
     block_message: str = USER_FACING_BLOCK_MESSAGE
+    error_message: str = USER_FACING_GATE_ERROR_MESSAGE
 
     @classmethod
     def from_app(cls) -> SourceXGateConfig:
         cfg = get_config().app
         return cls(enabled=bool(getattr(cfg, "enable_source_x_gate", False)))
+
+
+_TRUTHY = {"1", "true", "yes", "on"}
+
+
+def _env_flag_on() -> bool:
+    """Raw environment read used only when the config layer itself fails."""
+    return os.environ.get("ENABLE_SOURCE_X_GATE", "").strip().lower() in _TRUTHY
+
+
+def resolve_gate_config(config: SourceXGateConfig | None = None) -> SourceXGateConfig:
+    """Resolve the gate config without ever raising.
+
+    If the config layer fails, fall back to the raw ``ENABLE_SOURCE_X_GATE``
+    environment value so that an operator who turned the gate on still
+    gets fail-closed behaviour instead of a silent pass-through.
+    """
+    if config is not None:
+        return config
+    try:
+        return SourceXGateConfig.from_app()
+    except Exception as exc:  # noqa: BLE001 - config failure must not open the gate
+        enabled = _env_flag_on()
+        logger.error(
+            "SOURCE_X_GATE config unavailable (%s); falling back to env flag=%s",
+            type(exc).__name__,
+            enabled,
+        )
+        return SourceXGateConfig(enabled=enabled)
 
 
 @dataclass
@@ -272,7 +332,14 @@ def sentences_with_spans(text: str) -> list[tuple[int, int, str]]:
         prefix = text[start:end]
         word = re.search(r"([A-Za-zА-Яа-яЁё.]+)$", prefix.rstrip())
         if word and _ABBREV_END.search(word.group(1)):
-            continue
+            # "у. е." / "т. д." inside a sentence: not a boundary. If the
+            # next word starts with a capital letter ("21,8 млн. Эту цифру
+            # не используем."), it is a new sentence: otherwise a refusal in
+            # the next sentence would be glued to an asserted figure and
+            # wrongly qualify for FLAG_L1_REFUSAL.
+            nxt = text[m.end():m.end() + 1]
+            if not (nxt and nxt.isupper()):
+                continue
         if end > start:
             spans.append((start, end, text[start:end].strip()))
         start = m.end()
@@ -497,10 +564,44 @@ def apply_to_pipeline_result(
     disabled the result is returned unchanged. FLAG_L1_REFUSAL delivers
     the original answer and only records a review flag.
     """
-    cfg = config or SourceXGateConfig.from_app()
+    cfg = resolve_gate_config(config)
     if not cfg.enabled:
         return result
+    try:
+        return _apply_to_pipeline_result_enabled(result, cfg)
+    except Exception as exc:  # noqa: BLE001 - fail closed when the flag is on
+        logger.error(
+            "SOURCE_X_GATE GATE_ERROR surface=pipeline: %s",
+            type(exc).__name__,
+            exc_info=True,
+        )
+        return fail_closed_pipeline_result(result, cfg, reason=type(exc).__name__)
 
+
+def fail_closed_pipeline_result(
+    result: dict[str, Any],
+    config: SourceXGateConfig | None = None,
+    *,
+    reason: str = "error",
+) -> dict[str, Any]:
+    """Withhold the answer because the gate could not decide (flag on)."""
+    cfg = config or SourceXGateConfig(enabled=True)
+    result["answer"] = cfg.error_message
+    result["source_x_gate_blocked"] = True
+    result["source_x_gate_error"] = True
+    result["source_x_gate"] = {
+        "event": GATE_ERROR_EVENT,
+        "status": GATE_ERROR_EVENT,
+        "blocked": True,
+        "delivered": False,
+        "reason": reason,
+    }
+    return result
+
+
+def _apply_to_pipeline_result_enabled(
+    result: dict[str, Any], cfg: SourceXGateConfig
+) -> dict[str, Any]:
     raw = result.get("answer") or ""
     if not isinstance(raw, str):
         raw = str(raw)
@@ -543,8 +644,151 @@ def apply_to_pipeline_result(
     return result
 
 
+
+# ── Final user-facing gate (Codex audit items 1–3, 2026-11-23) ───────────────
+
+
+@dataclass(frozen=True)
+class FinalGateOutcome:
+    """Decision for one user-facing text at the last point before the client.
+
+    ``text`` is what may be shown. ``public()`` is safe to return to the
+    client: it never contains excerpts, matched figures, or the raw text.
+    """
+
+    text: str | None
+    status: str  # DISABLED | ALLOW | FLAG_REVIEW | FLAG_L1_REFUSAL | BLOCKED_ATTEMPT | GATE_ERROR
+    surface: str
+    blocked: bool = False
+    flagged: bool = False
+    rules: tuple[str, ...] = ()
+
+    @property
+    def enabled(self) -> bool:
+        return self.status != "DISABLED"
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "surface": self.surface,
+            "blocked": self.blocked,
+            "flagged": self.flagged,
+            "delivered": not self.blocked,
+            "rules": list(self.rules),
+        }
+
+
+def gate_final_text(
+    text: str | None,
+    *,
+    surface: str,
+    config: SourceXGateConfig | None = None,
+) -> FinalGateOutcome:
+    """Gate the FINAL text that reaches the user (``llm_answer``, chat reply).
+
+    Never raises. Flag off: the text passes unchanged with status
+    ``DISABLED``. Flag on: the same two-level invariant as
+    :func:`apply_gate`; on BLOCK the stub replaces the text. Any exception
+    while the flag is on is fail-closed: status ``GATE_ERROR``, the text is
+    replaced by ``error_message`` and an error is logged. ``None`` (no
+    answer produced) stays ``None``.
+    """
+    cfg = resolve_gate_config(config)
+    if not cfg.enabled:
+        return FinalGateOutcome(text=text, status="DISABLED", surface=surface)
+    try:
+        if text is None:
+            return FinalGateOutcome(text=None, status="ALLOW", surface=surface)
+        raw = text if isinstance(text, str) else str(text)
+        verdict = apply_gate(raw, config=cfg)
+        payload = user_facing_payload(raw, verdict, config=cfg)
+        record = blocked_attempt_log(verdict)
+        record["surface"] = surface
+        if verdict.blocked:
+            logger.warning("SOURCE_X_GATE BLOCKED_ATTEMPT: %s", record)
+        elif verdict.flagged:
+            logger.info("SOURCE_X_GATE %s: %s", verdict.event, record)
+        return FinalGateOutcome(
+            text=payload["message"],
+            status=payload["status"],
+            surface=surface,
+            blocked=verdict.blocked,
+            flagged=verdict.flagged,
+            rules=tuple(payload.get("rules") or ()),
+        )
+    except Exception as exc:  # noqa: BLE001 - fail closed when the flag is on
+        logger.error(
+            "SOURCE_X_GATE GATE_ERROR surface=%s: %s",
+            surface,
+            type(exc).__name__,
+            exc_info=True,
+        )
+        return FinalGateOutcome(
+            text=cfg.error_message,
+            status=GATE_ERROR_EVENT,
+            surface=surface,
+            blocked=True,
+        )
+
+
+class SourceXStreamBuffer:
+    """Hold streamed model text until the gate has a verdict on all of it.
+
+    Flag off: :meth:`feed` returns each chunk unchanged (streaming as
+    before). Flag on: :meth:`feed` keeps the chunk and returns ``None`` so
+    nothing reaches the client; :meth:`finalize` gates the whole text and
+    returns the only text that may be released. Figures split across chunks
+    (``"2" + "1,8"``) are therefore seen whole.
+    """
+
+    def __init__(self, *, surface: str, config: SourceXGateConfig | None = None) -> None:
+        self.surface = surface
+        self.config = resolve_gate_config(config)
+        self.enabled = bool(self.config.enabled)
+        self._parts: list[str] = []
+
+    def feed(self, chunk: str | None) -> str | None:
+        if not self.enabled:
+            return chunk
+        if chunk:
+            self._parts.append(chunk if isinstance(chunk, str) else str(chunk))
+        return None
+
+    @property
+    def held_text(self) -> str:
+        return "".join(self._parts)
+
+    def finalize(self, full_text: str | None = None) -> FinalGateOutcome:
+        """Gate ``full_text`` (provider's final reply) or the held chunks.
+
+        When both exist and differ, both are gated and the stricter result
+        wins, so a provider that reports a different final reply cannot
+        smuggle held chunks past the check.
+        """
+        held = self.held_text
+        primary = full_text if full_text is not None else held
+        outcome = gate_final_text(primary, surface=self.surface, config=self.config)
+        if (
+            outcome.enabled
+            and not outcome.blocked
+            and full_text is not None
+            and held
+            and held != full_text
+        ):
+            other = gate_final_text(held, surface=self.surface, config=self.config)
+            if other.blocked:
+                return other
+        return outcome
+
 __all__ = [
     "DEFAULT_BLOCK_NUMBER_PATTERNS",
+    "FinalGateOutcome",
+    "GATE_ERROR_EVENT",
+    "SourceXStreamBuffer",
+    "USER_FACING_GATE_ERROR_MESSAGE",
+    "fail_closed_pipeline_result",
+    "gate_final_text",
+    "resolve_gate_config",
     "DEFAULT_FLAG_NAME_PATTERNS",
     "SourceXGateConfig",
     "SourceXHit",
