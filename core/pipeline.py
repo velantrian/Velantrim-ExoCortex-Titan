@@ -1367,6 +1367,12 @@ def run(
     except Exception as exc:
         logger.debug("response_guardian: %s", exc)
     try:
+        from core.source_x_gate import apply_to_pipeline_result as apply_source_x_gate
+
+        result = apply_source_x_gate(result)
+    except Exception as exc:
+        logger.warning("source_x_gate: %s", exc)
+    try:
         from core.output_faithfulness import check_response_faithfulness
         fr = check_response_faithfulness(
             result.get("answer") or "", facts_pack.get("facts", [])

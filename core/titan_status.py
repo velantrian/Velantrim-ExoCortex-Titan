@@ -21,6 +21,7 @@ def build_titan_status() -> dict[str, Any]:
         "memory_budget": cfg.enable_memory_budget,
         "circuit_breaker": cfg.enable_circuit_breaker,
         "response_guardian": cfg.enable_response_guardian,
+        "source_x_gate": cfg.enable_source_x_gate,
         "actr_activation": cfg.enable_actr_activation,
     }
     any_enabled = any(flags.values())
@@ -73,6 +74,7 @@ def build_titan_status() -> dict[str, Any]:
             "enable_all": (
                 "ENABLE_OUTPUT_FAITHFULNESS=1 ENABLE_MEMORY_BUDGET=1 "
                 "ENABLE_CIRCUIT_BREAKER=1 ENABLE_RESPONSE_GUARDIAN=1 "
+                "ENABLE_SOURCE_X_GATE=1 "
                 "ENABLE_ACTR_ACTIVATION=1"
             ),
             "dev_profile": "config/exocortex-dev.env",
