@@ -1239,7 +1239,11 @@ def run_with_notebook(
     cognitive_mode: str | None = None,
     domain: str | None = None,
 ) -> dict[str, Any]:
-    result = run(query, cognitive_mode=cognitive_mode, domain=domain)
+    # The Source-X gate must see the notebook fields too: run without it,
+    # add the fields, then apply it once.
+    result = run(
+        query, cognitive_mode=cognitive_mode, domain=domain, _source_x_gate=False
+    )
     if session_id:
         try:
             from core.working_notebook import (
@@ -1252,13 +1256,15 @@ def run_with_notebook(
                 result["notebook"] = get_notebook(session_id).to_dict()
         except Exception as exc:  # noqa: BLE001
             logger.debug("working_notebook wiring: %s", exc)
-    return result
+    return _source_x_gate_or_withhold(result)
 
 
 def run(
     query: str,
     cognitive_mode: str | None = None,
     domain: str | None = None,
+    *,
+    _source_x_gate: bool = True,
 ) -> dict[str, Any]:
     cross_plan = None
     try:
@@ -1413,6 +1419,8 @@ def run(
     # above (faithfulness, exocortex sections, cross-domain, graph lab) may
     # add fields that quote the answer or facts, so the gate must see and
     # withhold them too. Fail closed: see _source_x_gate_or_withhold.
+    if not _source_x_gate:
+        return result  # caller (run_with_notebook) applies the gate itself
     return _source_x_gate_or_withhold(result)
 
 

@@ -211,37 +211,117 @@ class TestFailClosed:
 
 
 class TestPipelineHook:
-    """The hook in core.pipeline must also fail closed and run last."""
+    """The hook in core.pipeline must also fail closed and run last.
+
+    tests/test_cognitive_fact.py purges ``sys.modules['core.*']``. After that,
+    the module objects imported at the top of this file are stale: the
+    pipeline lazily imports a fresh ``core.source_x_gate`` and a fresh
+    ``core.feature_config`` with its own config cache. Every module these
+    tests patch or reset is therefore resolved live, inside the test.
+    """
+
+    @staticmethod
+    def _live(monkeypatch, enabled: bool):
+        import core.feature_config as live_config
+        import core.pipeline as live_pipeline
+        import core.source_x_gate as live_gate
+
+        if enabled:
+            monkeypatch.setenv("ENABLE_SOURCE_X_GATE", "1")
+        else:
+            monkeypatch.delenv("ENABLE_SOURCE_X_GATE", raising=False)
+        live_config.clear_config_cache()
+        return live_pipeline, live_gate, live_config
+
+    @pytest.fixture(autouse=True)
+    def _reset_live_config(self):
+        yield
+        import core.feature_config as live_config
+
+        live_config.clear_config_cache()
 
     def test_pipeline_hook_withholds_when_gate_raises(self, monkeypatch):
-        from core import pipeline
-
-        monkeypatch.setenv("ENABLE_SOURCE_X_GATE", "1")
-        clear_config_cache()
+        pipeline, live_gate, _ = self._live(monkeypatch, enabled=True)
 
         def boom(result, **k):
             raise RuntimeError("x")
 
-        monkeypatch.setattr(gate, "apply_to_pipeline_result", boom)
+        monkeypatch.setattr(live_gate, "apply_to_pipeline_result", boom)
         out = pipeline._source_x_gate_or_withhold(_dirty_result())
         assert out["source_x_gate_blocked"] is True
-        assert out["answer"] == USER_FACING_BLOCK_MESSAGE
+        assert out["answer"] == live_gate.USER_FACING_BLOCK_MESSAGE
+        assert out["source_x_gate"]["event"] == "GATE_ERROR"
         assert "21,8" not in json.dumps(out, ensure_ascii=False)
 
     def test_pipeline_hook_passes_through_when_disabled(self, monkeypatch):
-        from core import pipeline
-
-        monkeypatch.delenv("ENABLE_SOURCE_X_GATE", raising=False)
-        clear_config_cache()
-        monkeypatch.setattr(gate, "apply_to_pipeline_result", lambda r, **k: 1 / 0)
+        pipeline, live_gate, _ = self._live(monkeypatch, enabled=False)
+        monkeypatch.setattr(live_gate, "apply_to_pipeline_result", lambda r, **k: 1 / 0)
         r = {"answer": "21,8"}
         assert pipeline._source_x_gate_or_withhold(r) == {"answer": "21,8"}
 
     def test_gate_is_the_last_step_of_run(self):
         import inspect
 
-        from core import pipeline
+        import core.pipeline as pipeline
 
         src = inspect.getsource(pipeline.run)
         assert src.rstrip().endswith("return _source_x_gate_or_withhold(result)")
         assert src.count("_source_x_gate_or_withhold(") == 1
+
+
+class TestRunWithNotebook:
+    """Notebook fields are added before the gate, and the gate runs once."""
+
+    @staticmethod
+    def _wire(monkeypatch, calls: list, answer: str):
+        import core.feature_config as live_config
+        import core.pipeline as live_pipeline
+        import core.working_notebook as live_nb
+
+        monkeypatch.setenv("ENABLE_SOURCE_X_GATE", "1")
+        live_config.clear_config_cache()
+
+        def fake_run(query, cognitive_mode=None, domain=None, *, _source_x_gate=True):
+            calls.append(_source_x_gate)
+            return {"answer": answer, "query": query}
+
+        class _NB:
+            def to_dict(self):
+                return {"goals": ["цель: 7,6"]}
+
+        monkeypatch.setattr(live_pipeline, "run", fake_run)
+        monkeypatch.setattr(live_nb, "is_working_notebook_enabled", lambda: True)
+        monkeypatch.setattr(live_nb, "get_notebook", lambda sid: _NB())
+        return live_pipeline, live_nb
+
+    @pytest.fixture(autouse=True)
+    def _reset_live_config(self):
+        yield
+        import core.feature_config as live_config
+
+        live_config.clear_config_cache()
+
+    def test_notebook_fields_are_withheld_on_block(self, monkeypatch):
+        calls: list = []
+        # The block comes from the answer. The gate scans `answer` only; the
+        # guarantee here is that fields added by run_with_notebook do not
+        # survive a withheld result.
+        pipeline, nb = self._wire(monkeypatch, calls, answer=ANSWER)
+        monkeypatch.setattr(nb, "notebook_directive_for", lambda sid, q: "думай: 21,8")
+        out = pipeline.run_with_notebook("q", session_id="s1")
+        assert calls == [False]
+        assert out["source_x_gate_blocked"] is True
+        assert "notebook" not in out and "notebook_directive" not in out
+        blob = json.dumps(out, ensure_ascii=False)
+        for fig in FIGURES:
+            assert fig not in blob, fig
+
+    def test_clean_notebook_fields_are_delivered_and_gated_once(self, monkeypatch):
+        calls: list = []
+        pipeline, nb = self._wire(monkeypatch, calls, answer="Выручка 14,2 млн, рост 3,1%.")
+        monkeypatch.setattr(nb, "notebook_directive_for", lambda sid, q: "думай по шагам")
+        out = pipeline.run_with_notebook("q", session_id="s1")
+        assert calls == [False]
+        assert out.get("source_x_gate_blocked") is None
+        assert out["notebook_directive"] == "думай по шагам"
+        assert out["source_x_gate"]["event"] == "ALLOW"
