@@ -1367,12 +1367,6 @@ def run(
     except Exception as exc:
         logger.debug("response_guardian: %s", exc)
     try:
-        from core.source_x_gate import apply_to_pipeline_result as apply_source_x_gate
-
-        result = apply_source_x_gate(result)
-    except Exception as exc:
-        logger.warning("source_x_gate: %s", exc)
-    try:
         from core.output_faithfulness import check_response_faithfulness
         fr = check_response_faithfulness(
             result.get("answer") or "", facts_pack.get("facts", [])
@@ -1415,7 +1409,45 @@ def run(
             }
     except Exception as exc:  # noqa: BLE001
         logger.debug("graph_lab: %s", exc)
-    return result
+    # Source-X gate runs last, once, on the finished result. Everything
+    # above (faithfulness, exocortex sections, cross-domain, graph lab) may
+    # add fields that quote the answer or facts, so the gate must see and
+    # withhold them too. Fail closed: see _source_x_gate_or_withhold.
+    return _source_x_gate_or_withhold(result)
+
+
+def _source_x_gate_or_withhold(result: dict[str, Any]) -> dict[str, Any]:
+    try:
+        from core.source_x_gate import apply_to_pipeline_result as apply_source_x_gate
+
+        return apply_source_x_gate(result)
+    except Exception as exc:  # noqa: BLE001
+        # apply_to_pipeline_result fails closed itself; this covers a failure
+        # to import or call it. Log the type only, the message may quote text.
+        logger.error("source_x_gate unavailable: %s", type(exc).__name__)
+    try:
+        from core.source_x_gate import fail_closed_result
+
+        return fail_closed_result(result)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from core.feature_config import get_config
+
+        enabled = bool(get_config().app.enable_source_x_gate)
+    except Exception:  # noqa: BLE001 - cannot prove the gate is off
+        enabled = True
+    if not enabled:
+        return result
+    return {
+        "error": "source_x_gate_unavailable",
+        "answer": None,
+        "query": result.get("query"),
+        "facts": [],
+        "total_facts": 0,
+        "trace": [],
+        "source_x_gate_blocked": True,
+    }
 
 
 def _insufficient_evidence(
