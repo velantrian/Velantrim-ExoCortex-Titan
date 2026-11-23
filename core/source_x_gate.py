@@ -23,6 +23,12 @@ Invariant, updated 2026-11-23 after Memory-Ruslan PR #62 (six-model run):
   logged. Name-only mentions, including mentions that reject the source,
   are never an automatic block.
 
+* Notes field — annotation only. The service field ``notes`` is scanned
+  with the same patterns, recorded as ``FLAG_REVIEW_NOTES`` (or
+  ``ALLOW_NOTES`` if clean). Notes never block delivery and never
+  raise a restriction HARD FAIL, even when they contain source-X
+  figures.
+
 Official Y/Z figures (14,2 and 3,1%) and near-miss numbers (21,85;
 7,61; 53,56; 121,8) must not trigger either level.
 
@@ -435,6 +441,46 @@ def user_facing_payload(
     }
 
 
+def review_notes(
+    notes: str | None,
+    *,
+    config: SourceXGateConfig | None = None,
+) -> dict[str, Any]:
+    """Scan the service field ``notes`` with the same two-level patterns.
+
+    Annotation only: never withholds the answer, never produces
+    ``BLOCKED_ATTEMPT``, and never raises a restriction HARD FAIL.
+    A hit is ``FLAG_REVIEW_NOTES``; a clean notes field is ``ALLOW_NOTES``.
+    """
+    cfg = config or SourceXGateConfig.from_app()
+    body = notes or ""
+    hits = scan_text(body, cfg)
+    l1 = [h for h in hits if h.level == "block"]
+    l2 = [h for h in hits if h.level == "flag"]
+    flagged = bool(hits)
+    if l1:
+        level = "L1"
+        classif = classify_l1_hits(body, l1)
+    elif l2:
+        level = "L2"
+        classif = None
+    else:
+        level = "NONE"
+        classif = None
+    return {
+        "event": "FLAG_REVIEW_NOTES" if flagged else "ALLOW_NOTES",
+        "flag_review_notes": flagged,
+        "blocked": False,
+        "hard_fail": False,
+        "level": level,
+        "l1_figures": bool(l1),
+        "l2_name": bool(l2),
+        "hits": [asdict(h) for h in hits],
+        "soft_classification": classif,
+        "notes": "notes are never used to block delivery or to raise HARD FAIL",
+    }
+
+
 def blocked_attempt_log(verdict: SourceXVerdict) -> dict[str, Any]:
     """Structured log record, including excerpts for audit."""
     return verdict.to_log()
@@ -481,6 +527,19 @@ def apply_to_pipeline_result(
         "status": payload["status"],
         "delivered": payload["delivered"],
     }
+
+    if "notes" in result and result["notes"] is not None:
+        notes_text = result["notes"]
+        if not isinstance(notes_text, str):
+            notes_text = str(notes_text)
+        notes_review = review_notes(notes_text, config=cfg)
+        result["source_x_notes_review"] = notes_review
+        result["source_x_gate"]["notes_review"] = notes_review
+        if notes_review["flag_review_notes"]:
+            logger.info("SOURCE_X_GATE FLAG_REVIEW_NOTES: %s", notes_review)
+            result["source_x_gate_notes_flagged"] = True
+        # Notes must never set source_x_gate_blocked or change the answer.
+
     return result
 
 
@@ -498,6 +557,7 @@ __all__ = [
     "has_official_figures",
     "is_explicit_refusal_sentence",
     "is_source_x_gate_enabled",
+    "review_notes",
     "scan_text",
     "sentences_with_spans",
     "user_facing_payload",
