@@ -20,6 +20,7 @@
 
 import asyncio
 import logging
+import re
 import contextlib
 import os
 import time
@@ -277,14 +278,107 @@ def _new_context_report(provider: str | None):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+# ── LLM provider errors: stable codes, no provider text (PR #537 secfix) ─────
+# A provider exception's message (and any ``code`` attribute) can carry
+# provider-controlled text: an echoed prompt, a quoted document, a key hint.
+# Client responses and logs get only a closed-set code, the exception type,
+# the HTTP status and the provider name, all validated. Independent of
+# ENABLE_SOURCE_X_GATE.
+LLM_PROVIDER_ERROR_CODE = "llm_provider_error"
+_LLM_PUBLIC_ERROR_CODES = frozenset(
+    {"llm_context_limit", "llm_context_overflow", LLM_PROVIDER_ERROR_CODE}
+)
+_SAFE_PROVIDER_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,31}$")
+_SAFE_TYPE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+_SAFE_LIMIT_FIELD_RE = re.compile(r"^[A-Za-z0-9_ ().-]{1,64}$")
+# Titan-authored hints (same wording as core.llm_router._http_error).
+_LLM_STATUS_HINTS = {
+    401: " (неверный или просроченный API ключ)",
+    402: " (недостаточно баланса на аккаунте)",
+    404: " (модель не найдена — проверьте имя модели)",
+    429: " (лимит запросов — повторите позже)",
+}
+
+
+def _llm_error_info(exc: BaseException) -> dict[str, Any]:
+    """Content-free description of an LLM failure. Never uses ``str(exc)``."""
+    code = getattr(exc, "code", None)
+    if not (isinstance(code, str) and code in _LLM_PUBLIC_ERROR_CODES):
+        code = LLM_PROVIDER_ERROR_CODE
+    type_name = type(exc).__name__
+    info: dict[str, Any] = {
+        "code": code,
+        "type": type_name if _SAFE_TYPE_NAME_RE.match(type_name) else "Exception",
+    }
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int) and not isinstance(status_code, bool) and 100 <= status_code <= 599:
+        info["status_code"] = status_code
+    provider = getattr(exc, "provider", None)
+    if isinstance(provider, str) and _SAFE_PROVIDER_NAME_RE.match(provider):
+        info["provider"] = provider
+    return info
+
+
+def _llm_error_message(exc: BaseException, info: dict[str, Any] | None = None) -> str:
+    """Stable user-facing text for an LLM failure, built from validated fields only."""
+    from core.llm_context_budget import (
+        CONTEXT_LIMIT_CODE,
+        CONTEXT_OVERFLOW_CODE,
+        LlmContextLimitError,
+        context_overflow_message,
+    )
+
+    info = info or _llm_error_info(exc)
+    status_code = info.get("status_code")
+    if info["code"] == CONTEXT_OVERFLOW_CODE:
+        return context_overflow_message(info.get("provider", "provider"), status_code)
+    if info["code"] == CONTEXT_LIMIT_CODE:
+        fields = {k: getattr(exc, k, None) for k in ("setting", "limit", "role", "length", "part")}
+        if (
+            isinstance(exc, LlmContextLimitError)
+            and all(isinstance(fields[k], str) and _SAFE_LIMIT_FIELD_RE.match(fields[k])
+                    for k in ("setting", "role", "part"))
+            and all(isinstance(fields[k], int) and not isinstance(fields[k], bool)
+                    for k in ("limit", "length"))
+        ):
+            return str(LlmContextLimitError(**fields))
+        return _context_refusal_text(CONTEXT_LIMIT_CODE, info.get("provider", "provider"))
+    status = f" (HTTP {status_code})" if status_code is not None else ""
+    hint = _LLM_STATUS_HINTS.get(status_code, "") if isinstance(status_code, int) else ""
+    return (
+        f"{LLM_PROVIDER_ERROR_CODE}: the LLM provider request failed{status}{hint}; "
+        "provider details were withheld."
+    )
+
+
+def _log_llm_error(where: str, info: dict[str, Any]) -> None:
+    """Log an LLM failure without its message or traceback (code/type/status only)."""
+    logger.warning(
+        "LLM error at %s: code=%s type=%s status=%s provider=%s",
+        where,
+        info.get("code"),
+        info.get("type"),
+        info.get("status_code"),
+        info.get("provider"),
+    )
+
+
 def _raise_if_context_error(exc: BaseException) -> None:
-    """Turn a context-limit refusal / provider overflow into a clear HTTP 413."""
+    """Turn a context-limit refusal / provider overflow into a clear HTTP 413.
+
+    The detail is rebuilt from validated fields (PR #537 secfix), never
+    ``str(exc)``, so provider text kept on the exception cannot leak.
+    """
     from core.llm_context_budget import LlmContextConfigError, LlmContextLimitError
     from core.llm_router import LlmContextOverflowError
 
     if isinstance(exc, (LlmContextLimitError, LlmContextOverflowError)):
-        raise HTTPException(status_code=413, detail=str(exc)) from exc
+        info = _llm_error_info(exc)
+        _log_llm_error("context_limit", info)
+        raise HTTPException(status_code=413, detail=_llm_error_message(exc, info)) from None
     if isinstance(exc, LlmContextConfigError):
+        # Titan-authored setting error (names the env setting, never its value
+        # or any provider text); unchanged.
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -2126,12 +2220,18 @@ async def chat_endpoint(req: ChatRequest):
             # A context-limit refusal is a clear answer, not an offline fallback.
             _raise_if_context_error(exc)
             offline = _console_offline_reply(req.message, facts, req.ui_lang)
+            llm_err = _llm_error_info(exc)
+            _log_llm_error("chat", llm_err)
             if offline:
                 reply = offline
                 from_llm = False
                 pipeline_error = None
             else:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+                # Status 400 kept for API compatibility; detail is a stable
+                # code + Titan text, never the provider message (secfix P0).
+                raise HTTPException(
+                    status_code=400, detail=_llm_error_message(exc, llm_err)
+                ) from None
     else:
         reply = _format_console_memory_reply(req.message, facts, pipeline_error, lang=req.ui_lang)
 
@@ -2419,6 +2519,12 @@ async def _chat_memory_side_effects(
 _CONTEXT_ERROR_CODES = ("llm_context_limit", "llm_context_overflow")
 
 
+class _LlmStreamError(RuntimeError):
+    """Provider stream reported an error; its message is not carried (secfix P0)."""
+
+    code = LLM_PROVIDER_ERROR_CODE
+
+
 def _context_refusal_text(code: str, provider: str) -> str:
     """User-facing refusal built from the error code only (no exception text)."""
     from core.llm_context_budget import CONTEXT_OVERFLOW_CODE, context_overflow_message
@@ -2523,7 +2629,8 @@ async def chat_stream_endpoint(req: ChatRequest):
                                 )
                                 break
                             elif ev.get("type") == "error":
-                                raise RuntimeError(ev.get("message") or "LLM stream error")
+                                # The provider message stays inside Titan (secfix P0).
+                                raise _LlmStreamError()
                     from_llm = context_refusal is None
                     if sx_hold and context_refusal is None:
                         outcome = sx_buffer.finalize(reply if held_done is not None else None)
@@ -2545,6 +2652,7 @@ async def chat_stream_endpoint(req: ChatRequest):
                         if frame:
                             yield frame
                 except Exception as exc:
+                    _log_llm_error("chat_stream", _llm_error_info(exc))
                     offline = _console_offline_reply(req.message, facts, lang)
                     if not offline:
                         raise exc
@@ -2628,7 +2736,13 @@ async def chat_stream_endpoint(req: ChatRequest):
             if frame:
                 yield frame
         except Exception as exc:
-            frame = emit({"type": "error", "message": str(exc)})
+            # Stable code + Titan text only; never str(exc) (secfix P0).
+            err_info = _llm_error_info(exc)
+            frame = emit({
+                "type": "error",
+                "code": err_info["code"],
+                "message": _llm_error_message(exc, err_info),
+            })
             if frame:
                 yield frame
 
@@ -3015,22 +3129,22 @@ async def query(req: QueryRequest):
                     "source": "request" if _llm_config_from_request(req) else "env",
                 }
         except Exception as exc:
-            logger.warning("LLM генерация упала: %s", exc)
+            # Secfix P0 (independent of ENABLE_SOURCE_X_GATE): stable code,
+            # validated type / status / provider; no provider message in the
+            # answer, llm_meta or the log; ``exc.code`` only from a closed set.
+            llm_err = _llm_error_info(exc)
+            _log_llm_error("query", llm_err)
             evidence_map = None
             reference_check = None
             if req.evidence_labels:
                 evidence_lifecycle = "model_failed" if llm_call_started else "prompt_rejected"
-            llm_answer = f"[LLM error: {exc}]"
-            llm_meta = {"error": str(exc)}
-            if _source_x_enabled():
-                # Round 2, P0-02: provider error text may echo content; with
-                # the gate on, only the exception type and code leave Titan.
-                code = getattr(exc, "code", None)
-                llm_meta = {
-                    "error": type(exc).__name__,
-                    **({"code": str(code)} if isinstance(code, str) else {}),
-                    "error_redacted": "source_x_gate",
-                }
+            llm_answer = f"[LLM error: {_llm_error_message(exc, llm_err)}]"
+            llm_meta = {
+                "error": llm_err["code"],
+                "error_type": llm_err["type"],
+                **({"status_code": llm_err["status_code"]} if "status_code" in llm_err else {}),
+                "error_redacted": True,
+            }
 
     # Source-X gate on the FINAL user-facing texts (Codex audit 2026-11-23,
     # item 1). pipeline.run() gates its own answer, but the lens formatter

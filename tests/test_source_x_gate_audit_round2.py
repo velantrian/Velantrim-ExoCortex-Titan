@@ -371,7 +371,13 @@ def test_r2_flag_off_responses_unchanged(fake, monkeypatch):
         raise RuntimeError("provider echoed: выручка 21,8 млн")
     monkeypatch.setattr(srv, "_llm_generate", gen)
     resp = asyncio.run(srv.query(srv.QueryRequest(query="Какая выручка?", use_llm=True)))
-    assert resp.llm_meta == {"error": "provider echoed: выручка 21,8 млн"}
+    # PR #537 secfix (Manus 2026-11-24): the flag-off contract no longer
+    # echoes the provider message; llm_meta is a stable code for every flag
+    # state. Gate-specific output stays absent while the flag is off.
+    assert resp.llm_meta == {
+        "error": "llm_provider_error", "error_type": "RuntimeError", "error_redacted": True,
+    }
+    assert "21,8" not in (resp.llm_answer or "")
     assert resp.source_x_gate is None
 
 

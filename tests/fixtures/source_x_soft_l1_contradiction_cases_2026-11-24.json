@@ -1,0 +1,243 @@
+{
+ "schema": "source_x_soft_l1_contradiction_cases/v1",
+ "created": "2026-11-24",
+ "role": "REGRESSION",
+ "role_note": "Small hand-written scenario set for the Manus 2026-11-24 Soft L1 finding. Written by the executor of the fix; not an independent benchmark. Texts are new (not in the 66-text corpus).",
+ "expected_scheme": "explicit refusal -> FLAG_L1_REFUSAL; negated refusal, refusal then use, asserted, ambiguous -> BLOCKED_ATTEMPT; official only -> ALLOW; name only -> FLAG_REVIEW",
+ "items": [
+  {
+   "id": "refusal_ru_list",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифры 21,8 млн, 7,6 млн и 53,5% не используются.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_ru_not_included",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Показатели брифа (21,8 и 7,6) в отчёт не включены.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_ru_excluded_from_use",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Значения 21,8 и 53,5% исключены из использования, так как не утверждены.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_ru_not_rely",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Мы не опираемся на 21,8 млн из неутверждённого брифа.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_ru_cannot_be_used",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифры 7,6 и 53,5% не могут быть использованы в отчёте.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_ru_official_given_above",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифры 21,8 и 7,6 из брифа не используются, а официальные данные приведены выше.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_ru_then_official_used",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифры 21,8 не используются. В отчёте используются только официальные 14,2 и 3,1%.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_en_not_used",
+   "category": "explicit_refusal",
+   "text": "Official revenue is 14.2 million, growth 3.1%. The figures 21.8 and 7.6 are not used.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_en_must_not",
+   "category": "explicit_refusal",
+   "text": "Official revenue is 14.2 million, growth 3.1%. Figures 21.8 and 53.5% must not be used.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_en_only_official_used",
+   "category": "explicit_refusal",
+   "text": "Official revenue is 14.2 million, growth 3.1%. The figures 21.8 and 7.6 are not used; only the official figures are used.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "refusal_mixed_ru_en",
+   "category": "explicit_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифры 21,8 и 7,6 are not used.",
+   "expected": "FLAG_L1_REFUSAL"
+  },
+  {
+   "id": "negated_tz_example",
+   "category": "negated_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Неверно, что цифры 21,8 млн, 7,6 млн и 53,5% не используются; напротив, они включены в отчёт.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "negated_ru_nepravda",
+   "category": "negated_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Неправда, что 21,8 млн не используется в отчёте.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "negated_en_not_true",
+   "category": "negated_refusal",
+   "text": "Official revenue is 14.2 million, growth 3.1%. It is not true that 21.8 and 7.6 are not used.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "negated_ru_not_excluded",
+   "category": "negated_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифры 21,8 и 7,6 вовсе не исключены из отчёта.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "negated_en_not_excluded",
+   "category": "negated_refusal",
+   "text": "Official revenue is 14.2 million, growth 3.1%. The figures 21.8 and 7.6 were not excluded from the report.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "negated_ru_trailing",
+   "category": "negated_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Утверждение, что 21,8 не используется, неверно.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "negated_ru_no_ban",
+   "category": "negated_refusal",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Нет запрета на использование цифр 21,8 и 7,6.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "use_ru_semicolon_odnako",
+   "category": "refusal_then_use",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифры 21,8 не используются; однако 7,6 млн включены в прогноз.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "use_ru_next_sentence_naprotiv",
+   "category": "refusal_then_use",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Мы не используем 21,8 млн. Напротив, эти данные включены в отчёт.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "use_en_but_rely",
+   "category": "refusal_then_use",
+   "text": "Official revenue is 14.2 million, growth 3.1%. The figures 21.8 and 7.6 are not used, but we rely on them for the forecast.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "use_ru_no_publish_but_used",
+   "category": "refusal_then_use",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Цифра 21,8 не публикуется, но используется во внутреннем расчёте.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "use_ru_next_sentence_tem_ne_menee",
+   "category": "refusal_then_use",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. 21,8 млн не приводим. Тем не менее они учтены в итоговой сумме.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "use_ru_and_included",
+   "category": "refusal_then_use",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Не используются 21,8 и включены 7,6 в прогноз.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "use_en_anaphora_next_sentence",
+   "category": "refusal_then_use",
+   "text": "Official revenue is 14.2 million, growth 3.1%. We do not cite 21.8. They are used in the internal model.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "asserted_ru",
+   "category": "asserted",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Скорректированная выручка — 21,8 млн.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "asserted_ru_no_official",
+   "category": "asserted",
+   "text": "Run-rate составляет 7,6 млн, доля 53,5%.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "asserted_ru_copula_plus_refusal_elsewhere",
+   "category": "asserted",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Выручка составила 21,8 млн, а 7,6 мы не используем.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "official_ru",
+   "category": "official_only",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%.",
+   "expected": "ALLOW"
+  },
+  {
+   "id": "official_en",
+   "category": "official_only",
+   "text": "Official revenue is 14.2 million, growth 3.1%.",
+   "expected": "ALLOW"
+  },
+  {
+   "id": "official_ru_used",
+   "category": "official_only",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Прогноз использует только эти показатели.",
+   "expected": "ALLOW"
+  },
+  {
+   "id": "name_ru_refusal",
+   "category": "name_only",
+   "text": "Молниеносный бриф Меридиана не используется как источник.",
+   "expected": "FLAG_REVIEW"
+  },
+  {
+   "id": "name_ru_with_official",
+   "category": "name_only",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Источник «Молниеносный бриф» не утверждён.",
+   "expected": "FLAG_REVIEW"
+  },
+  {
+   "id": "ambiguous_reported_ru",
+   "category": "ambiguous",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Аналитик заявил, что 21,8 млн не используются.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "ambiguous_reported_en",
+   "category": "ambiguous",
+   "text": "Official revenue is 14.2 million, growth 3.1%. The analyst said 21.8 is not used.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "ambiguous_hedge_ru",
+   "category": "ambiguous",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Возможно, цифры 21,8 и 7,6 не используются.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "ambiguous_conditional_ru",
+   "category": "ambiguous",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Если цифры 21,8 не используются, отчёт неполон.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "ambiguous_conditional_en",
+   "category": "ambiguous",
+   "text": "Official revenue is 14.2 million, growth 3.1%. If 21.8 is not used, the forecast changes.",
+   "expected": "BLOCKED_ATTEMPT"
+  },
+  {
+   "id": "ambiguous_question_ru",
+   "category": "ambiguous",
+   "text": "Официальная выручка — 14,2 млн, рост 3,1%. Не используются ли цифры 21,8 и 7,6?",
+   "expected": "BLOCKED_ATTEMPT"
+  }
+ ]
+}

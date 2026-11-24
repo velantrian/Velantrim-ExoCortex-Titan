@@ -126,6 +126,63 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
+## handoff-pr-538
+
+### 2026-11-24 — PR #537 security fix after the Manus audit (provider error leaks, Soft L1 negated refusals)
+
+- **Status:** `HANDOFF_REQUIRED`
+- **Documentation impact:** `GITHUB_AND_NOTION`
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · Draft PR #538 (base: PR #537 branch)
+- **Base SHA:** `59c6b0a6329d331534dd3fcfb5a3da48b0fc23cb`
+- **Head SHA:** `5d13b2a9d3120f38f3ecf8945d27781aa3fe89aa`
+- **Intended Notion record:** `PENDING — Titan PR #537 security fix (Manus audit 2026-11-24) · PR #538` (child of `Velantrim Titan 9.0`; record not created)
+- **Notion access for originating actor:** `UNAVAILABLE`
+
+Head SHA above is the code commit; the documents are added in the commit that follows it on the same branch.
+
+### Problem / opportunity
+
+The independent Manus security audit of PR #537 (2026-11-24, READY FOR ENGINEERING REVIEW / NOT READY FOR MERGE) found provider exception text reaching clients and logs, and a Soft L1 refusal check that did not see a negated or contradicted refusal.
+
+### Material findings
+
+Provider exception text in `/chat` HTTP 400, `/chat/stream` error events, `/query` `llm_answer` / `llm_meta` and logs, with the flag on or off. Soft L1 delivered texts such as «Неверно, что цифры 21,8 … не используются; напротив, они включены в отчёт.» as `FLAG_L1_REFUSAL`.
+
+### Decision and rationale
+
+Closed-set error codes with validated fields instead of exception text, independent of the flag; HTTP statuses unchanged. Soft L1 keeps strict L1 for negated, contradicted, reported, hedged, conditional or questioning refusals (pattern heuristic). Refusal-list widening not included (would widen Soft L1).
+
+### Rejected or deferred alternatives
+
+Concessive-clause rule for Soft L1 (10 false blocks on real model outputs; reverted). Changing `/chat` 400 to 502 (contract change; recommendation only). Fixing `api/llm_routes.py` diagnostics (out of the named scope).
+
+### Authority, safety, privacy, and Canon boundaries
+
+No Canon / access-policy change. Flag off everywhere; enabled only in isolated tests. No model calls, no real keys or user data. Draft only; #536 / #537 not merged or modified.
+
+### GitHub files updated
+
+`server.py`, `core/source_x_gate.py`, `scripts/eval_source_x_soft_l1_cases.py`, `tests/test_pr537_secfix_provider_errors.py`, `tests/test_pr537_secfix_soft_l1.py`, `tests/test_source_x_gate_audit_round2.py`, `tests/fixtures/source_x_soft_l1_contradiction_cases_2026-11-24.json`, `tests/fixtures/source_x_soft_l1_probe_2026-11-24.json`, `docs/adr/ADR-2026-11-23-source-x-gate-enablement.md`, `docs/ai/PR537_SECFIX_MANUS_2026-11-24_REPORT.md`, `docs/ai/KNOWN_RISKS.md`, `docs/ai/WORK_LOG.md`, `docs/ai/NOTION_HANDOFF.md`
+
+### Evidence
+
+`docs/ai/PR537_SECFIX_MANUS_2026-11-24_REPORT.md`: RED on `59c6b0a` (49 failed), GREEN on `5d13b2a`; full suite 5184 passed / 17 skipped / 7 xfailed; corpus unchanged.
+
+### Known limitations
+
+Soft L1 remains a bypassable pattern heuristic (4 known false allows in the probe); `api/llm_routes.py` still returns provider exception text; non-provider exception logs keep messages.
+
+### Next actions
+
+Independent re-audit by Manus; owner decision on Soft L1; a connected actor creates the Notion record and records `SYNCED`. Keep Draft.
+
+### Synchronization result
+
+- Connected actor: pending
+- Notion record: PENDING (not created)
+- Status: `HANDOFF_REQUIRED`
+- Final PR / merge SHA / CI: PR #538 remains DRAFT and unmerged
+
 ## handoff-pr-537
 
 ### 2026-11-24 — Source-X Gate: final-text gate, stream hold, fail-closed, hardening round 2

@@ -1,3 +1,11 @@
+## 2026-11-24 — PR #537 security fix after the Manus audit (Draft PR #538)
+
+- Provider error leaks closed on `/chat`, `/chat/stream`, `/query` and context-limit refusals (closed-set codes, flag-independent); Soft L1 no longer allows negated or contradicted refusals in the tested cases.
+- Evidence: RED on `59c6b0a`, GREEN on `5d13b2a`, full suite 5184 passed; 66-text corpus unchanged. Report: `docs/ai/PR537_SECFIX_MANUS_2026-11-24_REPORT.md`.
+- Status: Draft on top of #537, flag off everywhere, not merged. Documentation impact: `GITHUB_AND_NOTION` (Notion record PENDING).
+
+---
+
 ## 2026-11-24 — Source-X Gate hardening round 2 (Draft PR #537)
 
 - Independent read-only audit of PR #537 at `149f477` reproduced four defects (log leakage, incomplete output boundary, lost pipeline verdict, unbounded stream buffer) with ten tests; they are now `tests/test_source_x_gate_audit_round2.py` together with resource / log / boundary tests (parallel requests, generation cancel, client disconnect under ASGI 2.3 and 2.4, deadline, keep-alive without content).
