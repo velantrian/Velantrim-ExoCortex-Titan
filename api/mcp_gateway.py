@@ -7,10 +7,12 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 
 from core.mcp_transport import (
     McpHandler,
@@ -25,6 +27,19 @@ CAPABILITY_HEADER = "X-MCP-Capability"
 SESSION_HEADER = "Mcp-Session-Id"
 IDEMPOTENCY_HEADER = "Idempotency-Key"
 SSE_HEARTBEAT_INTERVAL_SECONDS = 15
+
+
+def _positive_limit(name: str, default: int) -> int:
+    value = int(os.getenv(name, str(default)))
+    if value <= 0:
+        raise ValueError(f"{name} must be positive")
+    return value
+
+
+# These are HTTP envelope budgets, not limits on documents read by Reader Core.
+MAX_MCP_BODY_BYTES = _positive_limit("MCP_MAX_BODY_BYTES", 1_048_576)
+MAX_MCP_BATCH_ITEMS = _positive_limit("MCP_MAX_BATCH_ITEMS", 100)
+MAX_MCP_JSON_DEPTH = _positive_limit("MCP_MAX_JSON_DEPTH", 64)
 
 
 def get_mcp_handler() -> McpHandler:
@@ -80,13 +95,42 @@ def _derive_batch_idempotency_key(base_key: str, message_id: Any) -> str:
 
 
 async def _read_json_body(request: Request) -> Any:
-    raw = await request.body()
+    declared = request.headers.get("content-length")
+    if declared is not None:
+        if not declared.isascii() or not declared.isdigit():
+            raise HTTPException(status_code=400, detail="Invalid Content-Length")
+        # Compare bounded decimal strings; int() on attacker-sized digits can
+        # itself raise ValueError on Python 3.11+, turning input into HTTP 500.
+        normalized = declared.lstrip("0") or "0"
+        limit = str(MAX_MCP_BODY_BYTES)
+        if len(normalized) > len(limit) or (
+            len(normalized) == len(limit) and normalized > limit
+        ):
+            raise HTTPException(status_code=413, detail="MCP request body too large")
+    raw = bytearray()
+    async for chunk in request.stream():
+        if len(raw) + len(chunk) > MAX_MCP_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="MCP request body too large")
+        raw.extend(chunk)
     if not raw:
         return {}
     try:
-        return json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError as exc:
+        payload = json.loads(raw.decode("utf-8"), parse_constant=_reject_json_constant)
+    except (ValueError, UnicodeDecodeError, RecursionError) as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON body") from exc
+    pending = [(payload, 1)]
+    while pending:
+        item, depth = pending.pop()
+        if isinstance(item, (dict, list)):
+            if depth > MAX_MCP_JSON_DEPTH:
+                raise HTTPException(status_code=400, detail="MCP JSON nesting too deep")
+            children = item.values() if isinstance(item, dict) else item
+            pending.extend((child, depth + 1) for child in children)
+    return payload
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError("Non-finite numbers are not JSON")
 
 
 def _dispatch(
@@ -137,6 +181,8 @@ def register_mcp_routes(
         body = await _read_json_body(request)
 
         if isinstance(body, list):
+            if len(body) > MAX_MCP_BATCH_ITEMS:
+                raise HTTPException(status_code=413, detail="MCP batch too large")
             responses: list[dict[str, Any]] = []
             for item in body:
                 if not isinstance(item, dict):
@@ -167,7 +213,8 @@ def register_mcp_routes(
                             }
                         )
                         continue
-                resp = _dispatch(
+                resp = await run_in_threadpool(
+                    _dispatch,
                     item,
                     capability=capability,
                     session_id=session_id,
@@ -181,7 +228,8 @@ def register_mcp_routes(
         if not isinstance(body, dict):
             raise HTTPException(status_code=400, detail="Expected JSON object or array")
 
-        resp = _dispatch(
+        resp = await run_in_threadpool(
+            _dispatch,
             body,
             capability=capability,
             session_id=session_id,

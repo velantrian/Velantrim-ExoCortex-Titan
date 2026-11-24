@@ -1,5 +1,16 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-16 — Audit remediation: MCP input and lifecycle budgets (draft branch, not merged)
+
+Audit C08/A18/A19: configurable streamed HTTP body, batch and JSON depth budgets reject before dispatch. Invalid JSON numbers/UTF-8 no longer produce HTTP 500. Synchronous tools use the existing bounded ASGI thread pool. Session metadata expires after one idle hour with a 4096-entry LRU bound; mutexes live only while held/waited on. Reader source-document size is unchanged. Authentication/capability and operation-owned idempotency remain authoritative; cross-process serialization, tool timeouts and credential quotas remain separate limitations.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+All MCP regressions: **71 passed**, including real Uvicorn chunked HTTP, bounds, event-loop responsiveness, TTL and capability/idempotency/session serialization. Ruff changed paths and mypy core passed. See ADR-2026-11-16-mcp-input-and-lifecycle-budgets.md.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
 - Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.
 - Contract: default behaviour and the PR #453 prompt contract are unchanged. Full text in `KNOWN_RISKS.md`.
