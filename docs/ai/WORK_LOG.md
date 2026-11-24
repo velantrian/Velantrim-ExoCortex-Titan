@@ -1,4 +1,222 @@
+## 2026-11-14 — Observer compatibility revision prepared for Draft PR #522
+
+## 2026-11-17 — combined audit remediation verification (draft #530)
+
+- Owning fixes #523–#529 and synchronized #500/#506/#509/#514/#517/#521/#522 are combined only in `audit/integration-verification-20261117`, not main. Draft #530 is DO NOT MERGE; focused owning PRs remain the review path.
+- Source `9270d78675d9d85502dea489776c53702732eca6`: full local Python 3.12 pytest **5132 passed, 17 skipped, 1 xfailed**, 13 warnings, 532.24 s; core coverage **79.30%**, blocking minimum 74%. Expanded Ruff, clean core mypy (357 files), HTTP mypy (12), branding/hygiene/architecture/project-state/KB guards passed.
+- Initial integration-only failures were repaired in their owning branches: CodeQL pin fixture #506, Dense dimension fixtures #527, TTS mock/egress isolation #526; #522 received an explicit Optional answer guard. The repeated full suite passed; no egress restriction was disabled.
+- `docs/audits/2026-11-16-code-audit.md` preserves the original audit; `docs/audits/2026-11-17-remediation-register.md` maps all 42 findings, old PR disposition, exact evidence and residual work. Partial semantic/domain/distributed-delivery/license/refactoring limitations remain explicit.
+- User-authorized public PR/SHA/test evidence is synchronized to the existing Notion audit record. No main merge, research activation, deployment or real LLM/Telegram request; remote main remains `485c4b0906ec35829ff7231c6276bf7d817f096f`. Hosted candidate workflows provide separate exact-head evidence.
+
+
+## 2026-11-17 — Observer HTTP type contract
+
+The new Pydantic-aware HTTP mypy profile in audit PR #526 identified that a boolean helper does not narrow Optional[str]. Added an explicit None guard in _observer_model_input at the lowest owning PR #522; successful-answer and sent-record semantics are unchanged. Existing prompt-record/Observer regressions are rerun; the aggregate candidate must pass the HTTP profile after synchronization.
+
+## 2026-11-16 — Observer child synchronized to the tested availability parent
+
+PR #522 now includes parent #521 at `0e0be79`, itself stacked on #509. Kept named, content-free unavailable-check reporting and scoped only the semantic diagnostic to actually sent records; other passive checks still run. **106 focused tests passed**, including Observer, prompt records, evidence labels and prompt epistemic boundaries. No claim-level entailment verifier or main merge is implied.
+
+- Preparation snapshot: PR #522 head `27192ec5aef7f8ef3fd4fa305bf9d4f7e400df63`, base / PR #521 head `5057904ce613a773e5eab585000dca55d8f41aa7`. The candidate diff was prepared only in a disposable detached copy; this preparation did not change either PR, a branch, a commit, or hosted CI.
+- Candidate behavior: when enabled, Observer continues applicable truth-policy, scope-leak and goal-drift checks over `pipeline_facts`, including when the model was not called, failed, or returned no usable answer. Only the semantic-support/lexical diagnostic is gated on a successful non-empty answer and uses `ContextReport.sent_facts`.
+- Candidate API contract: preserve `details.faithfulness` as an alias of `details.lexical_diagnostic`, explicitly lexical-only and not proof of support. Removal of the lexical-only `unsupported_claim` flag remains a separate client-visible contract change. No semantic verifier or answer blocking is added; #512 remains open.
+- Candidate checks, run locally in a locked disposable venv with Python 3.12.3: `tests/test_observer.py tests/test_eval_golden.py tests/test_observer_context.py` — **36 passed, 1 warning**. Ruff passed for `core/observer.py` and the two touched test modules; mypy passed for `core/observer.py`. Ruff `server.py` reports N812 at the pre-existing `__version__` import; the same finding reproduces on the exact base file. Hosted CI was not run on this unapproved diff. The user's separately reported 33-test result applies to original head `27192ec5…`, not this candidate diff.
+- Documentation impact: `GITHUB_AND_NOTION`; the existing Notion record “Titan #512 — предупреждение о непроверенной смысловой поддержке” was identified for later synchronization, without creating a duplicate or changing Notion during this approval-gated preparation.
+
+## 2026-11-14 — Observer lexical-confidence mitigation (#512)
+
+## 2026-11-16 — Observer availability and semantic-support integration
+
+PR #521 is stacked on tested PR #509 (`0f1097e`) so an unavailable control cannot become clean while lexical overlap is marked semantically unverified. Renamed the internal support check at the lowest owning parent and updated inherited availability regressions to the new passive contract. **60 focused tests passed** (Observer, unavailable controls, golden evaluation, distinct records). No semantic verifier or answer blocking is introduced. Dependency order: #509 → #521 → #522; main is unchanged.
+
+- Base: main `485c4b0906ec35829ff7231c6276bf7d817f096f`. A lexical match no longer produces a clean Observer verdict: the semantic support check is explicitly unavailable. Low overlap still produces the existing unsupported-claim flag. A failure of the lexical check also returns an unverified warning.
+- The warning intentionally applies even to genuinely supported answers: it prevents an unsupported semantic assurance but is not a semantic checker. No answer is blocked or rewritten. #512 remains open; per-claim assessment against the exact records sent to the model is not implemented.
+- Documentation impact: `GITHUB_AND_NOTION`; the accompanying Notion record tracks the review and limitations. Local checks and hosted CI are recorded in the PR rather than inferred here.
+
+## 2026-11-08 — FactsPack keeps distinct records; Observer reports unavailable checks
+
+## 2026-11-17 — Observer regression isolation
+
+Use the live Observer module in all availability regressions. The full suite reloads core modules; an early imported observe function can retain stale globals and miss a monkeypatch on the live private check. This is fixed in the lowest owning PR #509 before #521/#522 are synchronized. No production behavior change.
+
+## 2026-11-16 — PR #509 synchronized with merged evidence labels
+
+Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` into this PR without rewriting its history. Preserved the #515 evidence-label implementation and tests. Resolved documentation conflicts by retaining both records. Focused regression suite: **97 passed** on Python 3.12; no provider calls. Main and deployment remain unchanged. Fresh exact-head CI remains required.
+
+- Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `ccr-21271488-mmapps`, draft [PR #509](https://github.com/velantrian/Velantrim-ExoCortex-Titan/pull/509), not merged.
+- Origin: a cross-repository audit (Titan / Crystal / native-kernel) and its review. The review limited this first change to:
+  - provable repeats only;
+  - provenance preserved;
+  - the full path to the provider prompt;
+  - an explicit Observer failure status.
+
+  Claim-level answer support is a separate change.
+- **FactsPack** (`core/facts_pack.py`):
+  - `_dedup_semantic` (token overlap > 0.7, winner by confidence) is replaced by `_dedup_exact_record_repeats`. It collapses only the same real `fact_id` with an identical record payload (every `PackedFact` field except `retrieval_score`, enrichment fields included) and keeps the strongest `retrieval_score`. External review (same day): the first version left `context_applicability`, `causal_summary` and `living_context` out of the key; fixed, with tests per field, a guard against future fields, and a mutation control of 8 mutants (all killed).
+  - Before: records differing by negation, condition, `L1`/`L2`, status, number or argument order were dropped on `/query`, `/chat` and `/chat/stream` before the LLM, with no `excluded_facts` entry.
+- **Observer** (`core/observer.py`):
+  - Before: a raised check became `res = None`, so the verdict could stay `allow` / `clean`.
+  - Now: flag `check_unavailable`, decision at least `warn`, `details["unavailable_checks"]` with check name and exception type, no exception text.
+  - Observer is default-off in code, set to `1` in `docker-compose.prod.yml:100`, and passive (only `/query` calls it).
+- Reproduced before / passing after:
+  - `tests/test_facts_pack_distinct_records_preserved.py`: 10 failing on base.
+  - `tests/test_query_prompt_preserves_distinct_facts.py`: `server.query` → `pipeline.run` → FactsPack → `_build_system_prompt` → fake `core.llm_router.chat_complete`. It checks the provider-bound prompt line by line and after `sanitize_remote_system_prompt`. On base only the `*-a` records reached the API response (the prompt side was checked with a standalone script; the committed test stops at the API-response assertion).
+  - `tests/test_observer_check_unavailable.py`: 4 failing on base. With `truth_policy.decide` raising, the base verdict was `allow` / `clean`.
+- Not changed, deliberately:
+  - Prompt serialization still omits `fact_id` / `epistemic_state`. PR #453 pins that in `tests/test_prompt_epistemic_boundary.py`; changing it is an open policy decision.
+  - `OutputFaithfulnessChecker`, `ResponseGuardian` and the LLM answer path are unchanged.
+  - Residual risks recorded in `KNOWN_RISKS.md`: claim-level support, and prepared embedding batches after erasure.
+- Second-pass verification (2026-11-09; independent verifiers, some with a devil's-advocate second pass) corrected this entry and `KNOWN_RISKS.md`:
+  - The faithfulness checker is not pipeline-only: Observer runs it on the `/query` LLM answer when `ENABLE_OBSERVER=1`, which `docker-compose.prod.yml` sets. It reports a contradicting answer clean.
+  - The embedding-writer risk is latent: no non-test caller exists and the contract is marked `UNWIRED`.
+  - Tests were strengthened after a mutation check: key fields, empty-string id, max-score order, all four Observer checks, audit-chain path.
+  - Full-suite count: 4880 tests collected on the branch (4864 on main); the 4881 / 4865 in the first PR text counted one module skipped at collection.
+  - Separate issue: [#510](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/510), the BM25 `s > 0` filter. Its blast radius is the NGram candidate set (at most 50), not store size.
+- Documentation impact: `GITHUB_ONLY` (focused bug fixes plus narrowed / recorded risks). Notion: not updated by this change.
+## 2026-11-09 — Safe LLM failure reporting; unsafe API keys rejected before the request
+
+## 2026-11-16 — PR #514 synchronized with merged evidence labels
+
+Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` into this PR without rewriting its history. Preserved the #515 evidence-label implementation and tests. Resolved documentation conflicts by retaining both records. Focused regression suite: **113 passed** on Python 3.12; no provider calls. Main and deployment remain unchanged. Fresh exact-head CI remains required.
+
+- Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `fix/llm-error-safe-codes-20261109`, draft PR, not merged. Independent of PR #509; both add an entry at the top of this file and of `KNOWN_RISKS.md`, so the second to merge needs a trivial merge of those two headers. Issue: #511.
+- Change: new `core/llm_errors.py` (fixed codes by exception type, event id, header-safe key check). Handlers in `server.py`, `api/llm_routes.py`, `core/llm_stream.py`, `core/llm_router.py`, `core/tts_router.py`, `core/gemini_models.py`, `core/sleep_time_worker.py`, `core/cross_domain.py` return or log only a code, a static hint, an event id and the exception type. Keys outside visible ASCII are rejected before a request is built. Provider failures keep their type through STT/TTS/streaming. Reader adapter: key and not-configured errors are permanent.
+- Evidence: on `main` a synthetic marker in the exception text was present in `llm_answer`, `llm_meta`, logs, the trace kwargs and the event kwargs (probe with the real `server.query`). `tests/test_llm_error_redaction.py` (41 tests): 15 of the first 28 failed on `main` plus the new module, all pass on the branch; later tests cover the surfaces the leak audit found. Full suite on the branch: 4884 passed, 5 failed, 17 skipped, 1 xfailed, 4906 collected; the 5 failures are the same as on `main` (see #510).
+- Process notes: the first full run exposed four tests that were order-dependent (other tests reload `core.*`, so exception classes captured at collection or import no longer matched); fixed by resolving classes from the live modules. One existing test (`test_remote_egress_policy`) asserted the policy reason code in the stream message; the reason code is now carried in a strict-shape `detail_code`.
+- Second review (same day), after the merge with `main` (#516): `LlmErrorInfo` enforces the shape of its fields; the log line names the cause chain by type and the raising code location; `llm_empty_response` separates an empty provider answer from an invalid request; environment keys are stripped of surrounding whitespace like request keys. `tests/test_llm_error_redaction.py` now has 48 tests; a targeted mutation control of 17 mutants (the earlier ten plus seven for these changes) was re-run on the merged tree and every mutant fails at least one test.
+- External review (same day), verified against the code: (1) regression fixed: OpenAI `/tts/stream` no longer ends a failed stream as if it were complete (pre-start failure: HTTP error with code; mid-stream failure: aborted transfer with a code-only error; empty audio: `llm_empty_response`); there was no test for the OpenAI branch, only for Gemini. (2) Gemini TTS without audio in the answer: `llm_empty_response` instead of a plain `ValueError`. (3) Not changed: the `(пустой ответ Gemini)` placeholder (pre-existing; recorded in `KNOWN_RISKS.md`). Tests: 53; targeted mutation control: 22 mutants, all killed.
+- Not covered: see the remaining limits in `KNOWN_RISKS.md` (generic exception handler, other event sinks, coarse codes).
+## 2026-11-16 — PR #517 documentation base synchronization
+
+Merged main `485c4b0906ec35829ff7231c6276bf7d817f096f` without changing the proposal text or activating any integration. Preserved the merged evidence-label documentation and tests while resolving the WORK_LOG header overlap. This is base synchronization, not architecture approval.
+
+## 2026-11-09 — Governed environment / replaceable models (documentation proposal)
+
+- Base: `6b45854f57ca90516b86b2c48b284c88857bc2c2`.
+- Clarify project intent and Crystal/Titan boundaries in English/Russian README;
+  record the shared design rationale and proposed bridge acceptance requirements
+  in [GOVERNED_MODEL_ENVIRONMENT.md](../design/GOVERNED_MODEL_ENVIRONMENT.md).
+- Distinguish typed proposals from admitted state, local ownership from integration,
+  prepared messages from delivery, and receipts from answer support. The laboratory
+  bridge snapshot is evidence about its bounded harness, not a deployed connection.
+- Documentation impact: `GITHUB_AND_NOTION`. Dedicated Notion principle page and
+  visible hub reference saved; public reference is its safe title only.
+- Validation and exact proposed head/CI belong to this documentation PR. No new
+  runtime tests, model calls, feature enablement or implementation checkpoint.
+
+---
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
+## Historical 2026-11-09 proposal — evidence labels (merged #515 on 2026-11-14)
+
+## 2026-11-17 — Cleanup parent synchronization evidence
+
+Merged runtime parent `2282007` without changing its fixes. Final focused backend/parser/runtime suite: **83 passed**. Clean mypy core: **356 files, no issues**; Ruff core/changed API/server/test paths passed. Shared traversal API semantics and reserved extension-point limitations are documented. Main remains unchanged.
+
+## 2026-11-17 — Audit cleanup (draft child of runtime PR #525)
+
+Three backend spreading_activation implementations were AST-identical and now reuse the
+same existing algorithm on GraphStoreBackend. Removed the uncalled Prometheus probe/cache,
+a private unused stats argument and whole-file IO from the unimplemented MinerU adapter.
+MinerU/Vision are explicitly NOT_IMPLEMENTED; OCR/PDF fallbacks remain. Reserved compatibility
+hooks/public types are documented rather than assumed safe to delete. Corrected API-key,
+bootstrap and Graph-as-projection help; marked the #515 proposal as merged history.
+
+Focused backend/parser/runtime checks: **80 passed** before parent synchronization.
+No new authority, feature activation, main merge or broad function refactor. Documentation
+impact: GITHUB_ONLY; this is a focused cleanup under existing contracts.
+
+
+## 2026-11-17 — Final wired runtime full suite
+
+Code `2282007`: **4988 passed, 17 skipped, 1 xfailed**, Python 3.12, 261.32 seconds. This supersedes the earlier failing multilingual follow-up run and earlier green counts. Personal-domain, research-profile and irrelevant-query controls all remain asserted. Clean mypy core passed without incremental cache; actual startup/server integration and profile defaults were verified. Main is unchanged; fresh exact-head CI remains required.
+
+## 2026-11-17 — Preserve bounded retrieval and scope through multilingual wiring
+
+While verifying role scope through real startup wiring, the multilingual wrapper still called get_all_facts and dropped domain. It now reuses the existing bounded candidate owner, forwards domain, honors use_ngram, filters recall eligibility and returns an explicit lexical retrieval score. **69 focused tests passed**, including wrapper lifecycle, pipeline, restricted recall and runtime regressions; clean mypy core passed (356 files). The earlier full count predates this follow-up; a fresh complete suite is running.
+
+## 2026-11-17 — Runtime clean type-check follow-up
+
+Remote mypy exposed a nullable GraphLab path that the incremental local cache had missed. The path now has an explicit final nonempty default. Clean mypy is rerun with `--no-incremental`; focused graph/bridge regressions are rerun. This does not change a configured nonempty store path. Fresh remote exact-head checks remain required.
+
+## 2026-11-16 — Runtime final full regression
+
+On code commit `c3c2b90`: **4984 passed, 17 skipped, 1 xfailed**, Python 3.12, 225.33 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90`. The earlier coverage-instrumented run measured 78.74% but had two test failures; those were fixed and the full uninstrumented suite rerun green. Fresh remote coverage/CI is required at the published head. No production activation or merge.
+
+## 2026-11-16 — Runtime regression follow-up
+
+Initial full run: 4981 passed, 2 failed, 17 skipped, 1 xfailed; core coverage 78.74%. Failures exposed old test assumptions (source-spelling archive guard and locally constructed branch retriever). Replaced them with executed nested-archive rejection and restricted-result exclusion. Branch consumers additionally reuse recall policy on bounded results; nested child errors/warnings reach the enclosing archive report. Follow-up: **74 passed**, including the independent NetworkX cycle oracle. A fresh full run is required; the initial run is not reported green.
+
+## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
+
+Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused runtime regressions: **95 passed**; earlier component suite: **104 passed, 5 skipped**. Additional bounded-cycle oracle test and full suite/coverage are running. Ruff core/changed server/tests and mypy core passed. Existing optional parser skips remain explicit. Operational limits: EventBus is volatile process-local delivery, not a durable outbox; mutable injected objects remain caller-owned; GraphLab truncation/budget exhaustion is not proof of no path/cycle.
+## 2026-11-17 — Dimension validation fixture follows instance availability
+
+Joint/full CI identified two manually constructed DenseRetriever fixtures still setting the removed class-wide availability bit. They now set the instance bit; dimension-mismatch-before-scoring and equal-dimension assertions remain unchanged. This fixes the old test contract at the lowest owning retrieval PR #527, without restoring shared availability.
+
+## 2026-11-16 — Audit remediation: retrieval scores and model cache lifetime (draft branch, not merged)
+
+Audit C11/C13/C14 and the private SSE-parser part of A23: dense availability is instance-local; one locked model-cache construction prevents duplicate loads. RRF is explicitly rank-only and no longer computes ignored normalization. Five-stage retrieval publishes final_score and gives graph expansion an actual rank channel without changing confidence. Gemini handles are bounded to 128 LRU entries with a local TTL shorter than the requested provider TTL; a missing provider cache is invalidated and retried once with the complete approved system prompt. Removed the confirmed unused private SSE parser; public optional APIs are retained. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused cache/ranking regressions: **45 passed**. Broader affected retrieval and LLM tests: **210 passed**. New tests cover a failed model not disabling another instance, competing model loads, five-stage scores/graph eligibility, rank-only invariance, TTL/LRU and missing-cache recovery with no system truncation. Ruff core/changed tests and mypy core passed. No real provider calls. Remote full-model CI remains required.
+## 2026-11-16 — Audit remediation: Telegram durable receipts and concurrent delivery identity (draft branch, not merged)
+
+Audit A03/A04: Telegram returns success only for an accepted canonical write with matching stored content/source/raw provenance. Stable delivery identity includes message_id=0. The existing canonical owner supports create_only: existing rows are not updated, and SQLite conflict handling provides atomic first-writer wins before audit/version/projection effects. Initial raw provenance binds inside that same canonical create transaction. Conflicting edits under the same delivery key are rejected; no random retry IDs or false saved replies. Replays do not emit a second fact event. The raw API cannot prove whether it inserted, so the legacy deduplicated_raw field is null (unknown); deduplicated_delivery is the explicit reliable bool. L0 remains immutable and content-addressed even if L1 is rejected. This branch is stacked on #523.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused writes/provenance/runtime tests initially **52 passed**. Import-reload order regression: **353 passed**. Initial full run exposed stale test-module/enum references, not absent canonical writes; fixtures now resolve the live modules. Complete repeat: **4976 passed, 17 skipped, 1 xfailed** in 224.19 seconds. Final event/no-overclaim controls and clean mypy are rerun. No real Telegram messages were sent. Fresh exact-head CI/coverage is required.
+## 2026-11-17 — TTS default control resolves live modules
+
+The full suite reloads core/API modules, so the unit now resolves them with importlib.import_module before patching the fake synthesizer and its isolated egress check. Production egress denial tests and policy are unchanged. Core-import/server/API order regression is recorded in the PR; no real provider is invoked.
+
+## 2026-11-16 — Audit remediation: verification coverage and frozen acceptance dependencies (draft branch, not merged)
+
+Audit A20/A26/A27 and C10: Stage 9/10 use the frozen installer; Playwright is locked in browser-tests; Ruff 0.17.5 covers core plus HTTP/app/scripts/utils. Core mypy remains blocking and a Pydantic-aware HTTP profile is added. A separate frozen CI profile runs without BM25/dense models, while full embedding-enabled CI remains. The TruthGate projection test uses deterministic retrieval; TTS defaults and sync/async callback annotations are reconciled. Installed license metadata is recorded as an artifact; unknown metadata and optional PyMuPDF AGPL/commercial obligations remain explicit, without claiming legal certification. No runtime feature is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Frozen minimal environment confirmed absence of rank_bm25 and sentence_transformers. Initial affected/fallback run: **194 passed**; additional API/callback/projection run including omitted Gemini TTS defaults: **79 passed**. Modern Ruff over the full expanded surface, mypy core (356 files), Pydantic-aware HTTP mypy (12 files), and branding/hygiene/state checks passed. License inventory generation and workflow YAML parsing passed. Fresh remote Chromium/full-model CI remains required.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
+## 2026-11-16 — PR #523 final local regression evidence
+
+Commit `a4c03a27d6b692754c84e6d75c8b1a121acf6459`: **4969 passed, 17 skipped, 1 xfailed**, core coverage **78.49%** (blocking threshold 74%), Python 3.12, 393.51 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90 --cov=core --cov-report=term --cov-fail-under=74`. This fallback environment has BM25/numpy and no sentence-transformers; embedding-enabled remote CI remains separate. Optional parser skips and the existing expected failure are preserved. No provider request or production activation.
+
+## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
+
+Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused regression suite: **110 passed** (new regressions plus pipeline, model-free core and consolidation contracts). Earlier full suite with admission/BM25: **4962 passed, 17 skipped, 1 xfailed**; that earlier run does not cover the later FactsPack/consolidation/mode changes. Ruff core and changed tests, mypy (356 core sources), branding, hygiene and project-state checks passed.
+## 2026-11-16 — Audit remediation: MCP input and lifecycle budgets (draft branch, not merged)
+
+Audit C08/A18/A19: configurable streamed HTTP body, batch and JSON depth budgets reject before dispatch. Invalid JSON numbers/UTF-8 no longer produce HTTP 500. Synchronous tools use the existing bounded ASGI thread pool. Session metadata expires after one idle hour with a 4096-entry LRU bound; mutexes live only while held/waited on. Reader source-document size is unchanged. Authentication/capability and operation-owned idempotency remain authoritative; cross-process serialization, tool timeouts and credential quotas remain separate limitations.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+All MCP regressions: **71 passed**, including real Uvicorn chunked HTTP, bounds, event-loop responsiveness, TTL and capability/idempotency/session serialization. Ruff changed paths and mypy core passed. See ADR-2026-11-16-mcp-input-and-lifecycle-budgets.md.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+## 2026-11-16 — PR #500 synchronized with current main
+
+Preserved missing-partner artifact guards and both partial-ESM regressions while merging main `485c4b0906ec35829ff7231c6276bf7d817f096f`. Resolved the test overlap using the current `REL_CONTRADICTS` contract, retaining both regression scenarios. **40 focused TruthMaintenance tests passed**; no main merge or runtime activation.
+## 2026-11-17 — CodeQL policy allowlist follows verified release pin
+
+The first refreshed #506 CI exposed an expected-hash fixture still pinned to v4.39.1. Updated the policy test to enforce the verified v4.39.3 commit `33d7b85da1a04171e211befe2c739303b9a4c066` for both action steps; bounded permissions checks remain intact. GitHub annotated release tag was dereferenced and matched that exact commit. No pin check was weakened.
+
+## 2026-11-16 — PR #506 CodeQL dependency base synchronization
+
+Merged current main to refresh obsolete failing CI evidence without changing the proposed CodeQL v4.39.3 action pins. Both init/analyze use the same immutable 40-character commit. Workflow YAML parsed locally. Fresh GitHub CI and dependency audit remain required; no main merge. Documentation impact GITHUB_ONLY; no new workflow authority or runtime activation.
 
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
 - Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.

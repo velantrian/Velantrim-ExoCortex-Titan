@@ -24,7 +24,10 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional
+
+if TYPE_CHECKING:
+    from core.llm_router import LlmCallConfig
 
 from core.recall_policy import filter_facts_for_recall
 from dotenv import load_dotenv
@@ -92,7 +95,8 @@ if not API_KEY:
     )
 
 # ─── Импорт Velantrim ─────────────────────────────────────────────────────────
-from core import __version__ as VELANTRIM_VERSION
+from core import __version__
+VELANTRIM_VERSION = __version__
 from core.policy_kernel import validate_egress_env
 
 # Egress-политика проверяется на старте, до обслуживания запросов.
@@ -126,6 +130,7 @@ from core.promotion_gateway import PromotionGateway, PromotionRequest
 from core.mhi import MHICalculator, MHIStatus, check_mhi
 from core.pipeline import run as pipeline_run
 
+_ngram: "NGramIndex | None" = None
 try:
     from core.ngram_index import NGramIndex, set_global_ngram
     _ngram = NGramIndex(NGRAM_DB)
@@ -163,26 +168,31 @@ def _env_llm_config():
     """Конфиг LLM из переменных окружения (без ключей в логах)."""
     from core.llm_router import LlmCallConfig
 
+    # Surrounding whitespace is removed, as for a key sent in a request (``.strip()`` there).
+    # A trailing space or CR from an env file is a formatting accident, not part of the key;
+    # a key with any other disallowed character is still rejected before a request is built.
     prov = LLM_PROVIDER
-    if prov == "anthropic" and ANTHROPIC_KEY:
-        return LlmCallConfig(provider="anthropic", api_key=ANTHROPIC_KEY, model=ANTHROPIC_MODEL)
-    if prov == "openai" and OPENAI_KEY:
-        return LlmCallConfig(provider="openai", api_key=OPENAI_KEY, model=OPENAI_MODEL)
-    deepseek = os.getenv("DEEPSEEK_API_KEY", "")
+    anthropic_key = ANTHROPIC_KEY.strip()
+    openai_key = OPENAI_KEY.strip()
+    if prov == "anthropic" and anthropic_key:
+        return LlmCallConfig(provider="anthropic", api_key=anthropic_key, model=ANTHROPIC_MODEL)
+    if prov == "openai" and openai_key:
+        return LlmCallConfig(provider="openai", api_key=openai_key, model=OPENAI_MODEL)
+    deepseek = os.getenv("DEEPSEEK_API_KEY", "").strip()
     if prov == "deepseek" and deepseek:
         return LlmCallConfig(
             provider="deepseek",
             api_key=deepseek,
             model=os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash"),
         )
-    gemini = os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
+    gemini = (os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip())
     if prov == "gemini" and gemini:
         return LlmCallConfig(
             provider="gemini",
             api_key=gemini,
             model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         )
-    or_key = os.getenv("OPENROUTER_API_KEY", "")
+    or_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if prov == "openrouter" and or_key:
         return LlmCallConfig(
             provider="openrouter",
@@ -222,7 +232,9 @@ async def _llm_generate(
     # ровно того пути, который ограничивает этот PR. Удалён, чтобы инвариант
     # «весь egress к провайдеру идёт через core.remote_egress» был структурным,
     # а не следствием формы control flow.
-    raise ValueError(
+    from core.llm_errors import LlmNotConfiguredError
+
+    raise LlmNotConfiguredError(
         "LLM не настроен: укажите llm_provider + llm_api_key в консоли "
         "или задайте LLM_PROVIDER и ключ в .env"
     )
@@ -400,6 +412,7 @@ def _build_system_prompt(
         return len(sanitize_remote_system_prompt(text)) <= limit
 
     kept: list[int] = []
+    notice: str | None = None
     if selected_positions is not None:
         kept = [i for i in selected_positions if 0 <= i < len(facts)]
     else:
@@ -489,6 +502,26 @@ def _prepare_evidence_prompt(
         selected_positions=sent_positions,
     )
     return system, rebuilt, final_map
+
+
+def _observer_model_input(
+    answer: str | None,
+    facts: list[dict],
+    context_report: Any,
+    *,
+    model_call_started: bool,
+    model_error: bool,
+) -> tuple[str, list[dict]] | None:
+    """Return only a successful model answer and memory records in its final prompt."""
+    if (
+        answer is None
+        or not model_call_started
+        or model_error
+        or context_report is None
+        or not _query_has_model_answer_text(answer)
+    ):
+        return None
+    return answer, context_report.sent_facts(facts)
 
 
 # ─── Lifespan (startup / shutdown) ────────────────────────────────────────────
@@ -607,6 +640,9 @@ async def lifespan(app: FastAPI):
         if cfg.enable_l6_welfare:
             logger.info("   L6 Welfare: ✅")
         if cfg.enable_event_bus:
+            from core.event_bus import get_event_bus
+            if cfg.enable_event_bus_background:
+                await get_event_bus().start()
             logger.info("   EventBus: ✅")
         if cfg.enable_cognitive_store:
             logger.info("   CognitiveFactStore: ✅")
@@ -658,6 +694,9 @@ async def lifespan(app: FastAPI):
     logger.info("✅ Velantrim Titan 9.0 готов")
     yield
 
+    from core.event_bus import get_event_bus
+    await get_event_bus().stop()
+
     # Shutdown
     logger.info("🛑 Velantrim Server останавливается...")
     if _sleep_worker:
@@ -674,7 +713,7 @@ app = FastAPI(
     title="Velantrim Titan 9.0 API",
     description=(
         "Local-first verifiable memory runtime для AI-агентов с каузальным графом.\n\n"
-        "**Принципы:** Graph = Truth · LLM = Language · Memory = Physiology"
+        "**Принципы:** Canonical Memory + Evidence · LLM = Language · Graph = Projection"
     ),
     version=VELANTRIM_VERSION,
     lifespan=lifespan,
@@ -733,11 +772,11 @@ app.add_middleware(
     # (CORS spec: allow_credentials=True + allow_origins=["*"] → отклоняется браузерами)
     allow_credentials=CORS_ALLOW_CREDENTIALS,
     # AUDIT-FIX (security tail): explicit method/header allowlists instead of "*".
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     # SECURITY/CORRECTNESS (confirmed issue #5): MCP gateway clients send
     # X-MCP-Capability and read back Mcp-Session-Id — without these, a
     # browser-based MCP client is blocked by CORS from doing either.
-    allow_headers=["X-Api-Key", "Content-Type", "Authorization", "X-MCP-Capability", "Mcp-Session-Id"],
+    allow_headers=["X-Api-Key", "Content-Type", "Authorization", "X-MCP-Capability", "Mcp-Session-Id", "Idempotency-Key"],
     expose_headers=["Mcp-Session-Id"],
 )
 
@@ -1784,7 +1823,7 @@ async def chat_endpoint(req: ChatRequest):
         except Exception as exc:
             _raise_if_context_error(exc)
             raise
-        llm_usage: dict[str, Any] | None = None
+        llm_usage = None
         try:
             from core.llm_stream import chat_complete_messages
 
@@ -1799,13 +1838,21 @@ async def chat_endpoint(req: ChatRequest):
         except Exception as exc:
             # A context-limit refusal is a clear answer, not an offline fallback.
             _raise_if_context_error(exc)
+            from core.llm_errors import (
+                describe_llm_failure,
+                log_llm_failure,
+                safe_llm_error_text,
+            )
+
+            info = describe_llm_failure(exc)
+            log_llm_failure(logger, info, exc, route="/chat")
             offline = _console_offline_reply(req.message, facts, req.ui_lang)
             if offline:
                 reply = offline
                 from_llm = False
                 pipeline_error = None
             else:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+                raise HTTPException(status_code=400, detail=safe_llm_error_text(info)) from None
     else:
         reply = _format_console_memory_reply(req.message, facts, pipeline_error, lang=req.ui_lang)
 
@@ -2142,7 +2189,19 @@ async def chat_stream_endpoint(req: ChatRequest):
                             )
                             break
                         elif ev.get("type") == "error":
-                            raise RuntimeError(ev.get("message") or "LLM stream error")
+                            from core.llm_errors import (
+                                LlmErrorInfo,
+                                LlmStreamError,
+                                new_event_id,
+                            )
+
+                            raise LlmStreamError(
+                                LlmErrorInfo(
+                                    code=str(ev.get("error_code") or "llm_internal_error"),
+                                    event_id=str(ev.get("event_id") or new_event_id()),
+                                    detail=str(ev.get("detail_code") or ""),
+                                )
+                            )
                     from_llm = context_refusal is None
                 except Exception as exc:
                     offline = _console_offline_reply(req.message, facts, lang)
@@ -2206,7 +2265,21 @@ async def chat_stream_endpoint(req: ChatRequest):
             }
             yield f"data: {_json.dumps(final, ensure_ascii=False)}\n\n"
         except Exception as exc:
-            yield f"data: {_json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
+            from core.llm_errors import (
+                describe_llm_failure,
+                log_llm_failure,
+                safe_llm_error_text,
+            )
+
+            info = describe_llm_failure(exc)
+            log_llm_failure(logger, info, exc, route="/chat/stream")
+            payload = {
+                'type': 'error',
+                'message': safe_llm_error_text(info),
+                'error_code': info.code,
+                'event_id': info.event_id,
+            }
+            yield f"data: {_json.dumps(payload, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -2245,16 +2318,35 @@ async def query_with_roles(req: _QueryRolesRequest):
     Если не указан — система выберет автоматически по запросу.
     """
     role_list = [r.strip().upper() for r in (req.roles or "").split(",") if r.strip()] or None
+    from core.domain_tags import normalize_domain
+    from core.truth_gate import CognitiveMode
+    resolved_domain = None
+    if req.domain is not None:
+        resolved_domain = normalize_domain(req.domain)
+        if resolved_domain == "general" and req.domain.strip().lower() not in {"", "general"}:
+            raise HTTPException(status_code=400, detail="Unknown domain")
+    try:
+        resolved_mode = CognitiveMode((req.cognitive_mode or "BALANCED").upper()).value
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Unknown cognitive mode") from exc
+    scoped_facts = None
+    if req.domain is not None or req.cognitive_mode is not None:
+        from core.pipeline import run as run_policy_query
+        scoped = await asyncio.to_thread(
+            run_policy_query, req.query, cognitive_mode=resolved_mode, domain=resolved_domain,
+        )
+        scoped_facts = scoped.get("facts") or []
     try:
         import time
         from core.branch_manager import get_branch_manager
         bm = get_branch_manager()
         t0 = time.perf_counter()
         synthesis = await bm.reason(
-    query=req.query,
-    roles=role_list,
-    llm_config=_env_llm_config(),
-)
+            query=req.query,
+            roles=role_list,
+            facts=scoped_facts,
+            llm_config=_env_llm_config(),
+        )
         latency = (time.perf_counter() - t0) * 1000.0
 
         all_facts: list[dict] = []
@@ -2289,8 +2381,8 @@ async def query_with_roles(req: _QueryRolesRequest):
                 "all_branches_used_llm": synthesis.all_branches_used_llm,
             },
             effective_params={
-                "cognitive_mode": req.cognitive_mode,
-                "domain": req.domain,
+                "cognitive_mode": resolved_mode,
+                "domain": resolved_domain,
                 "roles": roles_used,
             },
         )
@@ -2566,13 +2658,30 @@ async def query(req: QueryRequest):
                     "source": "request" if _llm_config_from_request(req) else "env",
                 }
         except Exception as exc:
-            logger.warning("LLM генерация упала: %s", exc)
+            from core.llm_errors import (
+                describe_llm_failure,
+                log_llm_failure,
+                safe_llm_error_meta,
+                safe_llm_error_text,
+            )
+
+            info = describe_llm_failure(exc)
+            log_llm_failure(logger, info, exc, route="/query")
+            from core.llm_context_budget import CONTEXT_LIMIT_CODE, CONTEXT_OVERFLOW_CODE
+
+            ctx_code = getattr(exc, "code", None)
+            if ctx_code in (CONTEXT_LIMIT_CODE, CONTEXT_OVERFLOW_CODE):
+                # Context-limit refusals are built by this repository from setting names,
+                # sizes and provider/status only (never from provider text).
+                llm_answer = f"[LLM error: {exc}]"
+                llm_meta = {**safe_llm_error_meta(info), "error": str(exc), "code": ctx_code}
+            else:
+                llm_answer = safe_llm_error_text(info)
+                llm_meta = safe_llm_error_meta(info)
             evidence_map = None
             reference_check = None
             if req.evidence_labels:
                 evidence_lifecycle = "model_failed" if llm_call_started else "prompt_rejected"
-            llm_answer = f"[LLM error: {exc}]"
-            llm_meta = {"error": str(exc)}
 
     latency = round((time.time() - t0) * 1000, 2)
     logger.info("query: '%s' | facts=%d | llm=%s | %.0fms",
@@ -2659,19 +2768,30 @@ async def query(req: QueryRequest):
         logger.debug("reasoning trace save skipped: %s", exc)
 
     # Observer P0 (пассивный мета-монитор). Аддитивно + за флагом (ENABLE_OBSERVER, default off).
-    # Работает ПОСЛЕ формирования ответа; пассивен — только вердикт, не пишет факты и не меняет поток.
+    # Семантическая диагностика ограничена успешным ответом и sent_facts; прочие проверки
+    # Observer сохраняются и при отсутствии ответа модели.
     observer_block: dict[str, Any] | None = None
     try:
         from core.runtime_flags import is_observer_enabled
 
         if is_observer_enabled():
+            observer_input = _observer_model_input(
+                llm_answer,
+                pipeline_facts,
+                context_report,
+                model_call_started=llm_call_started,
+                model_error=bool((llm_meta or {}).get("error")),
+            )
             from core.observer import observe as _observe
 
+            observer_answer = observer_input[0] if observer_input is not None else ""
+            semantic_facts = observer_input[1] if observer_input is not None else None
             observer_block = _observe(
                 req.query,
                 pipeline_facts,
-                llm_answer or pipeline_answer or "",
+                observer_answer,
                 mode=eff_mode,
+                semantic_facts=semantic_facts,
             ).to_dict()
     except Exception as exc:  # noqa: BLE001 — аддитивно; никогда не ломаем ответ
         logger.debug("observer skipped: %s", exc)
@@ -3678,7 +3798,10 @@ async def cognitive_runtime_status_endpoint():
 
 
 @app.get("/graph/analyze", tags=["GraphLab"], dependencies=[Depends(require_api_key)])
-async def graph_analyze_endpoint(top_k: int = 20, max_nodes: int = 2000):
+async def graph_analyze_endpoint(
+    top_k: Annotated[int, Query(ge=1, le=100)] = 20,
+    max_nodes: Annotated[int, Query(ge=1, le=2000)] = 2000,
+):
     """NetworkX Graph-Analysis Lab — read-only structural analytics over the causal
     graph (centrality / communities / cycles / pagerank). Passive: never writes.
     Gated by ENABLE_GRAPH_LAB; requires the optional `networkx` extra."""
@@ -3702,10 +3825,10 @@ async def graph_path_endpoint(
     from_id: str = Query(..., alias="from"),
     to: str | None = None,
     mode: str = "shortest",
-    cutoff: int = 5,
-    limit: int = 20,
+    cutoff: Annotated[int, Query(ge=1, le=10)] = 5,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
     direction: str = "to",
-    max_nodes: int = 2000,
+    max_nodes: Annotated[int, Query(ge=1, le=2000)] = 2000,
 ):
     """Causal "why-path" over the graph (read-only):
       mode=shortest → shortest from→to ; mode=all → simple paths from→to ;
@@ -3911,7 +4034,9 @@ async def telegram_ingest_endpoint(req: TelegramIngestRequest):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    if req.reply:
+    if not result.get("ok"):
+        raise HTTPException(status_code=422, detail={"code": result.get("reason_code") or "telegram_write_failed"})
+    if req.reply and not result.get("deduplicated_delivery"):
         from app.telegram_ingest import get_bot_token, send_telegram_reply
 
         if get_bot_token():
@@ -3971,7 +4096,9 @@ async def telegram_webhook_endpoint(
             await send_telegram_reply(parsed["chat_id"], f"❌ {exc}")
         raise HTTPException(status_code=400, detail=str(exc))
 
-    if get_bot_token():
+    if not result.get("ok"):
+        raise HTTPException(status_code=422, detail={"code": result.get("reason_code") or "telegram_write_failed"})
+    if get_bot_token() and not result.get("deduplicated_delivery"):
         await send_telegram_reply(
             parsed["chat_id"],
             f"✅ Память: {result['fact_id']}",

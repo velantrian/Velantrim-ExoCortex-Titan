@@ -13,10 +13,17 @@ Hard constraints (canon / ТЗ) — Observer is PASSIVE:
     audit_chain event, but only if a chain is explicitly handed to it.
 
 Increment-1 checks (each delegates to an existing module):
-  unsupported_claim      → core.output_faithfulness.OutputFaithfulnessChecker
+  semantic_support       → unavailable until a real semantic verifier exists
+  lexical diagnostic     → core.output_faithfulness.OutputFaithfulnessChecker
   no_admissible_evidence → core.truth_policy.decide (hard reject only)
   truth_scope_leak       → epistemic_state mix / known_false among the facts used
   goal_drift             → core.gap_detector.query_goal_alignment
+
+A check that raises is reported as flag ``check_unavailable`` (decision at least ``warn``,
+``details["unavailable_checks"]`` = check name + exception type, no exception text). It is never
+folded into a clean ``allow``, and it is distinct from missing-evidence flags. The severity is a flat
+``warn`` (also for the hard ``no_admissible_evidence`` check), so a consumer that gates on Observer
+must key on ``check_unavailable`` in ``flags`` / ``not is_clean``, not on ``decision == reject``.
 
 Deferred (named in the plan): query-side gist, stale_context, false_reactivation,
 causal_overclaim, advanced gist_distortion, metrics dashboards, nightly review.
@@ -33,12 +40,13 @@ from core.core3_adapter import ALLOW, GAP_NOTICE, REJECT  # shared verdict vocab
 logger = logging.getLogger(__name__)
 
 WARN = "warn"
+# Flag for a check that raised: the mechanism was unavailable (not "nothing found").
+CHECK_UNAVAILABLE = "check_unavailable"
 
 # Severity ordering for aggregation (higher = more severe).
 _SEVERITY = {ALLOW: 0, WARN: 1, GAP_NOTICE: 2, REJECT: 3}
 
 # Conservative tunables — calibrate before flipping the flag on by default.
-_FAITHFULNESS_MIN = 0.30      # answer grounding below this → unsupported_claim
 _GOAL_ALIGNMENT_MIN = 0.30    # query↔goal alignment below this → goal_drift
 _LEAK_STATES = {"Contradicted", "Deprecated", "Collapsed"}
 _TRUSTED_STATES = {"Validated", "ImmutableCore", "Supported"}
@@ -66,16 +74,38 @@ class ObserverVerdict:
         }
 
 
-def _check_unsupported_claim(answer: str, facts: list, details: dict):
-    if not answer or not facts:
+def _check_semantic_support(answer: str, facts: list, details: dict):
+    if not answer:
         return None
-    from core.output_faithfulness import OutputFaithfulnessChecker
+    if not facts:
+        details["semantic_support"] = {
+            "status": "insufficient_evidence",
+            "records_checked": 0,
+        }
+        return WARN, "insufficient_evidence"
 
-    res = OutputFaithfulnessChecker().check(answer, facts)
-    details["faithfulness"] = res.to_dict()
-    if res.total_claims and res.score < _FAITHFULNESS_MIN:
-        return GAP_NOTICE, "unsupported_claim"
-    return None
+    try:
+        from core.output_faithfulness import OutputFaithfulnessChecker
+
+        res = OutputFaithfulnessChecker().check(answer, facts)
+        # This is only a lexical diagnostic; it is not an entailment result and
+        # never changes the semantic-support status or Observer decision. Keep the
+        # historical field as a compatibility alias for existing API consumers.
+        diagnostic = res.to_dict()
+        details["lexical_diagnostic"] = diagnostic
+        details["faithfulness"] = dict(diagnostic)
+    except Exception:  # noqa: BLE001 — a failed diagnostic never breaks Observer
+        diagnostic = {"status": "check_unavailable"}
+        details["lexical_diagnostic"] = diagnostic
+        details["faithfulness"] = dict(diagnostic)
+
+    # No suitable local semantic verifier is available. Never infer support or
+    # contradiction from word overlap; both remain unknown until one is added.
+    details["semantic_support"] = {
+        "status": "check_unavailable",
+        "records_checked": len(facts),
+    }
+    return WARN, "semantic_support_unverified"
 
 
 def _check_admissible_evidence(query: str, facts: list, mode: str, details: dict):
@@ -123,30 +153,44 @@ def observe(
     mode: str = "BALANCED",
     user_id: str = "default",
     audit_chain: Any = None,
+    semantic_facts: Sequence[dict] | None = None,
 ) -> ObserverVerdict:
-    """Run the passive meta-checks and return one aggregated verdict. Never raises."""
+    """Run passive checks; ``semantic_facts`` limits only answer-support diagnostics.
+
+    Other checks use ``facts``. When ``semantic_facts`` is omitted, support diagnostics
+    retain the legacy behavior of using all ``facts``.
+    """
     facts = list(facts or [])
+    semantic_facts = facts if semantic_facts is None else list(semantic_facts)
     details: dict[str, Any] = {}
     flags: list[str] = []
     decision = ALLOW
 
     checks = (
-        lambda: _check_unsupported_claim(answer, facts, details),
-        lambda: _check_admissible_evidence(query, facts, mode, details),
-        lambda: _check_truth_scope_leak(facts, details),
-        lambda: _check_goal_drift(query, user_id, details),
+        ("semantic_support", lambda: _check_semantic_support(answer, semantic_facts, details)),
+        ("no_admissible_evidence", lambda: _check_admissible_evidence(query, facts, mode, details)),
+        ("truth_scope_leak", lambda: _check_truth_scope_leak(facts, details)),
+        ("goal_drift", lambda: _check_goal_drift(query, user_id, details)),
     )
-    for check in checks:
+    unavailable: list[dict[str, str]] = []
+    for name, check in checks:
         try:
             res = check()
         except Exception as exc:  # noqa: BLE001 — a broken check never breaks Observer
-            logger.debug("observer check skipped: %s", exc)
-            res = None
+            # A check that could not run is NOT a clean result: report it as
+            # unavailable (mechanism state, distinct from missing evidence).
+            # Content-free: only the check name and exception type are kept.
+            logger.warning("observer check unavailable: %s (%s)", name, type(exc).__name__)
+            unavailable.append({"check": name, "error_type": type(exc).__name__})
+            res = (WARN, CHECK_UNAVAILABLE)
         if res:
             sev, flag = res
-            flags.append(flag)
+            if flag not in flags:
+                flags.append(flag)
             if _SEVERITY[sev] > _SEVERITY[decision]:
                 decision = sev
+    if unavailable:
+        details["unavailable_checks"] = unavailable
 
     verdict = ObserverVerdict(
         decision=decision,
@@ -171,4 +215,6 @@ def observe(
     return verdict
 
 
-__all__ = ["ObserverVerdict", "observe", "ALLOW", "WARN", "GAP_NOTICE", "REJECT"]
+__all__ = [
+    "ObserverVerdict", "observe", "ALLOW", "WARN", "GAP_NOTICE", "REJECT", "CHECK_UNAVAILABLE",
+]

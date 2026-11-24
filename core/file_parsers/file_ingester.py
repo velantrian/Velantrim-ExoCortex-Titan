@@ -177,7 +177,7 @@ class FileIngester:
 
         try:
             result = parser.parse(file_path)
-            self._update_stats(result, parser_name=parser.__class__.__name__)
+            self._update_stats(result)
             return result
         except Exception as exc:
             self._stats["errors"] += 1
@@ -295,7 +295,7 @@ class FileIngester:
 
     # ─── Internal ─────────────────────────────────────────────────────────────
 
-    def _update_stats(self, result: ParseResult, parser_name: str) -> None:
+    def _update_stats(self, result: ParseResult) -> None:
         self._stats["processed"] += 1
         self._stats["total_bytes"] += result.file_size_bytes
         self._stats["total_time_ms"] += result.parse_time_ms

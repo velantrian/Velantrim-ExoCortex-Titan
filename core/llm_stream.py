@@ -15,11 +15,21 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
+import time
+from collections import OrderedDict
 from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 
+from core.llm_errors import (
+    LlmEmptyResponseError,
+    describe_llm_failure,
+    log_llm_failure,
+    safe_llm_error_text,
+    validate_llm_api_key,
+)
 from core.llm_context_budget import (
     CONTEXT_LIMIT_CODE,
     CONTEXT_OVERFLOW_CODE,
@@ -33,12 +43,12 @@ from core.llm_context_budget import (
 from core.llm_router import (
     LlmCallConfig,
     LlmContextOverflowError,
+    LlmProviderRequestError,
     _deepseek_request_body,
     _gemini_post,
     _http_error,
     _openai_message_text,
     _openai_stream_delta_parts,
-    _openai_stream_delta_text,
     _resolve_model,
     assert_model_allowed,
 )
@@ -51,8 +61,37 @@ logger = logging.getLogger(__name__)
 
 _GEMINI_API_BASE = "https://generativelanguage.googleapis.com"
 
-# Кэш explicit Gemini: ключ → имя cachedContents
-_gemini_explicit_cache: dict[str, str] = {}
+# Provider cache handles are bounded, expiring process-local hints.
+_GEMINI_CACHE_MAX_ENTRIES = 128
+_GEMINI_CACHE_TTL_SECONDS = 3540.0  # provider TTL 3600s, one-minute safety margin
+_gemini_explicit_cache: OrderedDict[str, tuple[str, float]] = OrderedDict()
+_gemini_cache_lock = threading.RLock()
+
+
+def _gemini_cache_lookup(key: str) -> str | None:
+    with _gemini_cache_lock:
+        now = time.monotonic()
+        for stale in [k for k, (_, expires) in _gemini_explicit_cache.items() if expires <= now]:
+            _gemini_explicit_cache.pop(stale, None)
+        value = _gemini_explicit_cache.get(key)
+        if value is None:
+            return None
+        _gemini_explicit_cache.move_to_end(key)
+        return value[0]
+
+
+def _gemini_cache_store(key: str, name: str) -> None:
+    with _gemini_cache_lock:
+        _gemini_explicit_cache[key] = (name, time.monotonic() + _GEMINI_CACHE_TTL_SECONDS)
+        _gemini_explicit_cache.move_to_end(key)
+        while len(_gemini_explicit_cache) > _GEMINI_CACHE_MAX_ENTRIES:
+            _gemini_explicit_cache.popitem(last=False)
+
+
+def _gemini_cache_invalidate(key: str) -> None:
+    with _gemini_cache_lock:
+        _gemini_explicit_cache.pop(key, None)
+
 
 
 def normalize_chat_history(
@@ -190,8 +229,9 @@ async def _gemini_ensure_explicit_cache(
     if len(system) < min_chars:
         return None
     key = _gemini_cache_key(cfg, system)
-    if key in _gemini_explicit_cache:
-        return _gemini_explicit_cache[key]
+    cached = _gemini_cache_lookup(key)
+    if cached is not None:
+        return cached
 
     body = {
         "model": f"models/{model}",
@@ -224,10 +264,10 @@ async def _gemini_ensure_explicit_cache(
             data = resp.json()
             name = data.get("name")
             if name:
-                _gemini_explicit_cache[key] = name
+                _gemini_cache_store(key, name)
                 return name
     except Exception as exc:
-        logger.info("Gemini explicit cache: %s", exc)
+        log_llm_failure(logger, describe_llm_failure(exc), exc, route="gemini_cache", level="info")
     return None
 
 
@@ -276,6 +316,7 @@ async def chat_complete_messages(
     ``report`` (optional) is filled with what was actually sent and which
     limits were applied; see ``core.llm_context_budget``.
     """
+    validate_llm_api_key(cfg.api_key)
     provider = (cfg.provider or "").strip().lower()
     assert_model_allowed(cfg)
     ensure_remote_egress_allowed(
@@ -326,7 +367,7 @@ async def chat_complete_messages(
             data = resp.json()
             text = _openai_message_text(data["choices"][0]["message"])
             if not text:
-                raise ValueError(f"{provider}: пустой ответ модели")
+                raise LlmEmptyResponseError(f"{provider}: пустой ответ модели")
             usage_meta = _usage_from_openai_payload(data)
             return text, usage_meta
 
@@ -405,6 +446,15 @@ async def _gemini_complete_messages(
             model=model,
             body=body,
         )
+        if cached_name and resp.status_code == 404:
+            # A missing/expired cachedContents handle must not poison all future
+            # calls. Retry once without the cache, keeping the complete system.
+            _gemini_cache_invalidate(_gemini_cache_key(cfg, system))
+            cached_name = None
+            body.pop("cachedContent", None)
+            if system:
+                body["systemInstruction"] = {"parts": [{"text": system}]}
+            resp = await _gemini_post(cfg, api_version=api_version, model=model, body=body)
         if resp.status_code < 400:
             break
         if api_version == "v1beta" and resp.status_code in (403, 404):
@@ -415,28 +465,12 @@ async def _gemini_complete_messages(
     data = resp.json()
     candidates = data.get("candidates") or []
     if not candidates:
-        raise ValueError("Gemini: пустой ответ")
+        raise LlmEmptyResponseError("Gemini: пустой ответ")
     parts_out = candidates[0].get("content", {}).get("parts") or []
     texts = [part.get("text", "") for part in parts_out if part.get("text")]
     text = "\n".join(texts).strip() or "(пустой ответ Gemini)"
     return text, _usage_from_gemini_payload(data)
 
-
-def _parse_openai_sse_chunk(line: str) -> str | None:
-    if not line.startswith("data:"):
-        return None
-    payload = line[5:].strip()
-    if payload == "[DONE]":
-        return None
-    try:
-        data = json.loads(payload)
-    except json.JSONDecodeError:
-        return None
-    choices = data.get("choices") or []
-    if not choices:
-        return None
-    delta = choices[0].get("delta") or {}
-    return _openai_stream_delta_text(delta) or None
 
 
 async def stream_chat_events(
@@ -458,6 +492,7 @@ async def stream_chat_events(
     rep = report if report is not None else ContextReport.for_provider(provider)
 
     try:
+        validate_llm_api_key(cfg.api_key)
         assert_model_allowed(cfg)
         ensure_remote_egress_allowed(
             "remote_llm",
@@ -501,11 +536,26 @@ async def stream_chat_events(
         yield {"type": "token", "text": text}
         yield {"type": "done", "reply": text, "usage": usage}
     except Exception as exc:
-        err_event: dict[str, Any] = {"type": "error", "message": str(exc)}
+        info = describe_llm_failure(exc)
+        log_llm_failure(logger, info, exc, route="llm_stream")
         code = getattr(exc, "code", None)
         if code in (CONTEXT_LIMIT_CODE, CONTEXT_OVERFLOW_CODE):
-            err_event["code"] = code
-        yield err_event
+            # Context-limit refusals are built by this repository from setting names, sizes and
+            # provider/status only (never from provider text); the caller keys on "code".
+            yield {
+                "type": "error",
+                "message": str(exc),
+                "code": code,
+                "error_code": code,
+                "event_id": info.event_id,
+            }
+        else:
+            yield {
+                "type": "error",
+                "message": safe_llm_error_text(info),
+                "error_code": info.code,
+                "event_id": info.event_id,
+            }
 
 
 async def _stream_openai_compatible(
@@ -555,25 +605,24 @@ async def _stream_openai_compatible(
         ) as resp:
             if resp.status_code >= 400:
                 err_body = await resp.aread()
-                try:
-                    detail = err_body.decode(
-                        "utf-8",
-                        errors="replace",
-                    )[:400]
-                    if looks_like_context_overflow(resp.status_code, detail):
-                        raise LlmContextOverflowError(
-                            provider=provider,
-                            status_code=resp.status_code,
-                            detail=detail,
-                            message=context_overflow_message(provider, resp.status_code),
-                        )
-                    raise ValueError(
-                        f"{provider}: HTTP {resp.status_code} — {detail}"
+                detail = err_body.decode("utf-8", errors="replace")[:400]
+                if looks_like_context_overflow(resp.status_code, detail):
+                    # The provider's own text stays in ``detail``; the message is repo-owned.
+                    raise LlmContextOverflowError(
+                        provider=provider,
+                        status_code=resp.status_code,
+                        detail=detail,
+                        message=context_overflow_message(provider, resp.status_code),
                     )
-                except ValueError:
-                    raise
-                except Exception:
-                    raise _http_error(provider, resp)
+                # Typed and body-free: the status code selects the safe code
+                # (401/402/404/429/...); the provider text stays in ``detail`` and is never
+                # returned or logged.
+                raise LlmProviderRequestError(
+                    provider=provider,
+                    status_code=resp.status_code,
+                    detail=detail,
+                    message=f"{provider}: HTTP {resp.status_code}",
+                )
             async for line in resp.aiter_lines():
                 if not line:
                     continue

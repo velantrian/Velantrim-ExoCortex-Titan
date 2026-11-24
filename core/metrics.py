@@ -28,22 +28,6 @@ from core import __version__
 
 logger = logging.getLogger("velantrim.metrics")
 
-# ─── Проверка prometheus_client ──────────────────────────────────────────────
-
-_PROMETHEUS_AVAILABLE: Optional[bool] = None
-
-
-def _check_prometheus() -> bool:
-    global _PROMETHEUS_AVAILABLE
-    if _PROMETHEUS_AVAILABLE is None:
-        try:
-            import prometheus_client  # noqa: F401
-            _PROMETHEUS_AVAILABLE = True
-        except ImportError:
-            _PROMETHEUS_AVAILABLE = False
-    return _PROMETHEUS_AVAILABLE
-
-
 # ─── Ручные счётчики (stdlib only) ───────────────────────────────────────────
 
 _lock = threading.Lock()

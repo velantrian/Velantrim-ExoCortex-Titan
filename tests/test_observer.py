@@ -6,7 +6,7 @@ import sqlite3
 
 import pytest
 
-from core.observer import ALLOW, GAP_NOTICE, REJECT, WARN, ObserverVerdict, observe
+from core.observer import GAP_NOTICE, REJECT, WARN, ObserverVerdict, observe
 
 
 @pytest.fixture(autouse=True)
@@ -54,17 +54,105 @@ def test_observe_clean_grounded_answer():
     facts = [_fact("a", 0.95, claim, evidence=[{"source_id": "phys", "span": "1-9"}])]
     v = observe("при какой температуре кипит вода", facts, claim)
     assert isinstance(v, ObserverVerdict)
-    assert v.decision == ALLOW and v.flags == []
+    assert v.decision == WARN and "semantic_support_unverified" in v.flags
+    assert v.details["semantic_support"]["status"] == "check_unavailable"
+    assert v.details["faithfulness"] == v.details["lexical_diagnostic"]
+
+
+@pytest.mark.parametrize(("claim", "answer"), [
+    (
+        "Руслан одобрил миграцию на PostgreSQL.",
+        "Руслан не одобрил миграцию на PostgreSQL.",
+    ),
+    (
+        "Компания открыла 3 филиала в 2024 году.",
+        "Компания открыла 8 филиалов в 2024 году.",
+    ),
+    (
+        "Перенос одобрен, если тесты пройдут.",
+        "Перенос одобрен, даже если тесты не пройдут.",
+    ),
+    (
+        "Команда прекратила работу в Берлине.",
+        "Коллектив закрыл офис в столице Германии.",
+    ),
+])
+def test_semantic_edge_cases_remain_unverified_without_checker(claim, answer):
+    fact = _fact("a", 0.95, claim)
+    verdict = observe("вопрос", [fact], answer)
+    assert verdict.details["semantic_support"]["status"] == "check_unavailable"
+    assert "semantic_support_unverified" in verdict.flags
+    assert "unsupported_claim" not in verdict.flags
+
+
+def test_faithfulness_failure_is_not_reported_as_clean(monkeypatch):
+    from core.output_faithfulness import OutputFaithfulnessChecker
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("unavailable")
+
+    monkeypatch.setattr(OutputFaithfulnessChecker, "check", fail)
+    verdict = observe("вопрос", [_fact("a", 0.95, "запись")], "ответ")
+    assert not verdict.is_clean
+    assert "semantic_support_unverified" in verdict.flags
+    assert verdict.details["semantic_support"]["status"] == "check_unavailable"
+    assert verdict.details["lexical_diagnostic"]["status"] == "check_unavailable"
+    assert verdict.details["faithfulness"] == verdict.details["lexical_diagnostic"]
 
 
 # ── unsupported_claim (answer not grounded in facts) ─────────────────────────────
 
-def test_observe_unsupported_claim():
+def test_low_lexical_overlap_does_not_claim_semantic_unsupported():
     facts = [_fact("a", 0.9, "Вода кипит при 100 градусах Цельсия")]
     answer = "Слоны являются крупнейшими сухопутными млекопитающими планеты."
     v = observe("вопрос про воду", facts, answer)
-    assert "unsupported_claim" in v.flags
-    assert v.decision == GAP_NOTICE
+    assert "semantic_support_unverified" in v.flags
+    assert "unsupported_claim" not in v.flags
+    assert v.decision == WARN
+    assert v.details["semantic_support"]["status"] == "check_unavailable"
+
+
+def test_empty_sent_records_are_insufficient_evidence():
+    v = observe("q", [], "Ответ модели")
+    assert v.details["semantic_support"] == {
+        "status": "insufficient_evidence",
+        "records_checked": 0,
+    }
+    assert "insufficient_evidence" in v.flags
+
+
+def test_empty_answer_skips_only_semantic_check():
+    fact = _fact("a", 0.1, "x", state="Contradicted", contradicts="other")
+    verdict = observe("q", [fact], "")
+
+    assert "no_admissible_evidence" in verdict.flags
+    assert "truth_scope_leak" in verdict.flags
+    assert verdict.details["epistemic_states"] == ["Contradicted"]
+    assert "semantic_support" not in verdict.details
+    assert "faithfulness" not in verdict.details
+
+
+def test_semantic_check_uses_prompt_records_without_narrowing_other_checks(monkeypatch):
+    from core.output_faithfulness import FaithfulnessResult, OutputFaithfulnessChecker
+
+    seen_fact_ids = []
+
+    def capture(self, answer, source_facts, **kwargs):
+        seen_fact_ids.append([fact["fact_id"] for fact in source_facts])
+        return FaithfulnessResult(score=1.0, grounded_claims=1, total_claims=1)
+
+    monkeypatch.setattr(OutputFaithfulnessChecker, "check", capture)
+    facts = [
+        _fact("sent", 0.95, "sent claim"),
+        _fact("omitted", 0.95, "omitted claim", state="Contradicted"),
+    ]
+    verdict = observe("q", facts, "model answer", semantic_facts=[facts[0]])
+
+    assert seen_fact_ids == [["sent"]]
+    assert verdict.details["semantic_support"]["records_checked"] == 1
+    assert verdict.details["epistemic_states"] == ["Validated", "Contradicted"]
+    assert "truth_scope_leak" in verdict.flags
+    assert verdict.details["faithfulness"] == verdict.details["lexical_diagnostic"]
 
 
 # ── no_admissible_evidence (reject) ──────────────────────────────────────────────

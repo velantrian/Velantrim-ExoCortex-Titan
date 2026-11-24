@@ -411,7 +411,7 @@ def register_console_routes(app) -> bool:
     async def console_bootstrap(request: Request):
         """
         Настройки консоли для браузера (без LLM-ключей).
-        На localhost отдаёт VELANTRIM_API_KEY для верхнего поля — только loopback.
+        Серверный API-ключ не возвращается, включая localhost.
         """
         api_key = os.getenv("VELANTRIM_API_KEY", "")
         allow_open = os.getenv("VELANTRIM_ALLOW_OPEN", "false").lower() == "true"

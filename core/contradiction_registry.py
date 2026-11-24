@@ -109,6 +109,10 @@ def _get_nli_scorer() -> NLIContradictionScorer:
 
 
 def _set_nli_scorer(scorer: NLIContradictionScorer) -> None:
+    """Reserved injection hook; retained for external/test compatibility.
+
+    It does not activate NLI or establish independent evidence/semantic support.
+    """
     global _nli_scorer
     _nli_scorer = scorer
 
