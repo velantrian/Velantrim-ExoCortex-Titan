@@ -705,7 +705,9 @@ class SleepTimeWorker:
                         return []
                 return result
             except Exception as e:
-                logger.warning("SleepTimeWorker._llm_complete error: %s", e)
+                from core.llm_errors import describe_llm_failure, log_llm_failure
+
+                log_llm_failure(logger, describe_llm_failure(e), e, route="sleep_worker")
 
         # Mock-заглушка (Sprint 2c: удалить)
         # BUG-FIX v8.3.1: проверка "следующий шаг" ДОЛЖНА быть ПЕРЕД "цель",
