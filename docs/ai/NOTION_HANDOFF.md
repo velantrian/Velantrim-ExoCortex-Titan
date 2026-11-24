@@ -126,6 +126,66 @@ need the machine-stable `handoff-pr-<PR-NUMBER>` heading.
 
 ## Queue
 
+## handoff-pr-537
+
+### 2026-11-24 — Source-X Gate: final-text gate, stream hold, fail-closed, hardening round 2
+
+- **Status:** `HANDOFF_REQUIRED`
+- **Documentation impact:** `GITHUB_AND_NOTION`
+- **Repository / PR / issue:** `velantrian/Velantrim-ExoCortex-Titan` · Draft PR #537
+- **Base SHA:** `ad92aa0a709f4334bde048e907bb83295a36b061`
+- **Head SHA:** `7805f523c62df753e2cb457f54bddaea1f5548b2`
+- **Intended Notion record:** `PENDING — Titan source-X Gate hardening (PR #537) · 2026-11-24` (child of `Velantrim Titan 9.0`; record not created)
+- **Notion access for originating actor:** `UNAVAILABLE`
+
+Head SHA above is the round-2 code commit; the hand-off documents are added in the commit that follows it on the same branch.
+
+### Problem / opportunity
+
+The source-X Gate (`ENABLE_SOURCE_X_GATE`, off by default) was applied to the pipeline answer only. A Codex audit asked for a final-text gate, a stream hold, fail-closed behaviour and a labeled corpus (round 1). An independent audit of round 1 at `149f477` reproduced four defects (round 2).
+
+### Material findings
+
+- P0-01: Gate logs contained the blocked excerpt / sentence and exception tracebacks with messages.
+- P0-02: `lens_context.branches[].response`, `llm_meta.error`, SSE `context` / `done.usage` and other fields bypassed the Gate; evidence fields (`facts`, `memory_*`, `dialogue_essence`, essence) echo stored text.
+- P1-01: re-checking the pipeline stub downgraded the pipeline verdict to `ALLOW`.
+- P1-02: the stream hold buffer had no byte cap and no overall deadline.
+
+### Decision and rationale
+
+Fix all four with the flag on; keep flag-off behaviour unchanged. Logs carry rule / level / positions / exception type only. Strict scan of the full response and every SSE event with a per-type key allowlist. The stricter verdict wins; `NO_ANSWER` is separate. 256 KiB buffer, 180 s deadline, content-free keep-alive, fail closed without offline fallback. Evidence-access policy is not changed; it is proposed separately (`docs/adr/ADR-2026-11-24-source-x-evidence-surfaces-PROPOSED.md`). The 66-text corpus is a REGRESSION set, not an independent benchmark.
+
+### Rejected or deferred alternatives
+
+Redacting evidence fields now (policy change, deferred to the PROPOSED ADR); logging source-text hashes (rejected: re-identification risk for short figures); unbounded hold with only a deadline (rejected).
+
+### Authority, safety, privacy, and Canon boundaries
+
+No Canon / ESM writes. No model or network calls. Flag off by default and in `lite` / `standard` / `heavy`; enabled only inside isolated tests. Draft only; no merge, no deploy, no production activation, no Operator GO.
+
+### GitHub files updated
+
+`core/source_x_gate.py`, `core/event_bridge.py`, `server.py`, `.env.example`, `tests/test_source_x_gate_audit_round2.py`, `tests/test_source_x_gate_labeled_corpus.py`, `tests/fixtures/source_x_gate_labeled_corpus_2026-11-23.json`, `scripts/eval_source_x_gate_corpus.py`, `docs/adr/ADR-2026-11-23-source-x-gate-enablement.md`, `docs/adr/ADR-2026-11-24-source-x-evidence-surfaces-PROPOSED.md`, `docs/ai/KNOWN_RISKS.md`, `docs/ai/WORK_LOG.md`, `docs/ai/NOTION_HANDOFF.md`, `docs/ai/PR537_SOURCE_X_GATE_ROUND2_HANDOFF.md`
+
+### Evidence
+
+See `docs/ai/PR537_SOURCE_X_GATE_ROUND2_HANDOFF.md` (RED on `149f477`, GREEN on `7805f52`, full suite 5081 passed / 17 skipped / 1 xfailed, peak memory 40.38 MiB → 0.52 MiB for a 19.5 MiB stream).
+
+### Known limitations
+
+Evidence fields unchanged (PROPOSED ADR). Corpus is REGRESSION only. Non-Gate provider-error log in `server.py` may contain provider text. Outputs outside the four endpoints are not gated. CI for the round-2 commits not yet run.
+
+### Next actions
+
+Owner reviews; independent auditor re-runs the evidence; decide the PROPOSED ADR; a connected actor creates the Notion record and records `SYNCED`. Keep the PR Draft.
+
+### Synchronization result
+
+- Connected actor: pending
+- Notion record: PENDING (not created)
+- Status: `HANDOFF_REQUIRED`
+- Final PR / merge SHA / CI: PR #537 remains DRAFT and unmerged
+
 ## handoff-pr-450
 
 ### 2026-09-08 — Epistemic memory prompt boundaries (FactsPack / ReasoningTrace wording)
