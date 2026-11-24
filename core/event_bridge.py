@@ -89,18 +89,20 @@ async def on_query_completed(
     query: str,
     answer_preview: str = "",
     importance: float = 0.5,
+    source_x_gate: dict[str, Any] | None = None,
 ) -> None:
-    await publish_event(
-        "RESPONSE_GENERATED",
-        {
-            "user_id": user_id,
-            "conversation_id": user_id,
-            "response_id": "",
-            "reply_preview": answer_preview[:500],
-            "query": query[:200],
-            "importance": importance,
-        },
-    )
+    payload: dict[str, Any] = {
+        "user_id": user_id,
+        "conversation_id": user_id,
+        "response_id": "",
+        "reply_preview": answer_preview[:500],
+        "query": query[:200],
+        "importance": importance,
+    }
+    if source_x_gate is not None:
+        # Final source-X verdict summary (status / reason / rules, no text).
+        payload["source_x_gate"] = source_x_gate
+    await publish_event("RESPONSE_GENERATED", payload)
 
 
 def register_default_handlers() -> None:

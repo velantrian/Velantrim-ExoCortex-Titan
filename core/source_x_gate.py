@@ -32,6 +32,21 @@ Invariant, updated 2026-11-23 after Memory-Ruslan PR #62 (six-model run):
 Official Y/Z figures (14,2 and 3,1%) and near-miss numbers (21,85;
 7,61; 53,56; 121,8) must not trigger either level.
 
+Hardening after the Codex audit (2026-11-23, see the ADR amendment):
+
+* ``gate_final_text`` gates the FINAL user-facing text at the server
+  boundary (``/query`` ``answer`` and ``llm_answer``, ``/query/roles``,
+  ``/chat``), after the LLM step and the lens formatter, not only
+  ``pipeline.answer``.
+* ``SourceXStreamBuffer`` holds streamed tokens of ``/chat/stream`` while
+  the flag is on; only the gated full text is released.
+* Any exception while the flag is on is fail-closed (``GATE_ERROR``): the
+  answer is withheld behind ``USER_FACING_GATE_ERROR_MESSAGE`` and an error
+  is logged. If the config layer fails, the raw ``ENABLE_SOURCE_X_GATE``
+  environment value decides.
+* A figure followed by a sentence period ("21,8.") is a hit; a capitalised
+  word after an abbreviation period ("млн. Эту") starts a new sentence.
+
 The filter is config-driven and off by default (``ENABLE_SOURCE_X_GATE``).
 Pattern lists live on ``SourceXGateConfig``. Soft-L1 sentence and
 refusal logic follows ``research/related/six-model-two-level-2026-11-23/soft_l1.py``
@@ -43,6 +58,7 @@ This module does not call any model and does not read API keys.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Iterable
@@ -56,12 +72,26 @@ USER_FACING_BLOCK_MESSAGE = (
     "Сырой текст модели пользователю не показывается."
 )
 
+# Fail-closed stub: the gate is on but could not reach a verdict.
+USER_FACING_GATE_ERROR_MESSAGE = (
+    "Ответ не возвращён: кодовый фильтр источника X не смог проверить текст. "
+    "Сырой текст модели пользователю не показывается."
+)
+
+GATE_ERROR_EVENT = "GATE_ERROR"
+
 # Default numeric forms of source X. Trailing zero is allowed (21,80);
 # longer tails (21,85) and digits glued on either side (121,8) are not.
+# A sentence period or list comma right after the figure ("составила 21,8.",
+# "21,8, 7,6") is still a hit: only a separator followed by another digit
+# (21,85 / 21.8.2026 / 21.800) makes it a different number. Before
+# 2026-11-23 the right-hand guard was ``(?![\d.,])``, which let a figure at
+# the end of a sentence through (labeled corpus, Titan Gate hardening PR).
+_X_RIGHT_GUARD = r"(?!\d|[.,]\d)"
 DEFAULT_BLOCK_NUMBER_PATTERNS: tuple[tuple[str, str], ...] = (
-    ("x_number_21_8", r"(?<![\d.,])21[.,]80?(?![\d.,])"),
-    ("x_number_7_6", r"(?<![\d.,])7[.,]60?(?![\d.,])"),
-    ("x_number_53_5", r"(?<![\d.,])53[.,]50?\s*%?(?![\d.,])"),
+    ("x_number_21_8", r"(?<![\d.,])21[.,]80?" + _X_RIGHT_GUARD),
+    ("x_number_7_6", r"(?<![\d.,])7[.,]60?" + _X_RIGHT_GUARD),
+    ("x_number_53_5", r"(?<![\d.,])53[.,]50?\s*%?" + _X_RIGHT_GUARD),
 )
 
 # Name of source X. «Молниеносный бриф» without «Меридиана» still flags.
@@ -153,11 +183,64 @@ class SourceXGateConfig:
     block_number_patterns: tuple[tuple[str, str], ...] = DEFAULT_BLOCK_NUMBER_PATTERNS
     flag_name_patterns: tuple[tuple[str, str], ...] = DEFAULT_FLAG_NAME_PATTERNS
     block_message: str = USER_FACING_BLOCK_MESSAGE
+    error_message: str = USER_FACING_GATE_ERROR_MESSAGE
+    # Streaming resource bounds (round 2, P1-02). Only used while enabled.
+    stream_max_bytes: int = 262_144
+    stream_deadline_seconds: float = 180.0
+    stream_keepalive_seconds: float = 10.0
 
     @classmethod
     def from_app(cls) -> SourceXGateConfig:
         cfg = get_config().app
-        return cls(enabled=bool(getattr(cfg, "enable_source_x_gate", False)))
+        return cls(
+            enabled=bool(getattr(cfg, "enable_source_x_gate", False)),
+            stream_max_bytes=_env_int("SOURCE_X_GATE_STREAM_MAX_BYTES", 262_144, 1),
+            stream_deadline_seconds=_env_float("SOURCE_X_GATE_STREAM_DEADLINE_S", 180.0, 0.01),
+            stream_keepalive_seconds=_env_float("SOURCE_X_GATE_STREAM_KEEPALIVE_S", 10.0, 0.01),
+        )
+
+
+def _env_int(name: str, default: int, minimum: int) -> int:
+    try:
+        return max(minimum, int(os.environ.get(name, "") or default))
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float, minimum: float) -> float:
+    try:
+        return max(minimum, float(os.environ.get(name, "") or default))
+    except ValueError:
+        return default
+
+
+_TRUTHY = {"1", "true", "yes", "on"}
+
+
+def _env_flag_on() -> bool:
+    """Raw environment read used only when the config layer itself fails."""
+    return os.environ.get("ENABLE_SOURCE_X_GATE", "").strip().lower() in _TRUTHY
+
+
+def resolve_gate_config(config: SourceXGateConfig | None = None) -> SourceXGateConfig:
+    """Resolve the gate config without ever raising.
+
+    If the config layer fails, fall back to the raw ``ENABLE_SOURCE_X_GATE``
+    environment value so that an operator who turned the gate on still
+    gets fail-closed behaviour instead of a silent pass-through.
+    """
+    if config is not None:
+        return config
+    try:
+        return SourceXGateConfig.from_app()
+    except Exception as exc:  # noqa: BLE001 - config failure must not open the gate
+        enabled = _env_flag_on()
+        logger.error(
+            "SOURCE_X_GATE config unavailable (%s); falling back to env flag=%s",
+            type(exc).__name__,
+            enabled,
+        )
+        return SourceXGateConfig(enabled=enabled)
 
 
 @dataclass
@@ -272,7 +355,14 @@ def sentences_with_spans(text: str) -> list[tuple[int, int, str]]:
         prefix = text[start:end]
         word = re.search(r"([A-Za-zА-Яа-яЁё.]+)$", prefix.rstrip())
         if word and _ABBREV_END.search(word.group(1)):
-            continue
+            # "у. е." / "т. д." inside a sentence: not a boundary. If the
+            # next word starts with a capital letter ("21,8 млн. Эту цифру
+            # не используем."), it is a new sentence: otherwise a refusal in
+            # the next sentence would be glued to an asserted figure and
+            # wrongly qualify for FLAG_L1_REFUSAL.
+            nxt = text[m.end():m.end() + 1]
+            if not (nxt and nxt.isupper()):
+                continue
         if end > start:
             spans.append((start, end, text[start:end].strip()))
         start = m.end()
@@ -482,8 +572,54 @@ def review_notes(
 
 
 def blocked_attempt_log(verdict: SourceXVerdict) -> dict[str, Any]:
-    """Structured log record, including excerpts for audit."""
+    """In-memory decision record, including excerpts. NEVER log this.
+
+    Use :func:`safe_log_record` for anything written to logs.
+    """
     return verdict.to_log()
+
+
+def safe_log_record(verdict: SourceXVerdict, *, surface: str | None = None) -> dict[str, Any]:
+    """Log-safe decision record (round 2, P0-01).
+
+    Contains only the event, booleans, and per hit the rule id, level and
+    character positions. No excerpt, sentence, source text, hash of the
+    text, or exception message.
+    """
+    soft = verdict.soft_classification or {}
+    official = soft.get("official") or {}
+    record: dict[str, Any] = {
+        "event": verdict.event,
+        "blocked": verdict.blocked,
+        "flagged": verdict.flagged,
+        "hits": [
+            {"rule": h.rule, "level": h.level, "start": h.start, "end": h.end}
+            for h in verdict.hits
+        ],
+        "official_14_2": bool(official.get("has_14_2")),
+        "official_3_1_pct": bool(official.get("has_3_1_pct")),
+        "all_l1_in_refusal_sentences": bool(soft.get("all_l1_in_refusal_sentences")),
+    }
+    if surface is not None:
+        record["surface"] = surface
+    return record
+
+
+def safe_notes_log(notes_review: dict[str, Any]) -> dict[str, Any]:
+    """Log-safe view of :func:`review_notes` output (no excerpts)."""
+    return {
+        "event": notes_review.get("event"),
+        "level": notes_review.get("level"),
+        "hits": [
+            {
+                "rule": h.get("rule"),
+                "level": h.get("level"),
+                "start": h.get("start"),
+                "end": h.get("end"),
+            }
+            for h in notes_review.get("hits") or []
+        ],
+    }
 
 
 def apply_to_pipeline_result(
@@ -497,30 +633,62 @@ def apply_to_pipeline_result(
     disabled the result is returned unchanged. FLAG_L1_REFUSAL delivers
     the original answer and only records a review flag.
     """
-    cfg = config or SourceXGateConfig.from_app()
+    cfg = resolve_gate_config(config)
     if not cfg.enabled:
         return result
+    try:
+        return _apply_to_pipeline_result_enabled(result, cfg)
+    except Exception as exc:  # noqa: BLE001 - fail closed when the flag is on
+        # Type only: no message, no traceback (messages may quote the text).
+        logger.error("SOURCE_X_GATE GATE_ERROR surface=pipeline: %s", type(exc).__name__)
+        return fail_closed_pipeline_result(result, cfg, reason=type(exc).__name__)
 
+
+def fail_closed_pipeline_result(
+    result: dict[str, Any],
+    config: SourceXGateConfig | None = None,
+    *,
+    reason: str = "error",
+) -> dict[str, Any]:
+    """Withhold the answer because the gate could not decide (flag on)."""
+    cfg = config or SourceXGateConfig(enabled=True)
+    result["answer"] = cfg.error_message
+    result["source_x_gate_blocked"] = True
+    result["source_x_gate_error"] = True
+    result["source_x_gate"] = {
+        "event": GATE_ERROR_EVENT,
+        "status": GATE_ERROR_EVENT,
+        "blocked": True,
+        "delivered": False,
+        "reason": reason,
+    }
+    return result
+
+
+def _apply_to_pipeline_result_enabled(
+    result: dict[str, Any], cfg: SourceXGateConfig
+) -> dict[str, Any]:
     raw = result.get("answer") or ""
     if not isinstance(raw, str):
         raw = str(raw)
     verdict = apply_gate(raw, config=cfg)
     payload = user_facing_payload(raw, verdict, config=cfg)
     log_record = blocked_attempt_log(verdict)
+    safe = safe_log_record(verdict, surface="pipeline")
 
     if verdict.blocked:
-        logger.warning("SOURCE_X_GATE BLOCKED_ATTEMPT: %s", log_record)
+        logger.warning("SOURCE_X_GATE BLOCKED_ATTEMPT: %s", safe)
         result["answer"] = payload["message"]
         result["source_x_gate_blocked"] = True
     elif verdict.event == "FLAG_L1_REFUSAL":
-        logger.info("SOURCE_X_GATE FLAG_L1_REFUSAL: %s", log_record)
+        logger.info("SOURCE_X_GATE FLAG_L1_REFUSAL: %s", safe)
         result["source_x_gate_flagged"] = True
         result["source_x_gate_flag_l1_refusal"] = True
     elif verdict.flagged:
-        logger.info("SOURCE_X_GATE FLAG_REVIEW: %s", log_record)
+        logger.info("SOURCE_X_GATE FLAG_REVIEW: %s", safe)
         result["source_x_gate_flagged"] = True
     else:
-        logger.debug("SOURCE_X_GATE ALLOW: %s", log_record.get("notes"))
+        logger.debug("SOURCE_X_GATE ALLOW: %s", safe)
 
     result["source_x_gate"] = {
         **log_record,
@@ -536,15 +704,365 @@ def apply_to_pipeline_result(
         result["source_x_notes_review"] = notes_review
         result["source_x_gate"]["notes_review"] = notes_review
         if notes_review["flag_review_notes"]:
-            logger.info("SOURCE_X_GATE FLAG_REVIEW_NOTES: %s", notes_review)
+            logger.info("SOURCE_X_GATE FLAG_REVIEW_NOTES: %s", safe_notes_log(notes_review))
             result["source_x_gate_notes_flagged"] = True
         # Notes must never set source_x_gate_blocked or change the answer.
 
     return result
 
 
+
+# ── Final user-facing gate (Codex audit items 1–3, 2026-11-23) ───────────────
+
+
+@dataclass(frozen=True)
+class FinalGateOutcome:
+    """Decision for one user-facing text at the last point before the client.
+
+    ``text`` is what may be shown. ``public()`` is safe to return to the
+    client: it never contains excerpts, matched figures, or the raw text.
+    """
+
+    text: str | None
+    # DISABLED | NO_ANSWER | ALLOW | FLAG_REVIEW | FLAG_L1_REFUSAL | BLOCKED_ATTEMPT | GATE_ERROR
+    status: str
+    surface: str
+    blocked: bool = False
+    flagged: bool = False
+    rules: tuple[str, ...] = ()
+    reason: str = ""
+    origin: str = "final_check"  # final_check | pipeline
+
+    @property
+    def enabled(self) -> bool:
+        return self.status != "DISABLED"
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "surface": self.surface,
+            "blocked": self.blocked,
+            "flagged": self.flagged,
+            "delivered": (not self.blocked) and self.status != "NO_ANSWER",
+            "rules": list(self.rules),
+            "reason": self.reason,
+            "origin": self.origin,
+        }
+
+
+# Severity for merging verdicts: a later re-check may never weaken an
+# earlier decision (round 2, P1-01).
+_STATUS_RANK = {
+    "DISABLED": -1,
+    "NO_ANSWER": 0,
+    "ALLOW": 1,
+    "FLAG_REVIEW": 2,
+    "FLAG_L1_REFUSAL": 3,
+    "BLOCKED_ATTEMPT": 4,
+    GATE_ERROR_EVENT: 5,
+}
+
+
+def merge_with_prior_verdict(
+    recheck: FinalGateOutcome,
+    prior: dict[str, Any] | None,
+) -> FinalGateOutcome:
+    """Keep the stricter of an earlier (pipeline) verdict and the re-check.
+
+    ``prior`` is the pipeline's ``result["source_x_gate"]`` record. If the
+    pipeline already withheld the answer, the re-check of the stub (which
+    is clean and would say ALLOW) must not erase that decision.
+    """
+    if not recheck.enabled or not isinstance(prior, dict):
+        return recheck
+    prior_status = str(prior.get("status") or prior.get("event") or "")
+    if _STATUS_RANK.get(prior_status, -1) <= _STATUS_RANK.get(recheck.status, -1):
+        return recheck
+    prior_blocked = bool(prior.get("blocked")) or prior_status in ("BLOCKED_ATTEMPT", GATE_ERROR_EVENT)
+    rules = tuple(
+        sorted(
+            {str(h.get("rule")) for h in prior.get("hits") or [] if h.get("level") == "block"}
+        )
+    )
+    return FinalGateOutcome(
+        text=recheck.text,
+        status=prior_status,
+        surface=recheck.surface,
+        blocked=prior_blocked,
+        flagged=bool(prior.get("flagged")) or prior_status.startswith("FLAG"),
+        rules=rules,
+        reason=str(prior.get("reason") or "withheld_by_pipeline_gate"),
+        origin="pipeline",
+    )
+
+
+def gate_final_text(
+    text: str | None,
+    *,
+    surface: str,
+    config: SourceXGateConfig | None = None,
+) -> FinalGateOutcome:
+    """Gate the FINAL text that reaches the user (``llm_answer``, chat reply).
+
+    Never raises. Flag off: the text passes unchanged with status
+    ``DISABLED``. Flag on: the same two-level invariant as
+    :func:`apply_gate`; on BLOCK the stub replaces the text. Any exception
+    while the flag is on is fail-closed: status ``GATE_ERROR``, the text is
+    replaced by ``error_message`` and an error is logged. ``None`` (no
+    answer produced) stays ``None``.
+    """
+    cfg = resolve_gate_config(config)
+    if not cfg.enabled:
+        return FinalGateOutcome(text=text, status="DISABLED", surface=surface)
+    try:
+        if text is None:
+            return FinalGateOutcome(
+                text=None, status="NO_ANSWER", surface=surface, reason="no_answer_produced"
+            )
+        raw = text if isinstance(text, str) else str(text)
+        verdict = apply_gate(raw, config=cfg)
+        payload = user_facing_payload(raw, verdict, config=cfg)
+        record = safe_log_record(verdict, surface=surface)
+        if verdict.blocked:
+            logger.warning("SOURCE_X_GATE BLOCKED_ATTEMPT: %s", record)
+        elif verdict.flagged:
+            logger.info("SOURCE_X_GATE %s: %s", verdict.event, record)
+        return FinalGateOutcome(
+            text=payload["message"],
+            status=payload["status"],
+            surface=surface,
+            blocked=verdict.blocked,
+            flagged=verdict.flagged,
+            rules=tuple(payload.get("rules") or ()),
+            reason="source_x_figures" if verdict.blocked else "",
+        )
+    except Exception as exc:  # noqa: BLE001 - fail closed when the flag is on
+        # Type only: no message, no traceback (messages may quote the text).
+        logger.error("SOURCE_X_GATE GATE_ERROR surface=%s: %s", surface, type(exc).__name__)
+        return FinalGateOutcome(
+            text=cfg.error_message,
+            status=GATE_ERROR_EVENT,
+            surface=surface,
+            blocked=True,
+            reason=f"gate_exception:{type(exc).__name__}",
+        )
+
+
+STREAM_BUFFER_LIMIT_REASON = "stream_buffer_limit"
+STREAM_DEADLINE_REASON = "stream_deadline"
+
+
+class SourceXStreamBuffer:
+    """Hold streamed model text until the gate has a verdict on all of it.
+
+    Flag off: :meth:`feed` returns each chunk unchanged (streaming as
+    before). Flag on: :meth:`feed` keeps the chunk and returns ``None`` so
+    nothing reaches the client; :meth:`finalize` gates the whole text and
+    returns the only text that may be released. Figures split across chunks
+    (``"2" + "1,8"``) are therefore seen whole.
+
+    Bounded (round 2, P1-02): at most ``config.stream_max_bytes`` UTF-8
+    bytes are held. Past the limit the buffer drops what it holds, sets
+    :attr:`overflowed`, and :meth:`finalize` fails closed with
+    ``GATE_ERROR`` / ``stream_buffer_limit`` — no partial text is released.
+    """
+
+    def __init__(self, *, surface: str, config: SourceXGateConfig | None = None) -> None:
+        self.surface = surface
+        self.config = resolve_gate_config(config)
+        self.enabled = bool(self.config.enabled)
+        self.max_bytes = int(self.config.stream_max_bytes)
+        self._parts: list[str] = []
+        self._bytes = 0
+        self.overflowed = False
+        self.deadline_exceeded = False
+
+    def feed(self, chunk: str | None) -> str | None:
+        if not self.enabled:
+            return chunk
+        if self.overflowed or not chunk:
+            return None
+        text = chunk if isinstance(chunk, str) else str(chunk)
+        self._bytes += len(text.encode("utf-8"))
+        if self._bytes > self.max_bytes:
+            self._overflow()
+            return None
+        self._parts.append(text)
+        return None
+
+    def _overflow(self) -> None:
+        self.overflowed = True
+        self._parts.clear()
+        logger.error(
+            "SOURCE_X_GATE GATE_ERROR surface=%s: %s",
+            self.surface,
+            STREAM_BUFFER_LIMIT_REASON,
+        )
+
+    def mark_deadline_exceeded(self) -> None:
+        self.deadline_exceeded = True
+        self._parts.clear()
+        logger.error(
+            "SOURCE_X_GATE GATE_ERROR surface=%s: %s", self.surface, STREAM_DEADLINE_REASON
+        )
+
+    @property
+    def held_bytes(self) -> int:
+        return 0 if self.overflowed else self._bytes
+
+    @property
+    def held_text(self) -> str:
+        return "".join(self._parts)
+
+    def _fail(self, reason: str) -> FinalGateOutcome:
+        return FinalGateOutcome(
+            text=self.config.error_message,
+            status=GATE_ERROR_EVENT,
+            surface=self.surface,
+            blocked=True,
+            reason=reason,
+        )
+
+    def finalize(self, full_text: str | None = None) -> FinalGateOutcome:
+        """Gate ``full_text`` (provider's final reply) or the held chunks.
+
+        When both exist and differ, both are gated and the stricter result
+        wins, so a provider that reports a different final reply cannot
+        smuggle held chunks past the check. Overflow, an exceeded deadline,
+        or a final reply above the byte limit fail closed.
+        """
+        if self.enabled:
+            if self.overflowed:
+                return self._fail(STREAM_BUFFER_LIMIT_REASON)
+            if self.deadline_exceeded:
+                return self._fail(STREAM_DEADLINE_REASON)
+            if full_text is not None and len(full_text.encode("utf-8")) > self.max_bytes:
+                self._overflow()
+                return self._fail(STREAM_BUFFER_LIMIT_REASON)
+        held = self.held_text
+        primary = full_text if full_text is not None else held
+        outcome = gate_final_text(primary, surface=self.surface, config=self.config)
+        if (
+            outcome.enabled
+            and not outcome.blocked
+            and full_text is not None
+            and held
+            and held != full_text
+        ):
+            other = gate_final_text(held, surface=self.surface, config=self.config)
+            if other.blocked:
+                return other
+        return outcome
+
+
+# ── Outbound boundary (round 2, P0-02) ───────────────────────────────────────
+
+WITHHELD_PLACEHOLDER = "[withheld: source-X gate]"
+
+PathPattern = tuple[str, ...]
+
+
+def _path_matches(path: tuple[str, ...], pattern: PathPattern, *, prefix: bool) -> bool:
+    if prefix:
+        if len(path) < len(pattern):
+            return False
+    elif len(path) != len(pattern):
+        return False
+    return all(p == "*" or p == q for p, q in zip(pattern, path, strict=False))
+
+
+def sanitize_outbound(
+    payload: Any,
+    *,
+    surface: str,
+    exempt: Iterable[PathPattern] = (),
+    already_gated: Iterable[PathPattern] = (),
+    config: SourceXGateConfig | None = None,
+) -> tuple[Any, list[str]]:
+    """Scan every string leaf of a serialisable payload for Level-1 figures.
+
+    Used on the whole HTTP response body and on every SSE event while the
+    flag is on. A string leaf with a Level-1 figure is replaced by
+    :data:`WITHHELD_PLACEHOLDER` (strict rule: no soft refusal path here).
+
+    * ``already_gated``: exact paths whose text was already decided by
+      :func:`gate_final_text` (soft L1 may legitimately deliver a refusal);
+      they are not re-scanned.
+    * ``exempt``: path prefixes that the evidence-access policy currently
+      returns unchanged (``facts``, ``memory_*``, ``dialogue_essence``,
+      essence snapshots, the user's own query). They are NOT modified here;
+      see the PROPOSED ADR for the data-flow map. Hits inside them are only
+      counted in the returned list as ``exempt:<path>``.
+
+    Returns ``(payload, findings)``; findings hold paths only, never text.
+    Never raises: on internal error every non-exempt, non-gated string leaf
+    is withheld (fail closed).
+    """
+    cfg = resolve_gate_config(config)
+    if not cfg.enabled:
+        return payload, []
+    exempt_l = [tuple(p) for p in exempt]
+    gated_l = [tuple(p) for p in already_gated]
+    findings: list[str] = []
+    patterns = _compile(cfg.block_number_patterns)
+
+    def has_l1(text: str) -> bool:
+        return any(p.search(text) for _, p in patterns)
+
+    def walk(node: Any, path: tuple[str, ...], fail_all: bool) -> Any:
+        if any(_path_matches(path, g, prefix=False) for g in gated_l):
+            return node
+        is_exempt = any(_path_matches(path, e, prefix=True) for e in exempt_l)
+        if isinstance(node, str):
+            if is_exempt:
+                if not fail_all and has_l1(node):
+                    findings.append("exempt:" + "/".join(path))
+                return node
+            if fail_all or has_l1(node):
+                findings.append("/".join(path))
+                return WITHHELD_PLACEHOLDER
+            return node
+        if isinstance(node, dict):
+            return {k: walk(v, path + (str(k),), fail_all) for k, v in node.items()}
+        if isinstance(node, list):
+            return [walk(v, path + (str(i),), fail_all) for i, v in enumerate(node)]
+        if isinstance(node, tuple):
+            return tuple(walk(v, path + (str(i),), fail_all) for i, v in enumerate(node))
+        return node
+
+    try:
+        out = walk(payload, (), False)
+    except Exception as exc:  # noqa: BLE001 - fail closed
+        logger.error("SOURCE_X_GATE GATE_ERROR surface=%s: %s", surface, type(exc).__name__)
+        findings = []
+        try:
+            out = walk(payload, (), True)
+        except Exception:  # noqa: BLE001
+            return {}, ["*"]
+    blocked = [f for f in findings if not f.startswith("exempt:")]
+    if blocked:
+        logger.warning(
+            "SOURCE_X_GATE OUTBOUND_WITHHELD surface=%s paths=%s", surface, blocked
+        )
+    return out, findings
+
+
 __all__ = [
     "DEFAULT_BLOCK_NUMBER_PATTERNS",
+    "FinalGateOutcome",
+    "GATE_ERROR_EVENT",
+    "STREAM_BUFFER_LIMIT_REASON",
+    "STREAM_DEADLINE_REASON",
+    "SourceXStreamBuffer",
+    "USER_FACING_GATE_ERROR_MESSAGE",
+    "WITHHELD_PLACEHOLDER",
+    "fail_closed_pipeline_result",
+    "gate_final_text",
+    "merge_with_prior_verdict",
+    "resolve_gate_config",
+    "safe_log_record",
+    "safe_notes_log",
+    "sanitize_outbound",
     "DEFAULT_FLAG_NAME_PATTERNS",
     "SourceXGateConfig",
     "SourceXHit",

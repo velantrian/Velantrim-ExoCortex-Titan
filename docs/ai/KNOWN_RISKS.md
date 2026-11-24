@@ -1,5 +1,15 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — source-X Gate output and resource boundary (flag OFF by default; Draft PR #537, not merged)
+
+`ENABLE_SOURCE_X_GATE` stays off by default and in `lite` / `standard` / `heavy`. With the flag on (tests only), round 2 of PR #537 closes four reproduced defects: Gate logs carry no text, excerpt, hash, exception message or traceback (rule / level / positions / exception type only); the full serialised response of `/query`, `/query/roles`, `/chat` and every `/chat/stream` SSE event is scanned (per-type key allowlist on SSE) and `lens_context.branches[].response` and `llm_meta.error` no longer bypass the Gate; a re-check can no longer downgrade the pipeline verdict and `NO_ANSWER` is distinct from `ALLOW`; the stream hold is byte-limited (256 KiB) with a 180 s deadline and content-free keep-alive, failing closed without an offline fallback.
+
+Residual risk (open):
+- Evidence fields (`facts`, `memory_*`, `dialogue_essence`, essence snapshot, the user's `query`) are returned unchanged; hits are reported by path only. Policy is in `docs/adr/ADR-2026-11-24-source-x-evidence-surfaces-PROPOSED.md` (PROPOSED).
+- The 66-text corpus is a REGRESSION set, not an independent benchmark.
+- A non-Gate `server.py` log ("LLM генерация упала: %s") may still print provider exception text.
+- Outputs outside these endpoints (SleepTimeWorker / notebook, TTS, MCP gateway) are not gated. No live-environment run; Operator GO not established.
+
 ## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
 
 Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
