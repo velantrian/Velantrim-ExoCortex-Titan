@@ -106,7 +106,8 @@ removes the hook; no migration is required.
   `KEEP_STRICT` fixtures from the six-model report)
 - `tests/test_source_x_notes.py` (companion notes-annotation PR)
 - `tests/test_source_x_gate_final_surfaces.py` (amendment items 1–3)
-- `tests/test_source_x_gate_labeled_corpus.py` (amendment item 4)
+- `tests/test_source_x_gate_labeled_corpus.py` (amendment item 4, REGRESSION set)
+- `tests/test_source_x_gate_audit_round2.py` (amendment 2026-11-24)
 - Hosted CI on the PR head, including this ADR for the architecture-freeze
   guard
 
@@ -144,7 +145,8 @@ amendment records how each one is handled.
    With the flag off, an error never changes the answer.
 4. **New labeled texts.** A new hand-labeled corpus
    (`tests/fixtures/source_x_gate_labeled_corpus_2026-11-23.json`, 66
-   texts, not reused from ICT-01 / TASK-03 drafts) covers plain figures,
+   texts, not reused from ICT-01 / TASK-03 drafts; a REGRESSION set, not an
+   independent benchmark — see amendment 2026-11-24) covers plain figures,
    dot/comma variants, refusals with official 14,2 / 3,1%, refusals that
    must stay strict, name-only, notes-only, clean texts, near-misses and
    stream-split figures. `scripts/eval_source_x_gate_corpus.py` prints the
@@ -174,5 +176,59 @@ flag off, or revert the PR.
   client-supplied text, and the MCP gateway (not audited here).
 - Operator GO, production receipt and a profile change are separate
   decisions.
+
+## Amendment 2026-11-24 — hardening round 2 (independent audit of PR #537)
+
+**Status:** proposed with PR #537 round 2 (RESEARCH, not Canon). The flag
+stays off by default and in `lite` / `standard` / `heavy`.
+
+An independent read-only audit of PR #537 at `149f477` reproduced four
+defects with ten local tests (now in
+`tests/test_source_x_gate_audit_round2.py`). This amendment supersedes the
+parts of amendment 2026-11-23b that they contradict.
+
+- **P0-01 Log safety.** Gate logs carry only the event, booleans, and per
+  hit `rule` / `level` / `start` / `end` (`safe_log_record`,
+  `safe_notes_log`). No raw text, excerpt, sentence, text hash, exception
+  message, or traceback. Gate exceptions log the exception type only
+  (`exc_info` removed). The in-memory record with excerpts
+  (`blocked_attempt_log`) is never logged. No source-text hash is logged.
+- **P0-02 Output boundary.** With the flag on:
+  `/query/roles` gates every `lens_context.branches[].response`;
+  `llm_meta.error` carries only the exception type (and string `code`);
+  the FULL serialised response of `/query`, `/query/roles` and `/chat`
+  passes `sanitize_outbound` (strict Level-1 scan of every string leaf,
+  hits replaced by `[withheld: source-X gate]`, paths recorded in
+  `source_x_gate.outbound`); every `/chat/stream` SSE event passes an
+  explicit per-type key allowlist, `context.report` is limited to the
+  `ContextReport` keys, `usage` / `llm_usage` to numeric values, unknown
+  event types are dropped, then the same outbound scan. Evidence-policy
+  fields (`facts`, `memory_*`, `dialogue_essence`, essence snapshots, the
+  user's own `query`) are NOT changed in this round; see
+  `ADR-2026-11-24-source-x-evidence-surfaces-PROPOSED.md`.
+- **P1-01 Verdict integrity.** A re-check of the pipeline's stub can no
+  longer downgrade the pipeline verdict (`merge_with_prior_verdict`,
+  severity GATE_ERROR > BLOCKED_ATTEMPT > FLAG_L1_REFUSAL > FLAG_REVIEW >
+  ALLOW > NO_ANSWER). Each public record has `status`, `reason`, `origin`
+  (`pipeline` / `final_check`). `NO_ANSWER` is distinct from `ALLOW`. The
+  final verdict summary (no text) goes to the reasoning-trace metadata and
+  the `RESPONSE_GENERATED` event.
+- **P1-02 Resources.** The stream hold buffer is byte-limited
+  (`SOURCE_X_GATE_STREAM_MAX_BYTES`, default 262 144 UTF-8 bytes); an
+  overall generation deadline applies (`SOURCE_X_GATE_STREAM_DEADLINE_S`,
+  default 180 s); a content-free SSE comment `: hold` is sent every
+  `SOURCE_X_GATE_STREAM_KEEPALIVE_S` (default 10 s) while holding, also
+  while tokens flow, which is how a gone client is detected under ASGI
+  2.4. Overflow and deadline fail closed (`GATE_ERROR`, reason
+  `stream_buffer_limit` / `stream_deadline`), close the provider stream,
+  release no held text, and never substitute an offline answer.
+- **Corpus status.** The 66-text corpus is a **REGRESSION set, not an
+  independent benchmark**: the same author wrote it, labeled it and tuned
+  the patterns on it. Its numbers are not an estimate of Gate quality.
+
+Still open before any `standard` enablement: independent labeled corpus;
+decision on the PROPOSED evidence-surface ADR; non-Gate logs that may
+contain provider text (e.g. `server.py` "LLM генерация упала"); outputs
+outside these four endpoints; live-environment observation; Operator GO.
 
 **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED. RESEARCH, not Canon.**

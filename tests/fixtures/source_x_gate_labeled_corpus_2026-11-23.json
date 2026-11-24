@@ -1,6 +1,8 @@
 {
  "schema": "source_x_gate_labeled_corpus/v1",
  "created": "2026-11-23",
+ "role": "REGRESSION",
+ "role_note": "REGRESSION set, not an independent benchmark: the same author wrote the texts, assigned the labels, and used them to tune the Level-1 patterns in PR #537. Precision/recall on it measure non-regression only, not Gate quality.",
  "provenance": "Hand-written for Titan Gate hardening; NOT reused from ICT-01 / TASK-03 model drafts. Labels follow the ADR-2026-11-23 policy, assigned before running the gate.",
  "verdicts": [
   "ALLOW",

@@ -1,3 +1,12 @@
+## 2026-11-24 — Source-X Gate hardening round 2 (Draft PR #537)
+
+- Independent read-only audit of PR #537 at `149f477` reproduced four defects (log leakage, incomplete output boundary, lost pipeline verdict, unbounded stream buffer) with ten tests; they are now `tests/test_source_x_gate_audit_round2.py` together with resource / log / boundary tests (parallel requests, generation cancel, client disconnect under ASGI 2.3 and 2.4, deadline, keep-alive without content).
+- Code: `core/source_x_gate.py` (`safe_log_record`, `merge_with_prior_verdict`, `sanitize_outbound`, bounded `SourceXStreamBuffer`), `server.py` (full-response / SSE boundary, roles branches, `llm_meta` sanitising, deadline and keep-alive, verdict in trace and event), `core/event_bridge.py` (`source_x_gate` summary in `RESPONSE_GENERATED`).
+- Docs: ADR amendment 2026-11-24, `ADR-2026-11-24-source-x-evidence-surfaces-PROPOSED.md`, corpus labelled REGRESSION, `docs/ai/NOTION_HANDOFF.md#handoff-pr-537`, hand-off `docs/ai/PR537_SOURCE_X_GATE_ROUND2_HANDOFF.md`.
+- Status: Draft, flag off everywhere, not merged, not deployed. Documentation impact: `GITHUB_AND_NOTION` (Notion record PENDING, hand-off required).
+
+---
+
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.

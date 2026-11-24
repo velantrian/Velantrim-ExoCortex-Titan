@@ -1,4 +1,7 @@
-"""Gate precision / recall on a NEW hand-labeled corpus (Codex audit item 4).
+"""Gate REGRESSION corpus (Codex audit item 4). NOT an independent benchmark.
+
+The labels were written by the same author who tuned the Level-1 patterns
+on these texts, so the numbers only guard against regressions.
 
 The corpus (``tests/fixtures/source_x_gate_labeled_corpus_2026-11-23.json``)
 is hand-written for this hardening PR and is not reused from the ICT-01 /
@@ -94,3 +97,10 @@ def test_streaming_items_release_nothing_before_verdict(report):
 
 def test_corpus_path_is_the_committed_fixture():
     assert CORPUS.exists()
+
+
+def test_corpus_is_labeled_regression_not_benchmark(report):
+    corpus = load_corpus()
+    assert corpus["role"] == "REGRESSION"
+    assert "not an independent benchmark" in corpus["role_note"]
+    assert report["role"] == "REGRESSION"

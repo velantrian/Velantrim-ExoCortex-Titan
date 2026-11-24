@@ -1,4 +1,8 @@
-"""Measure the source-X Gate against the hand-labeled corpus (no model calls).
+"""Measure the source-X Gate against the hand-labeled REGRESSION corpus (no model calls).
+
+REGRESSION, NOT AN INDEPENDENT BENCHMARK: the corpus was written and labeled
+by the same author who tuned the Level-1 patterns on it (PR #537). Its
+numbers show non-regression only; they are not an estimate of Gate quality.
 
 Usage:
     python scripts/eval_source_x_gate_corpus.py [--json]
@@ -118,6 +122,7 @@ def evaluate(corpus: dict[str, Any] | None = None) -> dict[str, Any]:
             btn += 1
     n = len(rows)
     return {
+        "role": corpus.get("role", "REGRESSION"),
         "n_items": n,
         "accuracy": sum(1 for r in rows if r["expected"] == r["got"]) / n,
         "confusion": confusion,
@@ -146,6 +151,7 @@ def main(argv: list[str]) -> int:
     if "--json" in argv:
         print(json.dumps(rep, ensure_ascii=False, indent=1))
         return 0
+    print(f"CORPUS ROLE: {rep['role']} — not an independent benchmark (tuned on this set)")
     print(f"N={rep['n_items']} accuracy={rep['accuracy']:.3f}")
     head = "expected \\ got".ljust(18) + "".join(v[:14].rjust(16) for v in list(VERDICTS) + ["GATE_ERROR"])
     print(head)
