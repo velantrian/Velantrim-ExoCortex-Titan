@@ -89,8 +89,10 @@ Fail closed. With the flag on:
   withholds the answer. If the flag cannot be read, the answer is withheld.
   Only a gate known to be disabled passes the result through unchanged.
 - A withheld result is rebuilt from an allowlist (`WITHHELD_KEEP_KEYS`:
-  `query`, `error`, `retrieval_mode`) plus the stub answer and gate record.
-  Facts, trace, conflicts, notes and every enrichment field are dropped.
+  `query`, the user's own input, and `retrieval_mode`) plus the stub answer
+  and gate record. A raw `error` is never copied; if the original result had
+  one, it becomes the stable code `SOURCE_X_WITHHELD_ERROR`. Facts, trace,
+  conflicts, notes and every enrichment field are dropped.
 - The gate record and the log line carry rule names only, never excerpts or
   sentences of the withheld text. Exceptions are logged by type only.
 - `notes` annotations never fail closed into a user-visible block by

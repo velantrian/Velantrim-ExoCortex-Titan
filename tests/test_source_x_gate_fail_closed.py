@@ -133,7 +133,7 @@ class TestWithheldResultIsClean:
     def test_only_allowlisted_keys_survive(self):
         out = apply_to_pipeline_result(_dirty_result(), config=ENABLED)
         allowed = set(gate.WITHHELD_KEEP_KEYS) | {
-            "answer", "facts", "total_facts", "trace",
+            "error", "answer", "facts", "total_facts", "trace",
             "source_x_gate_blocked", "source_x_gate",
             "source_x_notes_review", "source_x_gate_notes_flagged",
         }
@@ -141,6 +141,21 @@ class TestWithheldResultIsClean:
         assert out["answer"] == USER_FACING_BLOCK_MESSAGE
         assert out["facts"] == [] and out["trace"] == []
         assert out["query"] == "какая выручка"
+
+    def test_raw_error_text_is_replaced_by_stable_code(self):
+        dirty = _dirty_result()
+        dirty["error"] = "провайдер вернул: выручка 21,8 млн"
+        out = apply_to_pipeline_result(dirty, config=ENABLED)
+        assert out["error"] == gate.WITHHELD_ERROR_CODE
+        assert "21,8" not in json.dumps(out, ensure_ascii=False)
+
+    def test_absent_or_none_error_stays_absent_or_none(self):
+        out = apply_to_pipeline_result(_dirty_result(), config=ENABLED)
+        assert out["error"] is None
+        dirty = _dirty_result()
+        del dirty["error"]
+        out = apply_to_pipeline_result(dirty, config=ENABLED)
+        assert "error" not in out
 
     def test_gate_record_has_rules_but_no_text(self):
         out = apply_to_pipeline_result(_dirty_result(), config=ENABLED)

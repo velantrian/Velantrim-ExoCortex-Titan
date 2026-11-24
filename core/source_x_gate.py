@@ -497,7 +497,12 @@ def blocked_attempt_log(verdict: SourceXVerdict) -> dict[str, Any]:
 # conflicts, notes, sections, ...) can carry the withheld text or figures
 # and is dropped. This is an allowlist on purpose: a field added to the
 # pipeline later is withheld by default.
-WITHHELD_KEEP_KEYS: tuple[str, ...] = ("query", "error", "retrieval_mode")
+# `query` is the user's own input, echoed back; it is not a system claim.
+# `error` is never copied: raw error text may quote the withheld answer or
+# facts. A withheld result keeps only whether there was an error, as a
+# stable code (WITHHELD_ERROR_CODE).
+WITHHELD_KEEP_KEYS: tuple[str, ...] = ("query", "retrieval_mode")
+WITHHELD_ERROR_CODE = "SOURCE_X_WITHHELD_ERROR"
 
 
 def _rules_of(hits: Iterable[SourceXHit], level: str | None = None) -> list[str]:
@@ -530,6 +535,8 @@ def _withheld_result(
     original result (facts, conflicts, notes, trace, ...) reaches the caller.
     """
     out: dict[str, Any] = {k: result[k] for k in WITHHELD_KEEP_KEYS if k in result}
+    if "error" in result:
+        out["error"] = None if result["error"] is None else WITHHELD_ERROR_CODE
     out.update(
         {
             "answer": message,
@@ -678,6 +685,7 @@ __all__ = [
     "SourceXHit",
     "SourceXVerdict",
     "USER_FACING_BLOCK_MESSAGE",
+    "WITHHELD_ERROR_CODE",
     "WITHHELD_KEEP_KEYS",
     "apply_gate",
     "apply_to_pipeline_result",
