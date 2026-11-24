@@ -1,5 +1,11 @@
 # ⚠️ Known Risks and Required Proof
 
+## Reduced risk — LLM provider error text and Soft L1 negated refusals (Draft PR #538 on top of #537, not merged)
+
+Independent of `ENABLE_SOURCE_X_GATE`, `/chat`, `/chat/stream`, `/query` and context-limit refusals no longer return or log provider exception text or an arbitrary `exc.code`; a closed-set code with validated type / status / provider is used. With the flag on, Soft L1 no longer delivers negated, contradicted, reported, hedged, conditional or questioning refusals in the tested cases.
+
+Residual risk (open): Soft L1 is a pattern heuristic and remains bypassable (4 known false allows recorded as strict xfail); `api/llm_routes.py` diagnostic routes return provider exception text by design; non-provider exception logs keep messages. Details: `docs/ai/PR537_SECFIX_MANUS_2026-11-24_REPORT.md`.
+
 ## Reduced risk — source-X Gate output and resource boundary (flag OFF by default; Draft PR #537, not merged)
 
 `ENABLE_SOURCE_X_GATE` stays off by default and in `lite` / `standard` / `heavy`. With the flag on (tests only), round 2 of PR #537 closes four reproduced defects: Gate logs carry no text, excerpt, hash, exception message or traceback (rule / level / positions / exception type only); the full serialised response of `/query`, `/query/roles`, `/chat` and every `/chat/stream` SSE event is scanned (per-type key allowlist on SSE) and `lens_context.branches[].response` and `llm_meta.error` no longer bypass the Gate; a re-check can no longer downgrade the pipeline verdict and `NO_ANSWER` is distinct from `ALLOW`; the stream hold is byte-limited (256 KiB) with a 180 s deadline and content-free keep-alive, failing closed without an offline fallback.

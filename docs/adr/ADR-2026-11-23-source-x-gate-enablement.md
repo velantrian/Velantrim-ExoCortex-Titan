@@ -231,4 +231,12 @@ decision on the PROPOSED evidence-surface ADR; non-Gate logs that may
 contain provider text (e.g. `server.py` "LLM генерация упала"); outputs
 outside these four endpoints; live-environment observation; Operator GO.
 
+## Amendment 2026-11-24b — security fix after the Manus audit (Draft PR #538)
+
+**Status:** proposed with Draft PR #538 (base: PR #537 branch). RESEARCH, not Canon. Flag stays off by default and in all profiles.
+
+- **Provider errors.** Independent of the flag, `/chat`, `/chat/stream`, `/query` and context-limit refusals return and log a closed-set code (`llm_provider_error`, `llm_context_limit`, `llm_context_overflow`) with validated type / HTTP status / provider name, never the provider exception text or an arbitrary `exc.code`. HTTP statuses unchanged.
+- **Soft L1.** A refusal sentence qualifies only if it is not negated, contradicted, reported, hedged, conditional or a question, and no un-negated assertion of use appears outside a clause about the official figures; other sentences that deny the refusal or reassert use also keep strict L1. This is a pattern heuristic, not semantic understanding. Known gaps are recorded (strict xfail) in `tests/test_pr537_secfix_soft_l1.py`; closing them needs an owner decision on Soft L1 itself.
+- The 66-text corpus result is unchanged (REGRESSION baseline). Details: `docs/ai/PR537_SECFIX_MANUS_2026-11-24_REPORT.md`.
+
 **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED. RESEARCH, not Canon.**
