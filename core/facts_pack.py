@@ -16,7 +16,8 @@ Sprint 1a — Этап G1
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass, field, fields, replace
 from datetime import UTC, datetime
 
 # ── Политики ответа по CognitiveMode ─────────────────────────────────────────
@@ -114,6 +115,9 @@ def _is_weakest_rrf_rank_shape(score: float) -> bool:
 
 
 # ── PackedFact ────────────────────────────────────────────────────────────────
+
+# The only PackedFact field that may differ between two copies of one record.
+_RECORD_KEY_IGNORED_FIELDS = frozenset({"retrieval_score"})
 
 @dataclass
 class PackedFact:
@@ -279,6 +283,24 @@ class FactsPack:
 
 # ── FactsPackBuilder ──────────────────────────────────────────────────────────
 
+def _record_key_part(value: object) -> object:
+    """Hashable, order-independent stand-in for a field value (dicts and lists included)."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    # default=repr: a value that is not JSON-serializable never raises here; two different
+    # objects have different reprs, so they are never taken for the same record.
+    return ("json", json.dumps(value, sort_keys=True, default=repr, ensure_ascii=False))
+
+
+def _record_key(fact: PackedFact) -> tuple:
+    """Identity of a memory record: every PackedFact field except ``retrieval_score``."""
+    return tuple(
+        _record_key_part(getattr(fact, f.name))
+        for f in fields(fact)
+        if f.name not in _RECORD_KEY_IGNORED_FIELDS
+    )
+
+
 class FactsPackBuilder:
     """
     Строит FactsPack из сырых фактов из памяти.
@@ -305,43 +327,38 @@ class FactsPackBuilder:
         return self
 
     @staticmethod
-    def _dedup_semantic(facts: list[PackedFact]) -> list[PackedFact]:
+    def _dedup_exact_record_repeats(facts: list[PackedFact]) -> list[PackedFact]:
         """
-        V8.8: Семантическая дедупликация — удалить факты с почти идентичным смыслом.
+        Collapse only provable repeats of the same memory record.
 
-        Алгоритм: pairwise Jaccard-сходство по токенам claim.
-        Если два факта имеют >70% общих токенов — оставляем с большим confidence.
-        Без LLM, без эмбеддингов — чистая токен-математика.
+        Two packed facts count as one record only when they carry the same real
+        ``fact_id`` and an identical record payload: every field of
+        ``PackedFact`` except ``retrieval_score`` (claim, epistemic_state, source,
+        confidence and the enrichment fields). Copies that differ in enrichment
+        are kept apart, because collapsing them would silently lose one copy's
+        context. The surviving copy keeps the strongest ``retrieval_score`` seen
+        for that record.
+
+        Wording similarity never authorizes removal. The former token-overlap
+        dedup (> 0.7, winner by confidence) silently dropped records that
+        differed only by a negation, a condition, an identifier, a status, a
+        number or argument order, and merged distinct records that share text,
+        losing their separate provenance.
         """
-        if len(facts) <= 1:
-            return facts
-
-        # Токенизировать все claims
-        tokenized = []
+        positions: dict[tuple, int] = {}
+        out: list[PackedFact] = []
         for f in facts:
-            tokens = frozenset(f.claim.lower().split())
-            tokenized.append(tokens)
-
-        keep: list[bool] = [True] * len(facts)
-        for i in range(len(facts)):
-            if not keep[i]:
+            if not f.fact_id or f.fact_id == "unknown":
+                out.append(f)
                 continue
-            for j in range(i + 1, len(facts)):
-                if not keep[j]:
-                    continue
-                # Jaccard similarity
-                a, b = tokenized[i], tokenized[j]
-                if not a or not b:
-                    continue
-                overlap = len(a & b) / min(len(a), len(b))
-                if overlap > 0.7:
-                    # Оставить с большим confidence
-                    if facts[j].confidence > facts[i].confidence:
-                        keep[i] = False
-                    else:
-                        keep[j] = False
-
-        return [f for f, k in zip(facts, keep) if k]
+            key = _record_key(f)
+            pos = positions.get(key)
+            if pos is None:
+                positions[key] = len(out)
+                out.append(f)
+            elif f.retrieval_score > out[pos].retrieval_score:
+                out[pos] = replace(out[pos], retrieval_score=f.retrieval_score)
+        return out
 
     def build(self, query: str) -> FactsPack:
         """
@@ -431,9 +448,9 @@ class FactsPackBuilder:
                 living_context=fact.get("living_context"),
             ))
 
-        # V8.8: Семантическая дедупликация — удалить дубликаты по смыслу
-        # перед отправкой LLM. Экономия token budget + качество ответа.
-        included = self._dedup_semantic(included)
+        # Only provable repeats of the same record are collapsed. Distinct
+        # records with overlapping wording all reach the LLM context.
+        included = self._dedup_exact_record_repeats(included)
 
         # Сортируем по confidence × retrieval_score DESC
         included.sort(key=lambda f: -(f.confidence * max(f.retrieval_score, 0.01)))
