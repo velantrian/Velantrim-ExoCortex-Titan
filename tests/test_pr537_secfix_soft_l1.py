@@ -40,6 +40,13 @@ def sxg():
     return importlib.import_module("core.source_x_gate")
 
 
+
+@pytest.fixture(autouse=True)
+def _known_api_key(monkeypatch):
+    # Another test module may re-import ``server`` with a different
+    # VELANTRIM_API_KEY; pin the key this file sends (test-local only).
+    monkeypatch.setattr(importlib.import_module("server"), "API_KEY", HEADERS["X-Api-Key"])
+
 @pytest.fixture(autouse=True)
 def _clean_flag(monkeypatch):
     monkeypatch.delenv("ENABLE_SOURCE_X_GATE", raising=False)

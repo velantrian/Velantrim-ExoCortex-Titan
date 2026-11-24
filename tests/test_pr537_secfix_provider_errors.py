@@ -41,6 +41,13 @@ class _MarkedError(RuntimeError):
         self.code = MARKER
 
 
+
+@pytest.fixture(autouse=True)
+def _known_api_key(monkeypatch):
+    # Another test module may re-import ``server`` with a different
+    # VELANTRIM_API_KEY; pin the key this file sends (test-local only).
+    monkeypatch.setattr(importlib.import_module("server"), "API_KEY", HEADERS["X-Api-Key"])
+
 @pytest.fixture(params=[None, "0", "1"], ids=["flag-unset", "flag-0", "flag-1"])
 def flag(request, monkeypatch):
     if request.param is None:
