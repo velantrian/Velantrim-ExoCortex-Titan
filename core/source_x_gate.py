@@ -382,10 +382,172 @@ def sentence_for_offset(text: str, start: int, end: int) -> str:
     return text[a:b].strip()
 
 
-def is_explicit_refusal_sentence(sentence: str) -> bool:
+# ── Soft L1 contradiction checks (PR #537 secfix, Manus audit 2026-11-24) ────
+# _REFUSAL_RE finds a refusal *substring*; it does not say whether the refusal
+# is itself negated ("Неверно, что 21,8 не используются") or contradicted by
+# an assertion of use in the same text ("…; напротив, они включены").
+# These are surface patterns, not semantic understanding. On any doubt the
+# sentence is not treated as an explicit refusal, so Soft L1 does not apply
+# and the strict L1 block stays.
+
+# The claim of a refusal is denied ("it is not true that …").
+_NEGATED_CLAIM_RE = re.compile(
+    r"(?:\bневерно\b|\bнеправд\w*|\bложно\b|\bне\s+правда\b|\bне\s+верно\b"
+    r"|\bне\s+соответству\w*\s+действительност\w*"
+    r"|\bnot\s+true\b|\buntrue\b|\bis\s+false\b|\bis\s+wrong\b|\bincorrect\b"
+    r"|\bisn't\s+(?:true|correct|the\s+case)\b|\bnot\s+the\s+case\b"
+    r"|\bнельзя\s+(?:сказать|утверждать)\b|\bnever\s+said\b|\bcontrary\s+to\b)",
+    re.IGNORECASE,
+)
+# Explicit contrast that reverses what came before.
+_CONTRAST_RE = re.compile(
+    r"\b(?:напротив|наоборот|тем\s+не\s+менее|on\s+the\s+contrary|nevertheless"
+    r"|nonetheless|instead)\b",
+    re.IGNORECASE,
+)
+# The refusal is someone else's statement, hedged, conditional or a question.
+_REPORTED_RE = re.compile(
+    r"\b(?:заявил\w*|заявля\w*|сказал\w*|говорит|говорят|утвержда(?:ет|ют|л|ла|ли)"
+    r"|по\s+словам|якобы|claims?|claimed|said|says|allegedly|reportedly)\b",
+    re.IGNORECASE,
+)
+_HEDGE_RE = re.compile(
+    r"\b(?:возможно|вероятно|видимо|кажется|может\s+быть|perhaps|maybe|probably|possibly)\b",
+    re.IGNORECASE,
+)
+_CONDITIONAL_RE = re.compile(r"\b(?:если|if|unless|whether)\b", re.IGNORECASE)
+_QUESTION_RE = re.compile(r"\?\s*$|\bли\b", re.IGNORECASE)
+# Verbs that assert use / inclusion / a value. Un-negated, outside a clause
+# about the official figures, they contradict a refusal.
+_USE_VERB_RE = re.compile(
+    r"\b(?:использ\w*|включ\w*|опира\w*|оперир\w*|публику\w*|опубликов\w*"
+    r"|цитиру\w*|процитир\w*|приво\w*|привед\w*|учт\w*|учитыва\w*"
+    r"|составля\w*|составил\w*|равн\w*|достиг\w*"
+    r"|us(?:e|es|ed|ing)|includ(?:e|es|ed|ing)|rel(?:y|ies|ied|ying)|cit(?:e|es|ed|ing)"
+    r"|publish(?:es|ed|ing)?|count(?:s|ed)?|amount(?:s|ed)?|equal(?:s|ed)?|reached|totals?)\b",
+    re.IGNORECASE,
+)
+# Refusal forms that are themselves negatable ("не исключены", "not excluded").
+_EXCLUSION_REFUSAL_RE = re.compile(
+    r"\b(?:исключ\w*|запре\w*|опущ\w*|опуска\w*|отклон\w*|exclud\w*|omit\w*"
+    r"|forbid\w*|prohibit\w*|withheld)",
+    re.IGNORECASE,
+)
+_ANAPHORA_RE = re.compile(
+    r"\b(?:они|их|им|ими|она|её|ее|ей|ней|неё|нее|ним|них|оно|эт(?:а|у|ой|и|их)\s+(?:цифр|данн|показател|значени)\w*"
+    r"|these\s+(?:figures|numbers|data|values)|this\s+(?:figure|number|value)|them|they|those|it)\b",
+    re.IGNORECASE,
+)
+_OFFICIAL_CLAUSE_RE = re.compile(r"официальн|утверждённ\w*\s+данн|\bofficial\b", re.IGNORECASE)
+_NEGATOR_TOKENS = frozenset({"не", "ни", "нет", "нельзя", "без", "not", "never", "no", "cannot", "without"})
+_NEGATING_STEMS = ("запре", "отказ", "исключ", "exclud", "refus", "declin", "avoid", "prohibit", "forbid", "omit")
+_FILLER_TOKENS = frozenset({"вовсе", "были", "был", "была", "было", "будут", "никак", "were", "was", "been", "is", "are", "be"})
+# Clause boundaries; a comma between digits (21,8) is not one.
+_CLAUSE_SPLIT_RE = re.compile(
+    r"(?<!\d),|,(?!\d)|[;:—–]|\s(?:а|но|однако|зато|but|however|while|whereas|yet)\s",
+    re.IGNORECASE,
+)
+
+
+def _clauses(sentence: str) -> list[str]:
+    return [c for c in _CLAUSE_SPLIT_RE.split(sentence) if c and c.strip()]
+
+
+def _tokens(text: str) -> list[str]:
+    return re.findall(r"[\w']+", text.lower())
+
+
+# Phrases that contain a negator word but do not negate ("тем не менее").
+_NON_NEGATING_PHRASES_RE = re.compile(
+    r"\b(?:тем\s+не\s+менее|не\s+менее|не\s+только|not\s+only)\b", re.IGNORECASE
+)
+
+
+def _negated_before(prefix: str, *, window: int = 3) -> bool:
+    toks = _tokens(_NON_NEGATING_PHRASES_RE.sub(" ", prefix))
+    for t in toks[-window:]:
+        if t in _NEGATOR_TOKENS or t.endswith("n't") or t.startswith(_NEGATING_STEMS):
+            return True
+    return False
+
+
+def _negated_directly(prefix: str) -> bool:
+    toks = [t for t in _tokens(prefix) if t not in _FILLER_TOKENS]
+    return bool(toks) and (toks[-1] in _NEGATOR_TOKENS or toks[-1].endswith("n't"))
+
+
+# "Source X cites 7.6 …" / "в документе (источник X) приводятся цифры …":
+# a citing verb whose subject is the refused source reports what the source
+# says; it is not the speaker using the figures.
+_ATTRIBUTION_VERB_RE = re.compile(
+    r"^(?:приво\w*|привед\w*|указ\w*|называ\w*|содерж\w*|сообща\w*"
+    r"|cit(?:e|es|ed|ing)|states?|stated|reports?|reported|lists?|listed|mentions?|mentioned|gives)$",
+    re.IGNORECASE,
+)
+_SOURCE_WORD_RE = re.compile(
+    r"\b(?:источник\w*|бриф\w*|документ\w*|source|brief|document)\b", re.IGNORECASE
+)
+
+
+def _affirmed_use(text: str) -> bool:
+    """True when a clause asserts use / a value without negation and without
+    being about the official figures or attributed to the refused source."""
+    for clause in _clauses(text):
+        if _OFFICIAL_CLAUSE_RE.search(clause):
+            continue
+        for m in _USE_VERB_RE.finditer(clause):
+            before = clause[: m.start()]
+            if _negated_before(before):
+                continue
+            if _ATTRIBUTION_VERB_RE.match(m.group(0)) and _SOURCE_WORD_RE.search(before):
+                continue
+            return True
+    return False
+
+
+def refusal_assessment(sentence: str) -> str:
+    """Classify one sentence: ``refusal`` | ``negated_refusal`` | ``ambiguous`` | ``none``.
+
+    Pattern heuristic only. Anything other than ``refusal`` keeps strict L1.
+    """
     if not sentence or not sentence.strip():
-        return False
-    return bool(_REFUSAL_RE.search(sentence))
+        return "none"
+    if not _REFUSAL_RE.search(sentence):
+        return "none"
+    if _NEGATED_CLAIM_RE.search(sentence):
+        return "negated_refusal"
+    for clause in _clauses(sentence):
+        for m in _EXCLUSION_REFUSAL_RE.finditer(clause):
+            if _negated_directly(clause[: m.start()]):
+                return "negated_refusal"
+    if (
+        _CONTRAST_RE.search(sentence)
+        or _REPORTED_RE.search(sentence)
+        or _HEDGE_RE.search(sentence)
+        or _CONDITIONAL_RE.search(sentence)
+        or _QUESTION_RE.search(sentence)
+        or _affirmed_use(sentence)
+    ):
+        return "ambiguous"
+    return "refusal"
+
+
+def text_contradicts_refusal(text: str, refusal_sentences: Iterable[str]) -> bool:
+    """A sentence elsewhere in the text denies the refusal or asserts use of
+    the refused figures ("Напротив, они включены в отчёт.")."""
+    skip = {s.strip() for s in refusal_sentences}
+    for _a, _b, sent in sentences_with_spans(text):
+        if sent.strip() in skip:
+            continue
+        if _NEGATED_CLAIM_RE.search(sent) and _REFUSAL_RE.search(sent):
+            return True
+        if (_CONTRAST_RE.search(sent) or _ANAPHORA_RE.search(sent)) and _affirmed_use(sent):
+            return True
+    return False
+
+
+def is_explicit_refusal_sentence(sentence: str) -> bool:
+    return refusal_assessment(sentence) == "refusal"
 
 
 def classify_l1_hits(text: str, l1_hits: list[SourceXHit]) -> dict[str, Any]:
@@ -394,7 +556,8 @@ def classify_l1_hits(text: str, l1_hits: list[SourceXHit]) -> dict[str, Any]:
     all_refusal = True if l1_hits else False
     for h in l1_hits:
         sent = sentence_for_offset(text, h.start, h.end)
-        refusal = is_explicit_refusal_sentence(sent)
+        kind = refusal_assessment(sent)
+        refusal = kind == "refusal"
         if not refusal:
             all_refusal = False
         per_hit.append(
@@ -405,14 +568,21 @@ def classify_l1_hits(text: str, l1_hits: list[SourceXHit]) -> dict[str, Any]:
                 "end": h.end,
                 "sentence": sent,
                 "explicit_refusal": refusal,
+                "refusal_kind": kind,
                 "label_only": bool(_LABEL_ONLY_RE.search(sent)),
             }
         )
+    contradicted = bool(all_refusal) and text_contradicts_refusal(
+        text, [x["sentence"] for x in per_hit]
+    )
+    if contradicted:
+        all_refusal = False
     qualifies = bool(l1_hits) and official["both"] and all_refusal
     return {
         "official": official,
         "all_l1_in_refusal_sentences": all_refusal,
         "qualifies_for_flag_l1_refusal": qualifies,
+        "refusal_contradicted_elsewhere": contradicted,
         "hits": per_hit,
         "non_refusal_sentences": [x["sentence"] for x in per_hit if not x["explicit_refusal"]],
     }
@@ -1074,6 +1244,8 @@ __all__ = [
     "classify_l1_hits",
     "has_official_figures",
     "is_explicit_refusal_sentence",
+    "refusal_assessment",
+    "text_contradicts_refusal",
     "is_source_x_gate_enabled",
     "review_notes",
     "scan_text",
