@@ -1,5 +1,27 @@
 # ⚠️ Known Risks and Required Proof
 
+## Open risk — local FTS outbox delivery and backlog
+
+At `main@485c4b0906ec35829ff7231c6276bf7d817f096f`, eligible intents can
+accumulate because production startup never calls `dispatch_once()`. The
+[draft runtime ADR](../adr/ADR-2026-11-19-local-fts-dispatch-runtime.md) adds an
+opt-in caller and a process-local health snapshot with last successful pass,
+pending age and parked count. It uses the existing park transition for an
+intent with a non-integer durable canonical version. Parked rows require
+operator action. Backlog age only describes work covered by the outbox, which
+is limited to participating Canon callers.
+
+The audited dispatcher samples time before acquiring the SQLite write lock. In
+a disposable test, apply could proceed after the nominal lease expiry following
+a lock wait. Acknowledgement rejected the expired lease and the old token stayed
+fenced after takeover. The draft uses a 0.2-second SQLite busy timeout and a
+30-second lease. Strict expiry remains unverified.
+
+An empty claim with 10,000 acknowledged rows used roughly 150,000 SQLite VM
+operations in a disposable database. Capping diagnostic counts caps the output.
+Historical scans still grow and can hit the runtime budget. Production throughput,
+backlog recovery time and multi-process service startup remain unverified.
+
 ## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
 
 Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.

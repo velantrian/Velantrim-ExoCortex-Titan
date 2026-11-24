@@ -24,6 +24,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Optional
 
 from core.recall_policy import filter_facts_for_recall
@@ -123,6 +124,7 @@ from core.memory import (
     transition_esm,
 )
 from core.promotion_gateway import PromotionGateway, PromotionRequest
+from core.projection_dispatch_runtime import ProjectionDispatchRuntime, projection_dispatch_enabled
 from core.mhi import MHICalculator, MHIStatus, check_mhi
 from core.pipeline import run as pipeline_run
 
@@ -502,6 +504,11 @@ async def lifespan(app: FastAPI):
     logger.info("   LLM: %s (%s)", LLM_PROVIDER,
                 ANTHROPIC_MODEL if LLM_PROVIDER == "anthropic" else OPENAI_MODEL)
 
+    dispatch_enabled = projection_dispatch_enabled()
+    migration_path = Path(DB_PATH).resolve()
+    if dispatch_enabled and migration_path != Path(_store.db_path).resolve():
+        raise RuntimeError("Set VELANTRIM_DB_PATH to the Canon database for projection dispatch")
+
     # FIX v8.5.3 (Claude audit + DeepSeek/Qwen consensus): автоприменение
     # миграций 008/009/010 при старте. Раньше миграции существовали как
     # SQL-файлы, но никто их не запускал — на чистой машине таблицы
@@ -510,11 +517,9 @@ async def lifespan(app: FastAPI):
     # Идемпотентно через PRAGMA user_version — на уже мигрированной БД
     # ничего не делает.
     try:
-        from pathlib import Path
-
         from scripts.apply_migrations import apply_migrations
         applied = await asyncio.to_thread(
-            apply_migrations, Path(DB_PATH).resolve()
+            apply_migrations, migration_path
         )
         if applied:
             logger.info("   Migrations: применены %s", ", ".join(applied))
@@ -655,14 +660,23 @@ async def lifespan(app: FastAPI):
         else:
             logger.error("   LLM API: %s ❌ не зарегистрирован", _llm_path)
 
-    logger.info("✅ Velantrim Titan 9.0 готов")
-    yield
-
-    # Shutdown
-    logger.info("🛑 Velantrim Server останавливается...")
-    if _sleep_worker:
-        await _sleep_worker.stop()
-    logger.info("👋 Velantrim Server остановлен")
+    projection_dispatch = None
+    try:
+        if dispatch_enabled:
+            projection_dispatch = ProjectionDispatchRuntime(migration_path)
+            await projection_dispatch.start()
+        app.state.projection_dispatch_runtime = projection_dispatch
+        logger.info("✅ Velantrim Titan 9.0 готов")
+        yield
+    finally:
+        logger.info("🛑 Velantrim Server останавливается...")
+        try:
+            if projection_dispatch is not None:
+                await projection_dispatch.stop()
+        finally:
+            if _sleep_worker:
+                await _sleep_worker.stop()
+        logger.info("👋 Velantrim Server остановлен")
 
 
 # ─── FastAPI App ───────────────────────────────────────────────────────────────
@@ -2403,6 +2417,12 @@ async def health():
             },
         },
     )
+
+
+@app.get("/health/projection", tags=["System"], dependencies=[Depends(require_api_key)])
+async def health_projection():
+    runtime = getattr(app.state, "projection_dispatch_runtime", None)
+    return {"status": "disabled"} if runtime is None else runtime.diagnostics()
 
 
 # ── Query ─────────────────────────────────────────────────────────────────────
