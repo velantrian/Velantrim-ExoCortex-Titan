@@ -122,6 +122,8 @@ def _seed_context(client) -> None:
             "confidence": 0.95,
             "metadata": {
                 "memory_category": "project",
+                # The research profile applies its science domain filter.
+                "domain": "science",
                 "evidence_refs": ["t1-source-a", "t1-source-b"],
             },
         },

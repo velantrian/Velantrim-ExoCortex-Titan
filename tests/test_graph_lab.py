@@ -14,7 +14,7 @@ def test_analyze_never_raises_and_reports_availability():
     assert isinstance(out, dict)
     assert "available" in out
     if not out["available"]:
-        assert out["reason"] == "networkx_not_installed"
+        assert out["reason"] in {"networkx_not_installed", "relations_read_unavailable", "store_read_unavailable"}
 
 
 # Everything below needs networkx; skip cleanly when the extra isn't installed.

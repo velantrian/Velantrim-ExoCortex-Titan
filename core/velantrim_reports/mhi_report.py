@@ -19,7 +19,7 @@
 """
 
 from datetime import UTC, datetime
-from typing import Any
+from core.mhi import MHIReport
 
 from core.file_generators import (
     CalloutBlock,
@@ -33,7 +33,7 @@ from core.file_generators import (
 
 
 def generate_mhi_report(
-    mhi_report: Any,
+    mhi_report: MHIReport,
     theme: str = "velantrim",
     include_history: bool = False,
 ) -> GenerationSpec:
@@ -65,7 +65,7 @@ def generate_mhi_report(
         CalloutBlock(
             callout_type=callout_type,
             title=f"{emoji} {status_str}",
-            text=f"MHI = {mhi_report.score:.3f}",
+            text=f"MHI = {mhi_report.mhi:.3f}",
         ),
         DividerBlock(),
 
@@ -87,9 +87,9 @@ def generate_mhi_report(
                 ],
                 [
                     "Freshness",
-                    f"{getattr(mhi_report, 'freshness', 0):.3f}",
+                    f"{getattr(mhi_report, 'freshness_score', 0):.3f}",
                     "25%",
-                    f"{getattr(mhi_report, 'freshness', 0) * 0.25:.3f}",
+                    f"{getattr(mhi_report, 'freshness_score', 0) * 0.25:.3f}",
                 ],
                 [
                     "Retrieval Precision",
@@ -135,7 +135,7 @@ def generate_mhi_report(
     extras = []
     for attr_name, label in [
         ("total_facts", "Всего фактов в памяти"),
-        ("validated_count", "Validated фактов"),
+        ("validated_facts", "Validated фактов"),
         ("avg_age_days", "Средний возраст фактов (дни)"),
         ("active_contradictions", "Активных противоречий"),
     ]:
@@ -155,7 +155,7 @@ def generate_mhi_report(
         metadata=DocumentMetadata(
             title=f"📊 Memory Health Index — {datetime.now(UTC).strftime('%Y-%m-%d')}",
             author="Velantrim ExoCortex",
-            subject=f"MHI = {mhi_report.score:.3f} ({status_str})",
+            subject=f"MHI = {mhi_report.mhi:.3f} ({status_str})",
             keywords=["mhi", "memory", "health", "audit"],
             created=datetime.now(UTC).isoformat(),
             description="Автоматический отчёт о здоровье памяти Velantrim",

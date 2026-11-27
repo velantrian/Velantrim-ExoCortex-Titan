@@ -53,9 +53,11 @@ class BranchResult:
     key_claims: List[str] = field(default_factory=list)
     duration_ms: float = 0.0
     used_llm: bool = False
+    retrieval_error_code: str | None = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "retrieval_error_code": self.retrieval_error_code,
             "role": self.role.role_id,
             "emoji": self.role.emoji,
             "facts_count": len(self.facts),
@@ -189,6 +191,7 @@ class BranchManager:
         llm_config: Optional[LlmCallConfig] = None,
     ) -> BranchResult:
         """Выполнить одну ветку рассуждения с заданной ролью."""
+        retrieval_error_code = None
         # 1. Retrieval с hints роли
         hints = role.retrieval_hints
         if preloaded_facts is not None:
@@ -203,6 +206,7 @@ class BranchManager:
                     type(exc).__name__,
                 )
                 facts = []
+                retrieval_error_code = "retrieval_unavailable"
 
         # 2. Собрать ответ (через LLM только с caller-owned config, иначе essence)
         response, confidence, used_llm = await self._generate_response(
@@ -222,40 +226,20 @@ class BranchManager:
             confidence=confidence,
             key_claims=key_claims,
             used_llm=used_llm,
+            retrieval_error_code=retrieval_error_code,
         )
 
     def _retrieve_with_hints(
         self, query: str, hints: Dict[str, str]
     ) -> List[Dict[str, Any]]:
-        """Retrieval с подсказками роли."""
-        try:
-            from core.hybrid_retriever import HybridRetriever
-            from core.memory import _GLOBAL_STORE
-
-            k = int(hints.get("retrieval_k", "5"))
-            use_ego = hints.get("use_ego", "false") == "true"
-
-            store = _GLOBAL_STORE
-            if store is None:
-                return []
-
-            from core.recall_policy import filter_facts_for_recall
-            all_facts = store.get_all_facts() or []
-            facts = filter_facts_for_recall(all_facts)
-
-            if not facts:
-                return []
-
-            retriever = HybridRetriever(facts)
-
-            if use_ego:
-                results = retriever.retrieve_5stage(query, top_k=k, use_ego=True)
-            else:
-                results = retriever.retrieve(query, top_k=k)
-
-            return [r.to_dict() for r in results[:k]]
-        except Exception:
-            return []
+        """Use the bounded canonical query policy instead of reading the full store."""
+        from core.pipeline import run
+        k = max(1, min(50, int(hints.get("retrieval_k", "5"))))
+        result = run(query)
+        if result.get("reason_code") == "facts_pack_policy_unavailable":
+            raise RuntimeError("retrieval_policy_unavailable")
+        from core.recall_policy import filter_facts_for_recall
+        return filter_facts_for_recall(list(result.get("facts") or []))[:k]
 
     async def _generate_response(
         self,

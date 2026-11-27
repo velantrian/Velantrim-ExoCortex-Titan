@@ -29,6 +29,11 @@ class ActivatedNode:
 
 
 class GraphStoreBackend(ABC):
+    """Derived graph API. Node upsert replaces its label/properties; edge upsert
+    preserves existing endpoints and creates missing endpoints as Entity nodes.
+    Edges are traversed without direction; repeat insertion keeps the max weight.
+    These operations never change canonical fact confidence or ESM state.
+    """
     """Минимальный контракт для Etir, Causal persist (local), ImmutableCore."""
 
     @abstractmethod

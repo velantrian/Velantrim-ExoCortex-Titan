@@ -19,7 +19,7 @@ services:
         RUNTIME_EXTRAS: ${RUNTIME_EXTRAS:-server}
     container_name: velantrim-titan-dev
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - VELANTRIM_API_KEY=${VELANTRIM_API_KEY:-dev-key-change-me}
       - STORAGE_BACKEND=${STORAGE_BACKEND:-sqlite}

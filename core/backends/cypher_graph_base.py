@@ -121,9 +121,13 @@ class CypherGraphStore(GraphStoreBackend):
     ) -> None:
         if not from_id or not to_id or from_id == to_id:
             return
-        self.upsert_node(from_id)
-        self.upsert_node(to_id)
         with self._lock:
+            for node_id in (from_id, to_id):
+                self._execute(
+                    "MERGE (n:GsNode {node_id: $node_id}) "
+                    "ON CREATE SET n.label = 'Entity', n.props_json = $props_json, n.updated_at = $now",
+                    {"node_id": node_id, "props_json": _encode_json({}), "now": int(time.time())},
+                )
             # MERGE, не CREATE: повторный upsert одного и того же ребра НЕ плодит
             # дубликаты (на архивном Kuzu/LadybugDB это вызывало неограниченный рост
             # рёбер и искажало веса spreading-activation — аудит-фикс). Вес поднимается

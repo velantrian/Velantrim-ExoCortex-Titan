@@ -55,6 +55,8 @@ def infer_domain(
     meta = metadata or {}
     if meta.get("layer") == 99 or meta.get("domain") == "perception":
         return "perception"
+    if meta.get("memory_category") == "personal":
+        return "personal"
     if meta.get("channel") == "telegram":
         return "personal"
     blob = f"{claim} {source}".lower()
