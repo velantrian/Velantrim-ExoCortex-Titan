@@ -3,7 +3,8 @@
 scripts/sync_docs.py — Velantrim ExoCortex documentation sync
 ==============================================================
 
-Автоматически обновляет цифры в README.md, INVARIANTS.md, LIMITATIONS.md
+Локально обновляет размеченные значения в README EN/RU, SYSTEM_OVERVIEW EN/RU,
+INVARIANTS.md, LIMITATIONS.md
 из живых источников:
   - Версия       → pyproject.toml [project].version
   - Число тестов → pytest --collect-only -q
@@ -15,7 +16,7 @@ scripts/sync_docs.py — Velantrim ExoCortex documentation sync
 
 Использование:
     python scripts/sync_docs.py             # обновить in-place
-    python scripts/sync_docs.py --check     # CI: упасть если расхождение
+    python scripts/sync_docs.py --check     # локальная проверка размеченных значений
     python scripts/sync_docs.py --dry-run   # показать diff без записи
 
 Placeholder'ы в документах (комментарии HTML — не показываются при рендере):
@@ -26,9 +27,11 @@ Placeholder'ы в документах (комментарии HTML — не п�
 
 Скрипт работает идемпотентно: повторный запуск без изменений → no-op.
 
-CI integration (.github/workflows/sync-docs.yml):
-    - run: python scripts/sync_docs.py --check
-    Если расхождение — workflow упадёт с понятным сообщением.
+CI: `scripts/check_version_branding.py` проверяет версию и паритет стабильных
+секций публичных EN/RU документов. Полный sync_docs.py не является CI-барьером:
+локальные collection/coverage значения зависят от окружения и не являются
+exact-head CI evidence. Не используйте автоматически вычисленную дату как
+доказательство выпуска.
 
 Author: Velantrim audit team
 Since: v8.4.0
@@ -50,6 +53,9 @@ ROOT = Path(__file__).resolve().parent.parent
 # Файлы которые синхронизируем. Можно расширить.
 TARGETS = [
     ROOT / "README.md",
+    ROOT / "README.ru.md",
+    ROOT / "SYSTEM_OVERVIEW.md",
+    ROOT / "SYSTEM_OVERVIEW.en.md",
     ROOT / "docs" / "INVARIANTS.md",
     ROOT / "docs" / "LIMITATIONS.md",
 ]

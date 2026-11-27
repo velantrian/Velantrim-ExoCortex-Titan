@@ -50,6 +50,17 @@
       "open_prs": "INTENTIONALLY_EXCLUDED_EXCEPT_DATED_NOTE_VERIFY_LIVE"
     }
   },
+  "latest_bounded_reconciliation": {
+    "date": "2026-11-27",
+    "verified_main_sha": "a83ed9ffba151a93732a5eb6e354e42e23e15b30",
+    "scope": "DATED_DOCUMENTATION_AND_SELECTED_CODE_CONTRACT_REVIEW_NOT_FULL_RUNTIME_VERIFICATION",
+    "merged_at_observation": [525, 523, 539],
+    "open_at_observation": [514, 509, 540, 524, 528],
+    "truth_policy_query_adapter": "WIRED_FAIL_CLOSED_FOR_LLM_GENERATION; HARDENED_FLAG_OFF",
+    "provider_exception_redaction": "OPEN_ISSUE_511_PR_514_NOT_MERGED",
+    "details": "docs/ai/CURRENT_STATE.md",
+    "live_state_rule": "Re-query GitHub before acting; prior current_verification is retained as a historical checkpoint."
+  },
   "status_semantics": [
     "PROPOSED != IMPLEMENTED",
     "IMPLEMENTED != TESTED",

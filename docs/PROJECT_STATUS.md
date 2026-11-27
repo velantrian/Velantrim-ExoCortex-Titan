@@ -74,6 +74,11 @@ not transferred. Research/shadow ≠ runtime authority.
    support (A).
 7. **Deployment truth:** server wiring, CI, a feature flag, or a successful bounded pilot
    does not itself establish current deployment/observation or production authorization.
+8. **Concrete residuals (2026-11-27 main checkpoint):** provider exception reflection
+   (#511/#514), loss of distinct FactsPack records (#509), lexical Observer false-clean
+   (#512), notebook GET mutation (#540), MCP resource budgets (#524), and Telegram
+   acknowledgement/idempotency (#528). These are not closed by green CI; verify their
+   live lifecycle and exact code before acting. Source-X remains research/default-off.
 
 ---
 
@@ -104,7 +109,7 @@ not transferred. Research/shadow ≠ runtime authority.
 
 ```text
 core/tool_registry.py        implemented
-core/mcp_transport.py        implemented bounded JSON-RPC transport
+core/mcp_transport.py        implemented JSON-RPC transport; resource limits incomplete
 api/mcp_gateway.py           implemented HTTP/SSE gateway
 server.py registration       wired with require_api_key
 selected deployment enabled  verify configuration/runtime
@@ -114,6 +119,8 @@ production authorized        false unless separately granted
 
 Capability ceilings, auth, idempotency, or route presence are controls/evidence; they are
 not production authorization.
+Request body and process-local session lifetime limits are not fully bounded on the
+2026-11-27 main checkpoint; PR #524 is a candidate, not a merged guarantee.
 
 ---
 

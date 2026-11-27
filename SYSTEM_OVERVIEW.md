@@ -163,6 +163,8 @@ wired
 
 ---
 
+<a id="retrieval"></a>
+
 ## 🔍 Retrieval precision
 
 `HybridRetriever` поддерживает lexical/BM25-style retrieval, dense embeddings, optional
@@ -176,6 +178,8 @@ hybrid capability есть
 ```
 
 ---
+
+<a id="evidence-use"></a>
 
 ## 🧠 Evidence-use precision
 
@@ -191,6 +195,8 @@ R/S/T могут быть наблюдаемы bounded fixtures. Они не у�
 attribution evidence.
 
 ---
+
+<a id="synaptic"></a>
 
 ## 📄 Synaptic profile
 
@@ -209,7 +215,7 @@ authority и не становится answer authority автоматическ
 
 ---
 
-<a id="engineer"></a>
+<a id="llm-cancellation"></a>
 
 ## ⏹️ Отмена LLM-вызова ≠ таймаут
 
@@ -224,6 +230,8 @@ authority и не становится answer authority автоматическ
 
 Без `cancel_event` поведение прежнее. Тесты: `tests/test_llm_router_cancellation.py`.
 Пока не передаётся из API/Telegram и не покрывает STT/TTS.
+
+<a id="engineer"></a>
 
 ## 🧑‍💻 Инженерные границы
 
@@ -254,6 +262,8 @@ model / invariant
 multiprocess/network-filesystem/SLA/production-scale proof.
 
 ---
+
+<a id="atlas-limits"></a>
 
 ## 🚫 Atlas не утверждает
 

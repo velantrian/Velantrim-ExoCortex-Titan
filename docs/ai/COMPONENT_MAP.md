@@ -56,6 +56,8 @@ production authority               false
 user-visible runtime activation    false
 ```
 
+<a id="canon-and-promotion"></a>
+
 ## 3. Canon / Truth Foundation ownership
 
 | Mutation family | Accepted owner | Current status |
@@ -202,6 +204,8 @@ Existing compute-profile and configuration mechanisms remain their own owners. T
 
 These surfaces may later feed a bounded selector only under a separate admitted milestone.
 A preset or resource preference cannot grant network, provider or Canon authority.
+
+<a id="projection-delivery"></a>
 
 ## 8. Projection authority
 

@@ -1,9 +1,11 @@
 # 🚀 Velantrim — Деплой на VPS
 
-> **v8.4.0 критические изменения** перед деплоем:
-> - `VELANTRIM_API_KEY` теперь **обязателен** — сервер не стартует без него
-> - `CORS_ORIGINS` по умолчанию пустой (CORS отключён) — настрой явно
-> - Минимум RAM поднят с 512MB до 1GB (sentence-transformer)
+> **Titan 9.0 — ограничения развёртывания.** Это инструкции для локального
+> тестирования и оценки на VPS, не production GO. Для hardened-профиля
+> используйте [docker-compose.prod.yml](../docker-compose.prod.yml) и
+> [контракт развёртывания](operations/hardened-production-profile.md).
+> Для обычного сервера API-ключ обязателен, кроме явно открытого dev-режима;
+> CORS по умолчанию отключён. Dense-модель — опциональная зависимость.
 
 ## Быстрый старт (5 минут)
 
@@ -17,26 +19,28 @@ python3 --version
 git clone <твой репозиторий> velantrim
 cd velantrim
 
-# Зависимости
-pip install fastapi 'uvicorn[standard]' python-dotenv httpx pydantic
+# Требуется uv; зависимости из канонического uv.lock
+uv sync --frozen --extra server
 
-# Опционально (для dense retrieval — рекомендовано):
-pip install sentence-transformers numpy rank-bm25
+# Опционально для dense retrieval:
+# uv sync --frozen --extra server --extra retrieval --extra embeddings
 
 # Настройка
 cp .env.example .env
 
 # КРИТИЧНО: сгенерируй и впиши API ключ
-python3 -c "import secrets; print('VELANTRIM_API_KEY=' + secrets.token_urlsafe(32))" >> .env
-
-# Заполни остальное (ANTHROPIC_API_KEY, CORS_ORIGINS, etc)
+# Сгенерируй ключ, замени существующее пустое поле (не добавляй дубликат).
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+# Для пассивной памяти установи SLEEP_WORKER_ENABLED=false.
+# LLM_PROVIDER=none не запрещает request-level provider overrides:
+# оставь VELANTRIM_NETWORK_MODE=deny и VELANTRIM_REMOTE_DATA_MODE=never.
 nano .env
 
 # Создай папку для данных
 mkdir -p data
 
 # Запуск
-uvicorn server:app --host 0.0.0.0 --port 8000
+uv run --no-sync uvicorn server:app --host 127.0.0.1 --port 8000
 ```
 
 > ⚠️ Если стартуешь **без** VELANTRIM_API_KEY — сервер упадёт с RuntimeError.
@@ -68,7 +72,7 @@ docker build -t velantrim-titan .
 docker build --build-arg RUNTIME_EXTRAS=server,parsers,retrieval,embeddings -t velantrim-titan:full .
 
 # Запуск
-docker run -d -p 8000:8000 \
+docker run -d -p 127.0.0.1:8000:8000 \
   -e VELANTRIM_API_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))") \
   -v velantrim_data:/app/data \
   velantrim-titan
@@ -76,17 +80,18 @@ docker run -d -p 8000:8000 \
 curl http://localhost:8000/health
 ```
 
-Через docker-compose (см. `docker-compose.yml` / `docker-compose.dev.yml`):
+Исторические compatibility/dev профили (`docker-compose.yml` / `docker-compose.dev.yml`) — только для контролируемой исследовательской среды. Для обычного развёртывания следуйте hardened-профилю из README:
 
 ```bash
-export VELANTRIM_API_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
-docker-compose up -d
+cp .env.prod.example .env.prod
+# Заполни VELANTRIM_API_KEY в .env.prod.
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
 
 Заметки:
 - Образ работает от фиксированного non-root пользователя (uid/gid `10001`), не от root.
 - `RUNTIME_EXTRAS` (build arg) по умолчанию ставит только `server` extra
-  (fastapi/uvicorn/pydantic/httpx/aiosqlite) — `dev` (pytest/ruff/mypy) и
+  (fastapi/uvicorn/pydantic/httpx/aiosqlite/pymorphy3 из uv.lock) — `dev` (pytest/ruff/mypy) и
   `audio` (openai-whisper) в runtime-образ никогда не попадают неявно.
 - `.github/workflows/docker.yml` — CI job, который собирает образ
   `--no-cache`, проверяет `/health`, non-root uid и отсутствие
@@ -94,7 +99,7 @@ docker-compose up -d
 
 ---
 
-## Production деплой
+## VPS с reverse proxy — пример для оценки, не hardened production
 
 ### systemd сервис
 
@@ -109,7 +114,7 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/velantrim
 EnvironmentFile=/home/ubuntu/velantrim/.env
-ExecStart=/usr/local/bin/uvicorn server:app --host 0.0.0.0 --port 8000 --workers 1
+ExecStart=/home/ubuntu/velantrim/.venv/bin/uvicorn server:app --host 127.0.0.1 --port 8000 --workers 1
 Restart=always
 RestartSec=5
 
@@ -160,13 +165,16 @@ sudo certbot --nginx -d your-domain.com
 
 ## API Endpoints
 
-Ниже — выборка основных маршрутов. Полный актуальный перечень и схемы доступны
-в `/openapi.json` и `/docs`, включая `/health/recovery`, `/chat`, `/runtime/status`
-и `/memory/inbox`.
+Ниже — выборка основных маршрутов. OpenAPI и Swagger доступны только при
+`ENABLE_API_DOCS=true` (включать исключительно в контролируемой локальной среде);
+по умолчанию и в hardened-профиле `/openapi.json` и `/docs` отключены.
+`/health/recovery` проверяет состояние восстановления; `/health` сам по себе
+не доказывает готовность всех функций или production authorization.
 
 | Метод | URL | Описание |
 |-------|-----|----------|
-| GET | `/` | Инфо о сервере |
+| GET | `/` | Веб-консоль (redirect при наличии UI) |
+| GET | `/api` | JSON-информация о сервере |
 | GET | `/health` | MHI + статус компонентов |
 | POST | `/query` | Главный запрос (memory + LLM) |
 | GET | `/facts` | Список фактов |
@@ -182,7 +190,7 @@ sudo certbot --nginx -d your-domain.com
 | GET | `/agent/suggest` | Следующий шаг |
 | POST | `/agent/episode` | Обновить из эпизода |
 
-**Документация:** `http://your-server:8000/docs`
+**Документация API:** `http://127.0.0.1:8000/docs` только при `ENABLE_API_DOCS=true`.
 
 ---
 
@@ -243,19 +251,18 @@ curl https://your-domain.com/health
 | Python | 3.11 | 3.11+ |
 | OS | Ubuntu 22.04 | Ubuntu 24.04 |
 
-> **v8.4.0:** минимум RAM поднят с 512MB до 1GB. sentence-transformer
-> `all-MiniLM-L6-v2` требует ~400MB в памяти после загрузки + ~200MB на
-> embeddings базы из 1000 фактов + system overhead. На 512MB будет OOM
-> при первом же HybridRetriever init.
+> Это ориентиры старого VPS-профиля, а не измеренные минимумы Titan 9.0.
+> Dense retrieval, парсеры, размер базы и выбранный профиль меняют требования;
+> проверяйте память и дисковые лимиты на собственном тестовом развёртывании.
 
 ---
 
 ## Известные ограничения
 
-- **SQLite** — только 1 worker (не multi-process). Sprint 2c → PostgreSQL/Neo4j
+- **SQLite** — поддерживаемый профиль сервера: один worker на локальной файловой системе. Есть ограниченные межпроцессные тесты, но нет общей production-scale гарантии. PostgreSQL/Neo4j не следует считать заменой Canon без отдельного допуска.
 - **Sync pipeline** — каждый запрос в отдельном thread. Sprint 2c → async
-- **LLM** — каждый запрос делает отдельный HTTP вызов к API (нет батчинга)
-- **HybridRetriever** — первый запрос ~1-2с на загрузку модели (singleton после v8.4.0)
+- **LLM** — только при подходящей конфигурации запроса и разрешённой egress policy; запрос памяти не обязан вызывать модель.
+- **HybridRetriever** — dense-сигнал опционален; время загрузки зависит от модели, оборудования и кэша.
 - **FileIngester** — PDF/DOCX требуют дополнительных зависимостей
 - **TruthGate contradiction-stage** — отключена по умолчанию (false positives на naive).
   Включается через `TruthGate(store, contradiction_detector="naive")` — только dev.

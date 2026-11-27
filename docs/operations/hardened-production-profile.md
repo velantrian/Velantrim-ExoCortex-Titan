@@ -85,7 +85,7 @@ profile no longer enables them and no longer claims them.
 
 | Variable | Now | Why |
 |---|---|---|
-| `ENABLE_TRUTH_POLICY` | **0** | Fail-open. `server.py` wraps the `truth_policy.decide` call in `except Exception` that logs at DEBUG and leaves `truth_rejects_answer=False`, then generates the answer anyway. The gate opens precisely when the policy breaks, and at `LOG_LEVEL=INFO` the failure is silent. Re-enable only after a reviewed runtime fix makes that path reject. |
+| `ENABLE_TRUTH_POLICY` | **0** | The historical /query fail-open adapter gap is repaired in main; enabled evaluation/configuration failure now blocks LLM generation. The pin remains OFF: changing it needs separate activation review and bounded runtime evidence. No universal semantic-answer guarantee. |
 | `ENABLE_RESPONSE_AUDIT` | **0** | Unreachable. The only non-test caller of `core.response_audit.audit_response_generated` is the `RESPONSE_GENERATED` handler in `core/l45_bridge.py`, and `register_l45_handlers()` returns early unless the event bus is on. With `ENABLE_EVENT_BUS=0` no audit record is ever written. Reaching it by enabling the event bus would switch on unrelated background dispatch, which this profile refuses — so auditing stays off and unclaimed. |
 | `ENABLE_IMMUTABLE_CORE` | 1, **claim corrected** | Still enables the manual graph-snapshot API, which is harmless and useful. But `ImmutableCoreScheduler` has no non-test caller, so nothing schedules SHA-256 snapshots. The profile no longer advertises automatic snapshotting. |
 
@@ -204,13 +204,14 @@ runtime defect that configuration cannot fix, and each needs its own reviewed PR
    caller-declared and unverifiable (bounded to two metadata-only capabilities,
    see §6), and application-layer enforcement cannot bind anything outside this
    process (see §6, "What the application layer still cannot do").
-2. **TruthPolicy is fail-open (P1, runtime).** `server.py` catches any exception
-   from `truth_policy.decide`, logs at DEBUG, leaves `truth_rejects_answer=False`
-   and proceeds to answer generation — so the verdict permits an answer exactly
-   when the policy is unavailable, silently at `LOG_LEVEL=INFO`. This profile
-   sets `ENABLE_TRUTH_POLICY=0` as the safe configuration-only response. The
-   runtime path must be made to reject or fail the request before the flag can be
-   turned back on.
+2. **TruthPolicy /query runtime failure boundary — repaired, activation deferred.**
+   On the 2026-11-27 main checkpoint, `server.py` calls
+   `evaluate_configured_truth_policy_runtime`; enabled policy/config resolution
+   failure produces a content-free reject and blocks LLM generation. The adapter
+   and wiring tests are in main. This is not a claim about all answer routes or
+   semantic support. The hardened profile continues to set
+   `ENABLE_TRUTH_POLICY=0`; separate activation authorization and runtime evidence
+   remain required.
 3. **Answer-integrity checks do not cover a provider answer (P1, runtime).**
    `apply_response_guardian` and `check_response_faithfulness` run inside
    `core/pipeline.py`. `server.py` generates `llm_answer` afterwards and returns

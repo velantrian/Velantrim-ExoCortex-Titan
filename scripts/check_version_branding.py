@@ -30,6 +30,7 @@ CANONICAL_VERSION = "9.0.0"
 CHECKED_FILES = [
     "README.md",
     "README.en.md",
+    "README.ru.md",
     "pyproject.toml",
     "server.py",
     "core/metrics.py",
@@ -113,8 +114,45 @@ def check_branding() -> list[str]:
     return errors
 
 
+
+# Stable, language-neutral section anchors are the explicit parity contract.
+# This intentionally does not claim semantic equivalence of translated prose.
+DOC_SECTION_PAIRS = (
+    (("README.md", "README.ru.md"),
+     ("titan-in-60-seconds", "start-here", "system-map", "status-legend", "engineering-foundation", "synaptic-exocortex", "limitations", "quick-start", "documentation", "language-strategy", "version")),
+    (("SYSTEM_OVERVIEW.en.md", "SYSTEM_OVERVIEW.md"),
+     ("plain", "evidence", "map", "flows", "retrieval", "evidence-use", "synaptic", "llm-cancellation", "engineer", "assurance", "atlas-limits")),
+)
+
+
+def check_public_docs(root: Path = ROOT) -> list[str]:
+    """Check exact version markers, required files and ordered section anchors."""
+    errors: list[str] = []
+    expected = f"v{CANONICAL_VERSION}"
+    for files, anchors in DOC_SECTION_PAIRS:
+        for rel in files:
+            path = root / rel
+            if not path.is_file():
+                errors.append(f"{rel}: required public document missing")
+                continue
+            text = path.read_text(encoding="utf-8")
+            markers = re.findall(
+                r"<!-- SYNC:VERSION -->(.*?)<!-- /SYNC:VERSION -->", text
+            )
+            if markers != [expected]:
+                errors.append(f"{rel}: expected one version marker {expected}")
+            actual = tuple(re.findall(
+                r'^<a id="([^"]+)"></a>\n\n## ', text, re.MULTILINE
+            ))
+            if actual != anchors:
+                errors.append(f"{rel}: stable section anchors missing or out of order")
+            if len(re.findall(r"^## ", text, re.MULTILINE)) != len(anchors):
+                errors.append(f"{rel}: unpaired level-two section")
+    return errors
+
+
 def main() -> int:
-    errors = check_canonical_values() + check_branding()
+    errors = check_canonical_values() + check_branding() + check_public_docs()
     if errors:
         print("Version/branding guard FAILED:\n")
         for e in errors:

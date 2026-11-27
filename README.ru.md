@@ -8,7 +8,7 @@
 >
 > **Что существует:** исследовательский прототип памяти и оркестрации с явными границами доверия и записи, аудитом и опциональными интеграциями. **Не** сервис с разрешением на production-эксплуатацию и не гарантия правильных ответов.
 >
-> **Далее:** [объяснение за 60 секунд](#-titan-за-60-секунд) · [быстрый старт](#быстрый-старт) · [статус проекта](docs/PROJECT_STATUS.md)
+> **Далее:** [объяснение за 60 секунд](#titan-in-60-seconds) · [быстрый старт](#quick-start) · [статус проекта](docs/PROJECT_STATUS.md)
 
 > **Local-first проверяемая память для AI-агентов:** явные эпистемические
 > состояния, контролируемые write/admission boundaries, provenance, TRACE, retrieval,
@@ -30,6 +30,8 @@
 > и observed runtime evidence.
 
 ---
+
+<a id="titan-in-60-seconds"></a>
 
 ## 👋 Titan за 60 секунд
 
@@ -65,13 +67,15 @@ Titan — local-first runtime памяти и оркестрации с явно
 
 ---
 
+<a id="start-here"></a>
+
 ## 🧭 Что открыть первым
 
 | Вы… | Начать здесь |
 |---|---|
 | 🤖 AI coding agent / automated reviewer | [`AGENTS.md`](AGENTS.md) → [`docs/ai/README.md`](docs/ai/README.md) |
 | 👤 Впервые смотрите Titan | [Карта системы](SYSTEM_OVERVIEW.md#plain) |
-| 🛠️ Поднимаете свой инстанс | [Быстрый старт](#быстрый-старт) + [Security](SECURITY.md) |
+| 🛠️ Поднимаете свой инстанс | [Быстрый старт](#quick-start) + [Security](SECURITY.md) |
 | 🧑‍💻 Меняете код | [`AGENTS.md`](AGENTS.md) + [инженерные границы](SYSTEM_OVERVIEW.md#engineer) |
 | 🔍 Аудируете claims | [`docs/REVIEWER_README.md`](docs/REVIEWER_README.md) |
 | 💼 Оцениваете зрелость | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) |
@@ -79,6 +83,8 @@ Titan — local-first runtime памяти и оркестрации с явно
 | 🔬 Читаете будущую работу | [`research/`](research/) + [`research/ARCHITECTURE_AXES.md`](research/ARCHITECTURE_AXES.md) |
 
 ---
+
+<a id="system-map"></a>
 
 ## 🗺️ Система с высоты
 
@@ -119,6 +125,8 @@ attribution evidence.
 
 ---
 
+<a id="status-legend"></a>
+
 ## 🧾 Легенда статусов
 
 | Метка | Значение |
@@ -139,6 +147,8 @@ implemented ≠ tested ≠ wired ≠ enabled ≠ observed
 `/titan/status`; не выводите live activation только из этого README.
 
 ---
+
+<a id="engineering-foundation"></a>
 
 ## ✅ Текущий engineering foundation
 
@@ -181,6 +191,8 @@ implemented + wired
 
 ---
 
+<a id="synaptic-exocortex"></a>
+
 ## 📄 Synaptic Exo-Cortex
 
 Текущий bounded status:
@@ -220,6 +232,8 @@ Canon/ESM и не получает active answer authority лишь потому
 План: [`docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md`](docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md)
 
 ---
+
+<a id="limitations"></a>
 
 ## 🛡️ Что Titan не обещает
 
@@ -268,24 +282,29 @@ http://127.0.0.1:8000/health
 
 ### Локальная разработка
 
+Требуется Python 3.11+ и `uv`. Полный CI использует Python 3.11 и lock-профиль; см. [dependency lock](docs/operations/python-dependency-lock.md).
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate                  # Windows: .venv\Scripts\activate
-python -m pip install -e ".[server,dev]"
+uv sync --frozen --extra server --extra dev
 cp .env.example .env
-# VELANTRIM_API_KEY=...
-uvicorn server:app --port 8000 --reload
+# Задайте VELANTRIM_API_KEY; SLEEP_WORKER_ENABLED=false для пассивной памяти.
+uv run --no-sync uvicorn server:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Базовая verification:
+Воспроизводимая проверка с тем же набором extras, что и в основном CI (Python 3.11):
 
 ```bash
-ruff check core/ --output-format=github
-mypy core/ --show-error-codes
-python -m pytest tests/ -v --tb=short
+uv lock --check
+uv sync --frozen --extra server --extra dev --extra parsers --extra retrieval --extra embeddings --extra graph-lab
+uv run --no-sync ruff check core/ --output-format=github
+uv run --no-sync mypy core/ --show-error-codes
+# Используйте только тестовый ключ и временные БД, не рабочие данные.
+uv run --no-sync python -m pytest tests/ -v --tb=short --timeout=300 -x
 ```
 
 ---
+
+<a id="documentation"></a>
 
 ## 📚 Документация
 
@@ -301,6 +320,8 @@ python -m pytest tests/ -v --tb=short
 | [`research/`](research/) 🔬 | proposed/research work; не runtime authority |
 
 ---
+
+<a id="language-strategy"></a>
 
 ## 🌐 Языковая стратегия
 
@@ -320,6 +341,8 @@ SYSTEM_OVERVIEW.md      Русский atlas (паритет секций)
 ```
 
 ---
+
+<a id="version"></a>
 
 ## 🧭 Версия
 

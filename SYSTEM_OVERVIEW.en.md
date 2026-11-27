@@ -158,6 +158,8 @@ observed are separate runtime claims. Production authorization remains separate 
 
 ---
 
+<a id="retrieval"></a>
+
 ## 🔍 Retrieval precision
 
 `HybridRetriever` supports lexical/BM25-style retrieval, dense embeddings, optional graph
@@ -171,6 +173,8 @@ hybrid capability exists
 ```
 
 ---
+
+<a id="evidence-use"></a>
 
 ## 🧠 Evidence-use precision
 
@@ -189,6 +193,8 @@ separate attribution evidence.
 
 ---
 
+<a id="synaptic"></a>
+
 ## 📄 Synaptic profile
 
 ```text
@@ -206,7 +212,7 @@ Canon/ESM write authority or answer authority.
 
 ---
 
-<a id="engineer"></a>
+<a id="llm-cancellation"></a>
 
 ## ⏹️ LLM call cancel ≠ transport timeout
 
@@ -226,6 +232,8 @@ adapter-pre-start refusal; the enums are intentionally not unified.
 
 Without `cancel_event`, behavior is unchanged. Tests: `tests/test_llm_router_cancellation.py`.
 Not yet plumbed from API/Telegram and does not cover STT/TTS.
+
+<a id="engineer"></a>
 
 ## 🧑‍💻 Engineering boundaries
 
@@ -258,6 +266,8 @@ Existing SQLite/concurrency evidence is bounded characterization, not unlimited
 multiprocess, network-filesystem, SLA, or production-scale proof.
 
 ---
+
+<a id="atlas-limits"></a>
 
 ## 🚫 This Atlas does not claim
 

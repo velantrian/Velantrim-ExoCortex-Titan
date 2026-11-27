@@ -1,6 +1,31 @@
 # 📍 Current System State
 
-## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
+## 2026-11-27 — Bounded documentation reconciliation against main
+
+Verified GitHub main: `a83ed9ffba151a93732a5eb6e354e42e23e15b30`. Dated implementation evidence, not a live deployment claim.
+
+| PR | Observed state | Evidence |
+|---|---|---|
+| #525 | MERGED | `0287d5facfe14f2eee0f886287a703642989627b` |
+| #523 | MERGED | `2bafa921f1534e86a013e0594771f4125aba9306` |
+| #539 | MERGED | `a83ed9ffba151a93732a5eb6e354e42e23e15b30` |
+| #540 | OPEN / non-draft at observation; not in main | `433f33da513526d913989990462227dc737e5658`; aggregate status success at observation |
+
+Hosted main [CI](https://github.com/velantrian/Velantrim-ExoCortex-Titan/actions/runs/45976430146):
+5112 passed, 18 skipped, 1 xfailed; core coverage 79% (reported rounded).
+This is historical exact-main evidence, not the documentation PR's test result.
+
+Main includes BM25 nonpositive-score matching, canonical-admission repairs and
+owner-goal proposal separation. It does not include #540 read-only notebook GET,
+#514 provider-error redaction, #509 distinct-record preservation, #524 MCP
+resource limits or #528 Telegram acknowledgement. The accepted-goal decision
+mechanism is not exposed as an owner-facing API/CLI; no new activation authorized.
+
+The entries below are dated implementation/branch history. Read live GitHub
+before selecting, approving or merging any PR. The Continuity governance SHA
+roles in `docs/state/project_state.json` are unchanged.
+
+## 2026-11-16 — Runtime data preservation and interface contracts (historical branch report; #525 merged 2026-11-27)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
 
@@ -11,7 +36,7 @@ Focused runtime regressions: **95 passed**; earlier component suite: **104 passe
 Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
 
 
-## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
+## 2026-11-16 — Canonical admission and evidence integrity (historical branch report; #523 merged 2026-11-27)
 
 Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
 
@@ -145,6 +170,8 @@ PH-2A is **MERGED / IMPLEMENTED / EVIDENCE-BACKED** as squash-merge `c7a34cce4c3
 PH-2A adds restore-to-fresh for the hardened production data directory, a self-cleaning TestClient tar-parity drill, and remediations R455-01..05: Actions named-volume `docker-drill`, fail-loud verify without `velantrim.db`, root-bounded tar extract, `PRAGMA user_version` equality, and post-restore `/app/data` mount identity (`ORIGINAL_STATE_ISOLATED`). Named-volume recovery is **OBSERVED** (`ORIGINAL_STATE_ISOLATED=PASS`; Actions `docker-build-and-verify` run `34339429696` plus post-merge Docker SUCCESS on `c7a34cce…`). **PRODUCTION NOT AUTHORIZED. OPERATOR GO NOT ESTABLISHED.** Does not enable TruthPolicy or claim live/hot DR / RTO/RPO.
 
 Historical note: final pre-merge aggregate at `77ccbfc6…` was cancelled; post-merge aggregate at `c7a34cce…` = SUCCESS.
+
+<a id="identity-layer"></a>
 
 ## 2026-09-06 — Orientation lifecycle reconciliation
 
