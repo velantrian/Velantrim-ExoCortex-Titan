@@ -107,8 +107,9 @@ def _block(tmp_path: Path, name: str) -> str | None:
 
 
 def _revision(tmp_path: Path, project_id: str = "velantrim-core") -> int:
+    """Revision as the worker reads it: a legacy row without the field is revision 0 (dataclass default)."""
     row = _row(tmp_path, project_id)
-    return row["goal_revision"] if row else 0
+    return row.get("goal_revision", 0) if row else 0
 
 
 def set_goal(tmp_path: Path, goal: str, *, project_id: str = "velantrim-core",
@@ -569,12 +570,13 @@ async def test_legacy_goal_is_marked_unconfirmed_and_its_data_is_preserved(tmp_p
     assert "НЕ подтверждена" in context and "Цель из старого фонового процесса" in context
     # the projection shows the same unconfirmed label as system_context(), never an accepted goal
     assert _block(tmp_path, GOAL_BLOCK_NAME) == UNCONFIRMED_LABEL
-    assert (await w.get_notebook())["goal_status"] == "UNCONFIRMED_LEGACY"
-
-    stored = _row(tmp_path, "velantrim-core")                      # background analysis kept the data
-    assert stored["current_goal"] == "Цель из старого фонового процесса"
-    assert stored["extracted_intents"][0]["confidence"] == 0.85
-    assert stored["goal_revision"] == 0 and stored["goal_decided_by"] == ""
+    snapshot = await w.get_notebook()
+    assert snapshot["goal_status"] == "UNCONFIRMED_LEGACY"
+    assert snapshot["current_goal"] == "Цель из старого фонового процесса"
+    assert snapshot["goal_revision"] == 0
+    # GET is a read: the legacy row stays byte-for-byte as it was (no upgrade, no version bump).
+    # Data preservation under background analysis: test_background_analysis_never_confirms_a_legacy_goal.
+    assert _raw(tmp_path, "velantrim-core") == original
 
     await w.accept_goal(set_goal(tmp_path, "Цель из старого фонового процесса", decided_by="owner:review"))
     confirmed = _row(tmp_path, "velantrim-core")
@@ -975,6 +977,63 @@ async def test_reading_notebook_does_not_persist_model_proposals(tmp_path):
     assert len(seen_prompts) == 2
     assert all("ГЛАВНАЯ цель" not in prompt for prompt in seen_prompts)
     assert _raw(tmp_path, "velantrim-core") is None
+    await w.stop()
+
+
+def _dump_all(tmp_path: Path) -> tuple[list[str], list[str]]:
+    """Every table of both SQLite files (notebook and core blocks), as SQL text."""
+    out = []
+    for path in _paths(tmp_path):
+        conn = sqlite3.connect(path)
+        try:
+            out.append(list(conn.iterdump()))
+        finally:
+            conn.close()
+    return out[0], out[1]
+
+
+async def test_repeated_get_writes_nothing_to_any_sqlite_table(tmp_path):
+    """Not only the notebook row: no table in either database changes on GET (blocks, archive, rows)."""
+    async def llm(prompt: str):
+        return "шаг"
+
+    w = _worker(tmp_path, llm_fn=llm)
+    await w.start()
+    await w.accept_goal(set_goal(tmp_path, "Цель до чтения"))
+    await w.update_from_episode(EPISODE)
+    await _drain(w)
+    before = _dump_all(tmp_path)
+    version = w.notebook.version
+    for _ in range(3):
+        await w.get_notebook()
+    assert _dump_all(tmp_path) == before
+    assert w.notebook.version == version
+    await w.stop()
+
+
+async def test_same_worker_goal_change_during_get_does_not_mix_snapshot(tmp_path):
+    """One server process: the owner's decision is handled by the SAME worker while its GET awaits the model.
+
+    The response fields and the suggested step must come from one snapshot taken before the await."""
+    holder = {}
+    seen = []
+
+    async def llm(prompt: str):
+        seen.append(prompt)
+        await holder["w"].accept_goal(set_goal(tmp_path, "Новая цель во время GET"))
+        return "Шаг по снимку"
+
+    w = _worker(tmp_path, llm_fn=llm)
+    holder["w"] = w
+    await w.start()
+    await w.accept_goal(set_goal(tmp_path, "Цель на момент снимка"))
+    snapshot = await w.get_notebook()
+    assert "Цель на момент снимка" in seen[0]
+    assert snapshot["current_goal"] == "Цель на момент снимка"
+    assert snapshot["goal_revision"] == 1
+    assert snapshot["suggested_next_step"] == "Шаг по снимку"
+    assert w.notebook.current_goal == "Новая цель во время GET"           # the decision itself was applied
+    assert _row(tmp_path, "velantrim-core")["goal_revision"] == 2
     await w.stop()
 
 
