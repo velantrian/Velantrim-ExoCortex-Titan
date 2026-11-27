@@ -107,8 +107,9 @@ def _block(tmp_path: Path, name: str) -> str | None:
 
 
 def _revision(tmp_path: Path, project_id: str = "velantrim-core") -> int:
+    """Revision as the worker reads it: a legacy row without the field is revision 0 (dataclass default)."""
     row = _row(tmp_path, project_id)
-    return row["goal_revision"] if row else 0
+    return row.get("goal_revision", 0) if row else 0
 
 
 def set_goal(tmp_path: Path, goal: str, *, project_id: str = "velantrim-core",
@@ -569,12 +570,13 @@ async def test_legacy_goal_is_marked_unconfirmed_and_its_data_is_preserved(tmp_p
     assert "НЕ подтверждена" in context and "Цель из старого фонового процесса" in context
     # the projection shows the same unconfirmed label as system_context(), never an accepted goal
     assert _block(tmp_path, GOAL_BLOCK_NAME) == UNCONFIRMED_LABEL
-    assert (await w.get_notebook())["goal_status"] == "UNCONFIRMED_LEGACY"
-
-    stored = _row(tmp_path, "velantrim-core")                      # background analysis kept the data
-    assert stored["current_goal"] == "Цель из старого фонового процесса"
-    assert stored["extracted_intents"][0]["confidence"] == 0.85
-    assert stored["goal_revision"] == 0 and stored["goal_decided_by"] == ""
+    snapshot = await w.get_notebook()
+    assert snapshot["goal_status"] == "UNCONFIRMED_LEGACY"
+    assert snapshot["current_goal"] == "Цель из старого фонового процесса"
+    assert snapshot["goal_revision"] == 0
+    # GET is a read: the legacy row stays byte-for-byte as it was (no upgrade, no version bump).
+    # Data preservation under background analysis: test_background_analysis_never_confirms_a_legacy_goal.
+    assert _raw(tmp_path, "velantrim-core") == original
 
     await w.accept_goal(set_goal(tmp_path, "Цель из старого фонового процесса", decided_by="owner:review"))
     confirmed = _row(tmp_path, "velantrim-core")
@@ -952,3 +954,141 @@ async def test_key_revoked_between_write_retries_is_honoured(tmp_path, monkeypat
     assert attempts["n"] == 1
     assert _raw(tmp_path, "velantrim-core") == before
     await w.stop()
+
+
+# ── GET /agent/notebook is a read path, not an implicit background write ──────
+
+async def test_reading_notebook_does_not_persist_model_proposals(tmp_path):
+    seen_prompts = []
+
+    async def llm(prompt: str):
+        seen_prompts.append(prompt)
+        return "Следующий шаг без записи."
+
+    w = _worker(tmp_path, llm_fn=llm)
+    await w.start()
+    assert _raw(tmp_path, "velantrim-core") is None
+    for _ in range(2):
+        data = await w.get_notebook()
+        assert data["current_goal"] == ""
+        assert data["proposed_goal"] == ""
+        assert data["version"] == 1
+        assert data["suggested_next_step"] == "Следующий шаг без записи."
+    assert len(seen_prompts) == 2
+    assert all("ГЛАВНАЯ цель" not in prompt for prompt in seen_prompts)
+    assert _raw(tmp_path, "velantrim-core") is None
+    await w.stop()
+
+
+def _dump_all(tmp_path: Path) -> tuple[list[str], list[str]]:
+    """Every table of both SQLite files (notebook and core blocks), as SQL text."""
+    out = []
+    for path in _paths(tmp_path):
+        conn = sqlite3.connect(path)
+        try:
+            out.append(list(conn.iterdump()))
+        finally:
+            conn.close()
+    return out[0], out[1]
+
+
+async def test_repeated_get_writes_nothing_to_any_sqlite_table(tmp_path):
+    """Not only the notebook row: no table in either database changes on GET (blocks, archive, rows)."""
+    async def llm(prompt: str):
+        return "шаг"
+
+    w = _worker(tmp_path, llm_fn=llm)
+    await w.start()
+    await w.accept_goal(set_goal(tmp_path, "Цель до чтения"))
+    await w.update_from_episode(EPISODE)
+    await _drain(w)
+    before = _dump_all(tmp_path)
+    version = w.notebook.version
+    for _ in range(3):
+        await w.get_notebook()
+    assert _dump_all(tmp_path) == before
+    assert w.notebook.version == version
+    await w.stop()
+
+
+async def test_same_worker_goal_change_during_get_does_not_mix_snapshot(tmp_path):
+    """One server process: the owner's decision is handled by the SAME worker while its GET awaits the model.
+
+    The response fields and the suggested step must come from one snapshot taken before the await."""
+    holder = {}
+    seen = []
+
+    async def llm(prompt: str):
+        seen.append(prompt)
+        await holder["w"].accept_goal(set_goal(tmp_path, "Новая цель во время GET"))
+        return "Шаг по снимку"
+
+    w = _worker(tmp_path, llm_fn=llm)
+    holder["w"] = w
+    await w.start()
+    await w.accept_goal(set_goal(tmp_path, "Цель на момент снимка"))
+    snapshot = await w.get_notebook()
+    assert "Цель на момент снимка" in seen[0]
+    assert snapshot["current_goal"] == "Цель на момент снимка"
+    assert snapshot["goal_revision"] == 1
+    assert snapshot["suggested_next_step"] == "Шаг по снимку"
+    assert w.notebook.current_goal == "Новая цель во время GET"           # the decision itself was applied
+    assert _row(tmp_path, "velantrim-core")["goal_revision"] == 2
+    await w.stop()
+
+
+async def test_reading_notebook_uses_fresh_cross_process_goal_without_writing(tmp_path):
+    reader = _worker(tmp_path, llm_fn=None)
+    owner = _worker(tmp_path, llm_fn=None)
+    await reader.start()
+    await owner.start()
+    await owner.accept_goal(set_goal(tmp_path, "Подтверждённая свежая цель"))
+    before = _raw(tmp_path, "velantrim-core")
+    snapshot = await reader.get_notebook()
+    assert snapshot["current_goal"] == "Подтверждённая свежая цель"
+    assert snapshot["goal_status"] == "OWNER_CONFIRMED"
+    assert snapshot["goal_revision"] == 1
+    assert _raw(tmp_path, "velantrim-core") == before
+    await reader.stop()
+    await owner.stop()
+
+
+async def test_notebook_get_succeeds_when_mutations_are_blocked(tmp_path, monkeypatch):
+    w = _worker(tmp_path)
+    await w.start()
+    await w.accept_goal(set_goal(tmp_path, "Сохраняемая цель"))
+    before = _raw(tmp_path, "velantrim-core")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("GET attempted a user-state mutation")
+
+    monkeypatch.setattr(gate(), "ensure_user_mutations_allowed", forbidden)
+    snapshot = await w.get_notebook()
+    assert snapshot["current_goal"] == "Сохраняемая цель"
+    assert _raw(tmp_path, "velantrim-core") == before
+    await w.stop()
+
+
+async def test_notebook_get_and_step_use_one_snapshot_during_concurrent_goal_change(tmp_path):
+    owner = _worker(tmp_path)
+    await owner.start()
+    await owner.accept_goal(set_goal(tmp_path, "Цель до начала GET"))
+    seen = []
+
+    async def llm(prompt: str):
+        seen.append(prompt)
+        await owner.accept_goal(set_goal(tmp_path, "Новая цель после снимка"))
+        return "Предложение по прежней цели"
+
+    reader = _worker(tmp_path, llm_fn=llm)
+    await reader.start()
+    snapshot = await reader.get_notebook()
+    assert snapshot["current_goal"] == "Цель до начала GET"
+    assert "Цель до начала GET" in seen[0]
+    assert "Новая цель после снимка" not in seen[0]
+    assert snapshot["suggested_next_step"] == "Предложение по прежней цели"
+    assert _row(tmp_path, "velantrim-core")["current_goal"] == "Новая цель после снимка"
+    second = await reader.get_notebook()
+    assert second["current_goal"] == "Новая цель после снимка"
+    await reader.stop()
+    await owner.stop()

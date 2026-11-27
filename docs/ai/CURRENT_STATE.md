@@ -1,5 +1,11 @@
 # 📍 Current System State
 
+## 2026-11-27 — SleepTimeWorker goal authority merged; read-only GET patch remains draft
+
+Live `main@a83ed9ffba151a93732a5eb6e354e42e23e15b30` includes PR #539 goal-proposal/owner-decision guard and PR #523 admission remediation. The merge's main CI, CodeQL and Docker checks reported success. This is implementation and CI evidence, not proof of runtime activation or owner-facing acceptance wiring.
+
+Separate issue observed in main: `GET /agent/notebook` calls `think()` and writes model-derived analysis when queried. The read-only GET change in this draft is **NOT IN MAIN**: it loads a saved snapshot, computes only an advisory step, and does not commit. Focused SQLite and concurrent-decision regressions were added; fresh exact-head CI is required. No runtime route or permission activation is added.
+
 ## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.

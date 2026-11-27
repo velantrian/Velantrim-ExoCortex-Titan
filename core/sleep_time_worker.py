@@ -1056,39 +1056,45 @@ class SleepTimeWorker:
 
     # ── suggest_next_step (ключевая новинка из RNE) ───────────────────────────
 
-    async def suggest_next_step(self) -> str:
+    async def suggest_next_step(self, notebook: ResearchNotebook | None = None) -> str:
         """
-        Предлагает один конкретный следующий шаг проекта.
+        Предложить один следующий шаг (1-2 предложения) без сохранения результата.
 
-        Ключевая новинка из RNE документов Grok:
-        «система ведёт себя как живой соавтор — не только фиксирует,
-        но и предлагает что делать дальше».
-
-        Возвращает строку 1-2 предложения, конкретную и полезную.
+        При чтении блокнота использовать тот же снимок, что и в полях ответа:
+        пока модель отвечает, другой процесс может уже изменить принятую цель.
         """
-        if not self._notebook:
+        nb = notebook if notebook is not None else self._notebook
+        if nb is None:
             return "Блокнот не инициализирован. Запусти start() сначала."
 
         prompt = (
-            f"Текущая цель проекта: {self._notebook.current_goal}\n"
-            f"Накоплено фактов: {len(self._notebook.known_facts)}\n"
-            f"Открытых пробелов: {len(self._notebook.open_gaps)}\n"
-            f"Последние вопросы: {self._notebook.key_questions[-3:]}\n\n"
+            f"Текущая цель проекта: {nb.current_goal}\n"
+            f"Накоплено фактов: {len(nb.known_facts)}\n"
+            f"Открытых пробелов: {len(nb.open_gaps)}\n"
+            f"Последние вопросы: {nb.key_questions[-3:]}\n\n"
             f"Предложи ОДИН конкретный следующий шаг (1-2 предложения).\n"
-            f"Стиль: {self._notebook.user_style}"
+            f"Стиль: {nb.user_style}"
         )
-        result = await self._llm_complete(prompt)
+        result = await self._llm_complete(prompt, notebook=nb)
         logger.debug("SleepTimeWorker.suggest_next_step: %s", result[:80])
         return result
 
     async def get_notebook(self) -> dict[str, Any]:
         """
-        Возвращает актуальный блокнот + автоматическое предложение следующего шага.
-        Всегда вызывает think() перед показом — блокнот актуален.
+        Прочитать свежий блокнот и предложить шаг БЕЗ записи состояния.
+
+        GET /agent/notebook не вызывает think(): анализ и сохранение предложений
+        выполняются только отдельным фоновым циклом. Снимок для ответа и шага
+        фиксируется до LLM-вызова; состояние другого процесса видно при новом GET.
         """
-        await self.think()
-        next_step = await self.suggest_next_step()
-        nb = self._notebook
+        async with self._lock:
+            if self._notebook is None:
+                nb = None
+            else:
+                fresh = self._nb_store.load(self.project_id) or self._notebook
+                self._notebook = fresh
+                nb = ResearchNotebook.from_json(fresh.to_json())
+        next_step = await self.suggest_next_step(nb)
 
         return {
             "project_id":        nb.project_id if nb else "?",
@@ -1199,7 +1205,8 @@ class SleepTimeWorker:
         return await self._llm_complete(prompt)
 
     async def _llm_complete(
-        self, prompt: str, is_json: bool = False
+        self, prompt: str, is_json: bool = False,
+        *, notebook: ResearchNotebook | None = None,
     ) -> Any:
         """
         Вызов LLM. MVP: mock-заглушка.
@@ -1233,8 +1240,8 @@ class SleepTimeWorker:
         # ошибочно матчится на "цель" и возвращает пустой current_goal.
         if is_json:
             return []
+        nb = notebook if notebook is not None else self._notebook
         if "следующий шаг" in prompt.lower() or "next_step" in prompt.lower():
-            nb = self._notebook
             if nb and nb.open_gaps:
                 return (
                     f"Закрыть открытый пробел: «{nb.open_gaps[0].get('gap', '?')[:100]}». "
@@ -1246,7 +1253,7 @@ class SleepTimeWorker:
                 )
             return "Продолжать накапливать контекст по текущей цели проекта."
         if "цель" in prompt.lower() or "goal" in prompt.lower():
-            return self._notebook.current_goal if self._notebook else ""
+            return nb.current_goal if nb else ""
         return "[LLM mock — Sprint 2c: подключить реальный клиент]"
 
     # ── Публичные свойства ────────────────────────────────────────────────────

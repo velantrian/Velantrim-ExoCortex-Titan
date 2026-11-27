@@ -1,6 +1,14 @@
 # ⚠️ Known Risks and Required Proof
 
-## 2026-11-27 — SleepTimeWorker no longer changes the accepted goal on its own (draft branch, stacked on #523, not merged)
+## 2026-11-27 — Draft: notebook GET no longer runs background analysis (not in main)
+
+Base: `main@a83ed9ffba151a93732a5eb6e354e42e23e15b30`. In that main commit, `GET /agent/notebook` called `SleepTimeWorker.get_notebook()`, which ran `think()` and could persist new model proposals, gaps, synthesis and a version increment on an ordinary read. This violates the read/write separation even though accepted goals still require a signed decision.
+
+The draft changes `get_notebook()` to read the latest persisted notebook without saving, returning a coherent frozen snapshot and generating only a non-durable suggested next step from that snapshot. `think()` remains callable on the separate background path; `POST /agent/episode` and signed `accept_goal` retain their existing write behavior. If a separate process accepts a goal during the GET's LLM call, that GET consistently presents its earlier snapshot; the following GET reads the new state. Regression tests inspect SQLite before/after, reject implicit analysis on GET, test blocked writes and concurrent owner decisions.
+
+Status: **DRAFT PATCH — NOT MERGED, NOT ACTIVATED**; fresh exact-head CI is required. This is a read-side containment, not proof of end-to-end authorization or Canon semantics. Documentation impact: `GITHUB_AND_NOTION`.
+
+## 2026-11-27 — SleepTimeWorker accepted-goal protection (merged in main via #539)
 
 `SleepTimeWorker.think()` used to ask the LLM for the "main goal", overwrite `ResearchNotebook.current_goal`, rewrite the `CoreMemoryBlocks` slot `current_goals` and save to SQLite without an owner decision. A background result could also overwrite a fresher state written by another process.
 
@@ -21,7 +29,7 @@ Remaining, not closed here:
 - **Legacy goals still reach the model as context** (labelled unconfirmed) and `_reassess_goal` / `suggest_next_step` still see `current_goal` text, confirmed or not.
 - **Other shared blocks** (`user_profile`, `agent_persona`) remain global across projects; only the goal slot is scoped. Raw `CoreMemoryBlocks.get` / `blocks` are unfiltered; `system_context()` is the isolated reader.
 - **The server still uses one worker, one `project_id` and no session key**; `/agent/episode` calls from different sessions share one notebook.
-- **`SLEEP_WORKER_ENABLED` defaults are unchanged**; `GET /agent/notebook` still runs `think()` (persisting analysis fields, not the goal).
+- **`SLEEP_WORKER_ENABLED` defaults are unchanged**; in main as of `a83ed9f`, `GET /agent/notebook` still runs `think()` (persisting analysis fields, not the goal). The draft read-only GET patch above targets that separate issue.
 - **SQLite on one host only.** Cross-process behaviour is tested on a local filesystem; network filesystems and write contention beyond the default 5 s busy timeout are not covered.
 - **Separate pre-existing defect, not changed:** `_detect_gaps` counts a question as answered by its own source episode, so "question without an answer" gaps are rarely produced.
 
