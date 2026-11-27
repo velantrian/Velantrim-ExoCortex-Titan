@@ -150,6 +150,10 @@ class AppSettings:
     enable_memory_budget: bool = False
     enable_circuit_breaker: bool = False
     enable_response_guardian: bool = False
+    # RESEARCH (not Canon): two-level source-X post-filter.
+    # Figures 21,8 / 7,6 / 53,5% hard-block; name-only is FLAG_REVIEW.
+    # Default off. Not silently truncating: a block withholds the answer.
+    enable_source_x_gate: bool = False
     enable_actr_activation: bool = False
     memory_budget_fact_hard: int = 100_000
     memory_budget_fact_gc: int = 85_000
@@ -255,6 +259,7 @@ class AppSettings:
         a.enable_memory_budget = flag("ENABLE_MEMORY_BUDGET")
         a.enable_circuit_breaker = flag("ENABLE_CIRCUIT_BREAKER")
         a.enable_response_guardian = flag("ENABLE_RESPONSE_GUARDIAN")
+        a.enable_source_x_gate = flag("ENABLE_SOURCE_X_GATE")
         a.enable_actr_activation = flag("ENABLE_ACTR_ACTIVATION")
         a.memory_budget_fact_hard = _int("MEMORY_BUDGET_FACT_HARD", 100_000)
         a.memory_budget_fact_gc = _int("MEMORY_BUDGET_FACT_GC", 85_000)
