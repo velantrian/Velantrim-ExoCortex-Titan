@@ -9,7 +9,7 @@
 Обёртка над living_context.py. Файл не перемещён.
 
 Использование:
-    from core.essence import build_situation
+    from core.essence_facade import build_situation
     model = build_situation(facts, query, user_id="default")
     print(model.actors)     # ["user", "Velantrim", "external_ai"]
     print(model.tension)    # "storage is not understanding"

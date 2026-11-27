@@ -1,5 +1,51 @@
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
+## 2026-11-17 — Final wired runtime full suite
+
+Code `2282007`: **4988 passed, 17 skipped, 1 xfailed**, Python 3.12, 261.32 seconds. This supersedes the earlier failing multilingual follow-up run and earlier green counts. Personal-domain, research-profile and irrelevant-query controls all remain asserted. Clean mypy core passed without incremental cache; actual startup/server integration and profile defaults were verified. Main is unchanged; fresh exact-head CI remains required.
+
+## 2026-11-17 — Preserve bounded retrieval and scope through multilingual wiring
+
+While verifying role scope through real startup wiring, the multilingual wrapper still called get_all_facts and dropped domain. It now reuses the existing bounded candidate owner, forwards domain, honors use_ngram, filters recall eligibility and returns an explicit lexical retrieval score. **69 focused tests passed**, including wrapper lifecycle, pipeline, restricted recall and runtime regressions; clean mypy core passed (356 files). The earlier full count predates this follow-up; a fresh complete suite is running.
+
+## 2026-11-17 — Runtime clean type-check follow-up
+
+Remote mypy exposed a nullable GraphLab path that the incremental local cache had missed. The path now has an explicit final nonempty default. Clean mypy is rerun with `--no-incremental`; focused graph/bridge regressions are rerun. This does not change a configured nonempty store path. Fresh remote exact-head checks remain required.
+
+## 2026-11-16 — Runtime final full regression
+
+On code commit `c3c2b90`: **4984 passed, 17 skipped, 1 xfailed**, Python 3.12, 225.33 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90`. The earlier coverage-instrumented run measured 78.74% but had two test failures; those were fixed and the full uninstrumented suite rerun green. Fresh remote coverage/CI is required at the published head. No production activation or merge.
+
+## 2026-11-16 — Runtime regression follow-up
+
+Initial full run: 4981 passed, 2 failed, 17 skipped, 1 xfailed; core coverage 78.74%. Failures exposed old test assumptions (source-spelling archive guard and locally constructed branch retriever). Replaced them with executed nested-archive rejection and restricted-result exclusion. Branch consumers additionally reuse recall policy on bounded results; nested child errors/warnings reach the enclosing archive report. Follow-up: **74 passed**, including the independent NetworkX cycle oracle. A fresh full run is required; the initial run is not reported green.
+
+## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
+
+Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused runtime regressions: **95 passed**; earlier component suite: **104 passed, 5 skipped**. Additional bounded-cycle oracle test and full suite/coverage are running. Ruff core/changed server/tests and mypy core passed. Existing optional parser skips remain explicit. Operational limits: EventBus is volatile process-local delivery, not a durable outbox; mutable injected objects remain caller-owned; GraphLab truncation/budget exhaustion is not proof of no path/cycle.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
+## 2026-11-16 — PR #523 final local regression evidence
+
+Commit `a4c03a27d6b692754c84e6d75c8b1a121acf6459`: **4969 passed, 17 skipped, 1 xfailed**, core coverage **78.49%** (blocking threshold 74%), Python 3.12, 393.51 seconds. Command: `python -m pytest tests/ -q -o addopts='' --tb=short --timeout=90 --cov=core --cov-report=term --cov-fail-under=74`. This fallback environment has BM25/numpy and no sentence-transformers; embedding-enabled remote CI remains separate. Optional parser skips and the existing expected failure are preserved. No provider request or production activation.
+
+## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
+
+Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused regression suite: **110 passed** (new regressions plus pipeline, model-free core and consolidation contracts). Earlier full suite with admission/BM25: **4962 passed, 17 skipped, 1 xfailed**; that earlier run does not cover the later FactsPack/consolidation/mode changes. Ruff core and changed tests, mypy (356 core sources), branding, hygiene and project-state checks passed.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 - Base: `main@1a7141c6d3a6363ceda856f855d1e5e92ae1924e`. Branch `feat/evidence-labels-20261109`, draft PR, not merged. Independent of PR #509 and PR #514 (disjoint hunks in `server.py`); all three add an entry at the top of this file and of `KNOWN_RISKS.md`, so the later merges need a trivial merge of those headers.
 - Change: new `core/evidence_labels.py` (labels, per-request map, neutralization, existence check); `server.py` adds the opt-in request field `evidence_labels`, the labelled prompt builder argument, and the response fields `evidence_labels` and `reference_check`; the map is saved in the request's trace metadata.
 - Contract: default behaviour and the PR #453 prompt contract are unchanged. Full text in `KNOWN_RISKS.md`.

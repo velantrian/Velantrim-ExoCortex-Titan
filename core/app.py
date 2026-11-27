@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, TypeVar
 
@@ -53,6 +52,22 @@ class VelantrimApp:
     _components: Dict[str, Any] = field(default_factory=dict)
     _lazy: Dict[str, _Lazy] = field(default_factory=dict)
 
+    _owned_connections: list[Any] = field(default_factory=list, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._init_components()
+
+    def close(self) -> None:
+        """Close only connections created by this app, never injected stores."""
+        for conn in self._owned_connections:
+            conn.close()
+        self._owned_connections.clear()
+
+    def _causal_graph_for_store(self):
+        graph = _create_causal_graph(self.store)
+        self._owned_connections.append(graph._conn)
+        return graph
+
     # ── Хранилище (L0–L3) ─────────────────────────────────────────────────
 
     @property
@@ -62,7 +77,11 @@ class VelantrimApp:
 
     @store.setter
     def store(self, value):            # тесты могут подменить
-        self._components["store"] = value
+        self.register_instance("store", value)
+        self._lazy["hybrid_retriever"] = _Lazy(lambda: _create_hybrid_retriever(self.store))
+        self._lazy["consolidation_engine"] = _Lazy(lambda: _create_consolidation(self.store))
+        if self.config.app.enable_causal_graph:
+            self._lazy["causal_graph"] = _Lazy(self._causal_graph_for_store)
 
     # ── Retrieve ──────────────────────────────────────────────────────────
 
@@ -127,6 +146,7 @@ class VelantrimApp:
 
     def reconfigure(self, config: FeatureConfig) -> None:
         """Горячая перезагрузка конфигурации."""
+        self.close()
         self.config = config
         self._components.clear()
         self._lazy.clear()
@@ -158,7 +178,7 @@ class VelantrimApp:
 
         # Causal graph
         if cfg.enable_causal_graph:
-            self._lazy["causal_graph"] = _Lazy(lambda: _create_causal_graph())
+            self._lazy["causal_graph"] = _Lazy(self._causal_graph_for_store)
 
         # Graph store backend (для Etir, ImmutableCore)
         self._lazy["graph_store_backend"] = _Lazy(lambda: _create_graph_backend())
@@ -219,27 +239,17 @@ def _create_event_bus():
     return EventBus()
 
 
-def _create_causal_graph():
-    from core.causal_graph import CausalGraph
-    # FIX P1 (v8.7 audit): CausalGraph требует db_conn, а не db_path.
-    # Передаём соединение от store (SQLiteGraphStore открывает своё).
-    from core.memory import _GLOBAL_STORE
-    if _GLOBAL_STORE is not None:
-        # Pre-existing bug: SQLiteGraphStore has no _conn() — the real method is
-        # _db(), a @contextmanager whose connection is closed on exit (unsuitable for
-        # handing to a long-lived CausalGraph anyway). This raises AttributeError
-        # whenever ENABLE_CAUSAL_GRAPH triggers this factory; not caught here. Not
-        # fixed here (wiring a real persistent connection needs a store-level API
-        # change, out of scope for a typing-only pass) — tracked as a follow-up bug;
-        # flagged prominently since, unlike the other pre-existing bridge bugs, this
-        # one is NOT silently swallowed.
-        conn = _GLOBAL_STORE._conn()  # type: ignore[attr-defined]
-        return CausalGraph(conn)
-    # Fallback: прямой connect к БД (для тестов без store)
+def _create_causal_graph(store):
+    """Bind the graph to the selected store; the app owns the new connection."""
     import sqlite3
-    conn = sqlite3.connect(os.getenv("VELANTRIM_DB_PATH", "./data/velantrim.db"))
-    conn.execute("PRAGMA foreign_keys = ON")
-    return CausalGraph(conn)
+    from core.causal_graph import CausalGraph
+    conn = sqlite3.connect(store.db_path, check_same_thread=False)
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        return CausalGraph(conn)
+    except BaseException:
+        conn.close()
+        raise
 
 
 def _create_graph_backend():
@@ -283,7 +293,6 @@ def get_app() -> VelantrimApp:
     global _app_singleton
     if _app_singleton is None:
         _app_singleton = VelantrimApp()
-        _app_singleton._init_components()
         logger.info("VelantrimApp создан (singleton)")
     return _app_singleton
 
@@ -291,6 +300,8 @@ def get_app() -> VelantrimApp:
 def reset_app() -> None:
     """Сбросить синглтон (только для тестов)."""
     global _app_singleton
+    if _app_singleton is not None:
+        _app_singleton.close()
     _app_singleton = None
 
 

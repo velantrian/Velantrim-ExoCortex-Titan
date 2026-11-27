@@ -54,9 +54,37 @@ class EventBus:
     overflow_count: int = 0
     published_total: int = 0
     consumed_total: int = 0
+    _consumer: asyncio.Task | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._not_full = asyncio.Condition(self._lock)
+
+    async def start(self) -> None:
+        """Start the one process-local consumer; lifespan owns shutdown."""
+        if self._consumer is None or self._consumer.done():
+            self._consumer = asyncio.create_task(self._consume())
+
+    async def stop(self) -> None:
+        """Cancel delivery and await it; queued work remains available on restart."""
+        task, self._consumer = self._consumer, None
+        if task is not None:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    async def _consume(self) -> None:
+        while True:
+            async with self._not_full:  # type: ignore[union-attr]
+                while not self._queue:
+                    await self._not_full.wait()  # type: ignore[union-attr]
+                event = self._queue.popleft()
+                self._not_full.notify_all()  # type: ignore[union-attr]
+            try:
+                await asyncio.wait_for(self._dispatch(event), DEFAULT_PUBLISH_TIMEOUT)
+            except asyncio.CancelledError:
+                await self.handle_failure(event, RuntimeError("delivery_cancelled"))
+                raise
+            except Exception as exc:
+                await self.handle_failure(event, exc)
 
     def subscribe(self, event_type: str, handler: EventHandler) -> None:
         self._handlers.setdefault(event_type, []).append(handler)
@@ -71,12 +99,17 @@ class EventBus:
         if not event.get("type"):
             return False
 
+        if not dispatch and (self._consumer is None or self._consumer.done()):
+            # No lifecycle owner: deliver synchronously instead of silently parking.
+            logger.warning("EventBus background consumer unavailable; dispatching inline")
+            dispatch = True
+
         enriched = dict(event)
         enriched.setdefault("_enqueued_at", datetime.now(UTC).isoformat())
 
         async with self._not_full:  # type: ignore[union-attr]
             start = datetime.now(UTC)
-            while len(self._queue) >= self.max_queue_size:
+            while not dispatch and len(self._queue) >= self.max_queue_size:
                 elapsed = (datetime.now(UTC) - start).total_seconds()
                 if elapsed > timeout_sec:
                     self.overflow_count += 1
@@ -115,14 +148,14 @@ class EventBus:
     async def handle_failure(self, event: dict[str, Any], error: Exception) -> None:
         failed = dict(event)
         failed["_failed_at"] = datetime.now(UTC).isoformat()
-        failed["_error"] = str(error)
+        failed["_error"] = type(error).__name__
         failed["_retry_count"] = int(failed.get("_retry_count", 0)) + 1
         if failed["_retry_count"] <= 3:
             async with self._lock:
                 if len(self._dlq) >= self.dlq_max_size:
                     self._dlq.popleft()
                 self._dlq.append(failed)
-        logger.error("EventBus: %s — %s", event.get("type"), error)
+        logger.error("EventBus: %s — %s", event.get("type"), type(error).__name__)
 
     def get_metrics(self) -> QueueMetrics:
         return QueueMetrics(

@@ -3,8 +3,8 @@ utils/text_utils.py — Единый модуль токенизации (v8.5.1
 =========================================================
 FIX (Gemini): раньше было 3 разных реализации tokenize():
   - core/pipeline.py       — em-dash, пунктуация
-  - core/living_context.py — pymorphy2 лемматизация
-  - core/affordance_linker.py — regex + pymorphy2
+  - core/living_context.py — pymorphy3 лемматизация
+  - core/affordance_linker.py — regex + pymorphy3
 
 Теперь один источник истины. Все модули импортируют отсюда.
 
@@ -15,8 +15,8 @@ FIX (Gemini): раньше было 3 разных реализации tokenize
     # → ["дерево", "растёт", "лесу"]
 
     lemmas = tokenize_lemmatized("Птицы вьют гнёзда")
-    # → ["птица", "вить", "гнездо"]  (если pymorphy2 установлен)
-    # → ["птицы", "вьют", "гнёзда"]  (fallback без pymorphy2)
+    # → ["птица", "вить", "гнездо"]  (если pymorphy3 установлен)
+    # → ["птицы", "вьют", "гнёзда"]  (fallback без pymorphy3)
 """
 from __future__ import annotations
 
@@ -33,12 +33,12 @@ _morph_available: bool | None = None
 
 
 def _get_morph():
-    """Lazy load pymorphy2 — не тормозим старт если не нужен."""
+    """Lazy load pymorphy3 — не тормозим старт если не нужен."""
     global _morph, _morph_available
     if _morph_available is None:
         try:
-            import pymorphy2
-            _morph = pymorphy2.MorphAnalyzer()
+            import pymorphy3
+            _morph = pymorphy3.MorphAnalyzer()
             _morph_available = True
         except ImportError:
             _morph_available = False
@@ -72,7 +72,7 @@ def tokenize(text: str, min_len: int = _MIN_TOKEN_LEN) -> list[str]:
 
 def tokenize_lemmatized(text: str, min_len: int = _MIN_TOKEN_LEN) -> list[str]:
     """
-    Токенизация с лемматизацией (если pymorphy2 установлен).
+    Токенизация с лемматизацией (если pymorphy3 установлен).
     Иначе — fallback на обычную токенизацию.
 
     Args:
@@ -82,11 +82,11 @@ def tokenize_lemmatized(text: str, min_len: int = _MIN_TOKEN_LEN) -> list[str]:
     Returns:
         список лемм (нормальных форм) или обычных токенов
 
-    Пример с pymorphy2:
+    Пример с pymorphy3:
         tokenize_lemmatized("Птицы вьют гнёзда")
         → ["птица", "вить", "гнездо"]
 
-    Пример без pymorphy2:
+    Пример без pymorphy3:
         tokenize_lemmatized("Птицы вьют гнёзда")
         → ["птицы", "вьют", "гнёзда"]
     """
@@ -106,5 +106,5 @@ def tokenize_lemmatized(text: str, min_len: int = _MIN_TOKEN_LEN) -> list[str]:
 
 
 def is_morphology_available() -> bool:
-    """Проверяет доступность pymorphy2."""
+    """Проверяет доступность pymorphy3."""
     return _get_morph() is not None

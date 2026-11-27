@@ -24,7 +24,7 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 from core.recall_policy import filter_facts_for_recall
 from dotenv import load_dotenv
@@ -92,7 +92,8 @@ if not API_KEY:
     )
 
 # ─── Импорт Velantrim ─────────────────────────────────────────────────────────
-from core import __version__ as VELANTRIM_VERSION
+from core import __version__
+VELANTRIM_VERSION = __version__
 from core.policy_kernel import validate_egress_env
 
 # Egress-политика проверяется на старте, до обслуживания запросов.
@@ -607,6 +608,9 @@ async def lifespan(app: FastAPI):
         if cfg.enable_l6_welfare:
             logger.info("   L6 Welfare: ✅")
         if cfg.enable_event_bus:
+            from core.event_bus import get_event_bus
+            if cfg.enable_event_bus_background:
+                await get_event_bus().start()
             logger.info("   EventBus: ✅")
         if cfg.enable_cognitive_store:
             logger.info("   CognitiveFactStore: ✅")
@@ -657,6 +661,9 @@ async def lifespan(app: FastAPI):
 
     logger.info("✅ Velantrim Titan 9.0 готов")
     yield
+
+    from core.event_bus import get_event_bus
+    await get_event_bus().stop()
 
     # Shutdown
     logger.info("🛑 Velantrim Server останавливается...")
@@ -733,11 +740,11 @@ app.add_middleware(
     # (CORS spec: allow_credentials=True + allow_origins=["*"] → отклоняется браузерами)
     allow_credentials=CORS_ALLOW_CREDENTIALS,
     # AUDIT-FIX (security tail): explicit method/header allowlists instead of "*".
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     # SECURITY/CORRECTNESS (confirmed issue #5): MCP gateway clients send
     # X-MCP-Capability and read back Mcp-Session-Id — without these, a
     # browser-based MCP client is blocked by CORS from doing either.
-    allow_headers=["X-Api-Key", "Content-Type", "Authorization", "X-MCP-Capability", "Mcp-Session-Id"],
+    allow_headers=["X-Api-Key", "Content-Type", "Authorization", "X-MCP-Capability", "Mcp-Session-Id", "Idempotency-Key"],
     expose_headers=["Mcp-Session-Id"],
 )
 
@@ -2245,16 +2252,35 @@ async def query_with_roles(req: _QueryRolesRequest):
     Если не указан — система выберет автоматически по запросу.
     """
     role_list = [r.strip().upper() for r in (req.roles or "").split(",") if r.strip()] or None
+    from core.domain_tags import normalize_domain
+    from core.truth_gate import CognitiveMode
+    resolved_domain = None
+    if req.domain is not None:
+        resolved_domain = normalize_domain(req.domain)
+        if resolved_domain == "general" and req.domain.strip().lower() not in {"", "general"}:
+            raise HTTPException(status_code=400, detail="Unknown domain")
+    try:
+        resolved_mode = CognitiveMode((req.cognitive_mode or "BALANCED").upper()).value
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Unknown cognitive mode") from exc
+    scoped_facts = None
+    if req.domain is not None or req.cognitive_mode is not None:
+        from core.pipeline import run as run_policy_query
+        scoped = await asyncio.to_thread(
+            run_policy_query, req.query, cognitive_mode=resolved_mode, domain=resolved_domain,
+        )
+        scoped_facts = scoped.get("facts") or []
     try:
         import time
         from core.branch_manager import get_branch_manager
         bm = get_branch_manager()
         t0 = time.perf_counter()
         synthesis = await bm.reason(
-    query=req.query,
-    roles=role_list,
-    llm_config=_env_llm_config(),
-)
+            query=req.query,
+            roles=role_list,
+            facts=scoped_facts,
+            llm_config=_env_llm_config(),
+        )
         latency = (time.perf_counter() - t0) * 1000.0
 
         all_facts: list[dict] = []
@@ -2289,8 +2315,8 @@ async def query_with_roles(req: _QueryRolesRequest):
                 "all_branches_used_llm": synthesis.all_branches_used_llm,
             },
             effective_params={
-                "cognitive_mode": req.cognitive_mode,
-                "domain": req.domain,
+                "cognitive_mode": resolved_mode,
+                "domain": resolved_domain,
                 "roles": roles_used,
             },
         )
@@ -3678,7 +3704,10 @@ async def cognitive_runtime_status_endpoint():
 
 
 @app.get("/graph/analyze", tags=["GraphLab"], dependencies=[Depends(require_api_key)])
-async def graph_analyze_endpoint(top_k: int = 20, max_nodes: int = 2000):
+async def graph_analyze_endpoint(
+    top_k: Annotated[int, Query(ge=1, le=100)] = 20,
+    max_nodes: Annotated[int, Query(ge=1, le=2000)] = 2000,
+):
     """NetworkX Graph-Analysis Lab — read-only structural analytics over the causal
     graph (centrality / communities / cycles / pagerank). Passive: never writes.
     Gated by ENABLE_GRAPH_LAB; requires the optional `networkx` extra."""
@@ -3702,10 +3731,10 @@ async def graph_path_endpoint(
     from_id: str = Query(..., alias="from"),
     to: str | None = None,
     mode: str = "shortest",
-    cutoff: int = 5,
-    limit: int = 20,
+    cutoff: Annotated[int, Query(ge=1, le=10)] = 5,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
     direction: str = "to",
-    max_nodes: int = 2000,
+    max_nodes: Annotated[int, Query(ge=1, le=2000)] = 2000,
 ):
     """Causal "why-path" over the graph (read-only):
       mode=shortest → shortest from→to ; mode=all → simple paths from→to ;

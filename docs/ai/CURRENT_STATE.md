@@ -1,5 +1,27 @@
 # 📍 Current System State
 
+## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
+
+Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused runtime regressions: **95 passed**; earlier component suite: **104 passed, 5 skipped**. Additional bounded-cycle oracle test and full suite/coverage are running. Ruff core/changed server/tests and mypy core passed. Existing optional parser skips remain explicit. Operational limits: EventBus is volatile process-local delivery, not a durable outbox; mutable injected objects remain caller-owned; GraphLab truncation/budget exhaustion is not proof of no path/cycle.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
+## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
+
+Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
+
+Base: `main@485c4b0906ec35829ff7231c6276bf7d817f096f`. Implemented and tested in this branch; not merged, deployment not enabled or observed. No production authorization or new canonical owner is introduced.
+
+Focused regression suite: **110 passed** (new regressions plus pipeline, model-free core and consolidation contracts). Earlier full suite with admission/BM25: **4962 passed, 17 skipped, 1 xfailed**; that earlier run does not cover the later FactsPack/consolidation/mode changes. Ruff core and changed tests, mypy (356 core sources), branding, hygiene and project-state checks passed.
+
+Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
+
+
 **Verified:** 2026-11-06 (MCP serialization status rechecked against merged PRs and main code)  
 **Historical repository head at the 2026-11-04 reconciliation:** live `main` was `fd7793a43967fdbc3640443a9e9a57589efd925b` (#498) before the contradict fail-closed repair; this is not the 2026-11-06 head  
 **Phase 3A implementation checkpoint:** `main@4932727c348ec967564d8babf80e25ca82bce8be` · parent `86ed963d2d31b9da174c88f0cf05cc27faced2b9` · signature `VERIFIED / valid`  
