@@ -328,8 +328,8 @@ class TestThink:
         await worker.stop()
 
     @pytest.mark.asyncio
-    async def test_think_with_llm_fn_updates_goal(self, worker_with_llm):
-        """think() с llm_fn обновляет цель если LLM предлагает новую."""
+    async def test_think_with_llm_fn_proposes_goal_without_accepting_it(self, worker_with_llm):
+        """think() с llm_fn только ПРЕДЛАГАЕТ цель; принятая цель остаётся за владельцем."""
         await worker_with_llm.start()
         # Добавим контекст для think()
         await worker_with_llm.update_from_episode({
@@ -337,8 +337,8 @@ class TestThink:
             "source": "user",
         })
         await worker_with_llm.think()
-        # Цель должна быть установлена
-        assert worker_with_llm.notebook.current_goal != ""
+        assert worker_with_llm.notebook.proposed_goal != ""
+        assert worker_with_llm.notebook.current_goal == ""
         await worker_with_llm.stop()
 
     @pytest.mark.asyncio

@@ -1,3 +1,7 @@
+## 2026-11-27 — SleepTimeWorker goal authority (draft, stacked on #523)
+
+Base: head of PR #523 (`fix/audit-c07-admission-20261116`, which already contains #525). PR #530 only touches `_llm_complete` and signatures in this file, so there is no overlap with `think()`. Changed `core/sleep_time_worker.py`: proposal vs accepted goal (`proposed_goal`, `goal_revision`, `goal_decided_by`, `accept_goal`), single compare-and-swap write path, `mutation_gate` on notebook and core-block writes, per-project goal slot. One existing test that asserted the LLM sets `current_goal` now asserts it only proposes. New `tests/test_sleep_worker_goal_authority.py` (15 cases, SQLite content). Local full suite on Python 3.13 with the CI environment variables: 4997 passed, 18 skipped, 1 xfailed; ruff and mypy clean for the changed file. Hosted checks are resolved separately on the PR. Documentation impact: `GITHUB_ONLY`; Notion synchronization: `NOT_REQUIRED`. Keep Draft; no merge, no runtime activation, no change to Canon or authority.
+
 ## 2026-11-09 — Opt-in per-request evidence labels ([ev_N]) in the `/query` prompt
 
 ## 2026-11-17 — Final wired runtime full suite

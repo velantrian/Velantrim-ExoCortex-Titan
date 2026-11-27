@@ -1,5 +1,19 @@
 # ⚠️ Known Risks and Required Proof
 
+## 2026-11-27 — SleepTimeWorker no longer changes the accepted goal on its own (draft branch, stacked on #523, not merged)
+
+`SleepTimeWorker.think()` used to ask the LLM for the "main goal", overwrite `ResearchNotebook.current_goal`, rewrite the `CoreMemoryBlocks` slot `current_goals` and save to SQLite without an owner decision. A background result could also overwrite a fresher state written by another process.
+
+Now: the model's output is stored only as `proposed_goal`; `current_goal` changes only through `SleepTimeWorker.accept_goal(..., decided_by=...)`. Every notebook write (`update_from_episode`, `think`, `accept_goal`) reads the stored state and writes by version comparison (`NotebookStore.compare_and_save`), so a stale snapshot cannot replace a newer row; a proposal made against an older `goal_revision` is dropped. `NotebookStore.save`, `compare_and_save` and `CoreMemoryBlocks.update` pass through `mutation_gate`. The goal slot of a non-default project is `current_goals:<project_id>`, so project B cannot overwrite project A. Analysis, gap detection, synthesis and `suggest_next_step` are unchanged. Covered by `tests/test_sleep_worker_goal_authority.py`, which reads the SQLite rows.
+
+Remaining, not closed here:
+- **No owner-facing entry point.** `accept_goal` has no HTTP/MCP route; until one is added by the owner, proposals only accumulate and goals are set from code. Deliberately not added in this bounded fix.
+- **`decided_by` is a caller-supplied label**, not an authenticated principal. The only authority check is `mutation_gate` (SAFE_MODE / policy snapshot); a revoked principal is not modelled separately.
+- **Legacy rows are indistinguishable.** A notebook whose `current_goal` was set earlier by the old background overwrite is read as accepted (`goal_revision=0`, empty `goal_decided_by`). The owner should re-confirm it with `accept_goal`.
+- **The server still uses one worker, one `project_id` and no session key.** `/agent/episode` from different sessions shares one notebook; per-session isolation is not introduced.
+- **`SLEEP_WORKER_ENABLED` defaults are unchanged** (`true` in `.env.example`, `false` in prod compose). `GET /agent/notebook` still runs `think()`, which now persists analysis fields (not the goal) on a read request.
+- **Separate pre-existing defect, not touched:** `_detect_gaps` counts a question as answered when its first 20 characters occur in any known fact, including the episode it came from, so "question without an answer" gaps are rarely produced.
+
 ## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.

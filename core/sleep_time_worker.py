@@ -16,7 +16,8 @@
 # без ожидания следующего сообщения пользователя.
 #
 # Что делает в idle:
-#   1. Переоценивает текущую цель проекта
+#   1. Предлагает цель (proposed_goal). Принятую цель меняет только владелец:
+#      SleepTimeWorker.accept_goal. Фоновый анализ current_goal не трогает.
 #   2. Ищет пробелы в знаниях (не по ключевым словам, а по смыслу)
 #   3. Генерирует синтез если накопилось достаточно данных
 #   4. suggest_next_step() — предлагает что делать дальше (из RNE документов)
@@ -47,6 +48,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from core import mutation_gate
+
 logger = logging.getLogger(__name__)
 
 # ─── Константы ────────────────────────────────────────────────────────────────
@@ -56,6 +59,8 @@ DEFAULT_IDLE_TIMEOUT    = 300   # секунд простоя до актива�
 DEFAULT_SLEEP_INTERVAL  = 600   # минимальный интервал между циклами
 SYNTHESIS_EVERY_N_FACTS = 5     # делать синтез каждые N новых фактов
 MAX_OPEN_GAPS           = 30    # максимум открытых пробелов в блокноте
+DEFAULT_PROJECT_ID      = "velantrim-core"
+GOAL_BLOCK_NAME         = "current_goals"  # общий слот CoreMemoryBlocks; см. _goal_block_name
 
 
 # ─── CoreMemoryBlocks ─────────────────────────────────────────────────────────
@@ -159,7 +164,12 @@ class CoreMemoryBlocks:
             conn.close()
 
     def update(self, name: str, content: str) -> None:
-        """Явное обновление блока. Не auto-overwrite."""
+        """Явное обновление блока. Не auto-overwrite.
+
+        Запись проходит через ``mutation_gate`` (SAFE_MODE и отозванные
+        полномочия блокируют её до первого обращения к SQLite).
+        """
+        mutation_gate.ensure_user_mutations_allowed("sleep_worker.core_blocks_update")
         now = datetime.now(UTC).isoformat()
         conn = sqlite3.connect(self.db_path)
         try:
@@ -216,13 +226,31 @@ class ResearchNotebook:
         default_factory=lambda: datetime.now(UTC).isoformat()
     )
     version: int = 1
+    # ── Цель: принятая владельцем и предложенная моделью хранятся раздельно ──
+    # current_goal меняет ТОЛЬКО SleepTimeWorker.accept_goal (решение владельца).
+    # Фоновый анализ пишет лишь proposed_goal. MODEL OUTPUT ≠ OWNER DECISION.
+    goal_revision:      int  = 0    # +1 при каждом решении владельца
+    goal_decided_by:    str  = ""   # кто принял current_goal
+    proposed_goal:      str  = ""   # предложение модели, не решение
+    proposed_goal_at:   str  = ""
+    proposed_goal_basis_revision: int = 0  # goal_revision, на котором сделано предложение
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False, default=str)
 
     @classmethod
     def from_json(cls, s: str) -> "ResearchNotebook":
-        return cls(**json.loads(s))
+        raw = json.loads(s)
+        known = cls.__dataclass_fields__.keys()
+        return cls(**{k: v for k, v in raw.items() if k in known})
+
+
+class NotebookConflictError(RuntimeError):
+    """Блокнот изменён другим писателем после чтения (устаревшая запись отклонена)."""
+
+
+class GoalRevisionConflictError(RuntimeError):
+    """Решение владельца основано на устаревшей ревизии цели."""
 
 
 class NotebookStore:
@@ -260,6 +288,8 @@ class NotebookStore:
             conn.close()
 
     def save(self, nb: ResearchNotebook) -> None:
+        """Безусловная запись (для миграций и тестов). Воркер использует compare_and_save."""
+        mutation_gate.ensure_user_mutations_allowed("sleep_worker.notebook_save")
         now = datetime.now(UTC).isoformat()
         conn = sqlite3.connect(self.db_path)
         try:
@@ -271,6 +301,34 @@ class NotebookStore:
                     updated_at = excluded.updated_at
             """, (nb.project_id, nb.to_json(), now))
             conn.commit()
+        finally:
+            conn.close()
+
+    def compare_and_save(self, nb: ResearchNotebook, expected_version: int | None) -> bool:
+        """Записать блокнот, только если сохранённая версия всё ещё ``expected_version``.
+
+        ``expected_version=None`` означает «строки ещё нет». Возвращает False, если
+        между чтением и записью блокнот изменил другой писатель (другой процесс,
+        решение владельца): устаревший результат не перезаписывает более свежий.
+        Запись проходит через ``mutation_gate``.
+        """
+        mutation_gate.ensure_user_mutations_allowed("sleep_worker.notebook_save")
+        now = datetime.now(UTC).isoformat()
+        conn = sqlite3.connect(self.db_path)
+        try:
+            if expected_version is None:
+                cur = conn.execute("""
+                    INSERT INTO notebooks (project_id, data, updated_at)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(project_id) DO NOTHING
+                """, (nb.project_id, nb.to_json(), now))
+            else:
+                cur = conn.execute("""
+                    UPDATE notebooks SET data = ?, updated_at = ?
+                    WHERE project_id = ? AND json_extract(data, '$.version') = ?
+                """, (nb.to_json(), now, nb.project_id, expected_version))
+            conn.commit()
+            return cur.rowcount == 1
         finally:
             conn.close()
 
@@ -437,8 +495,10 @@ class SleepTimeWorker:
         async with self._lock:
             if not self._notebook:
                 return
+            fresh = self._load_fresh_locked()
             recent_context = self._build_recent_context()
             facts_since_snapshot = self._facts_since_synthesis
+            basis_revision = fresh.goal_revision
 
         # ── ФАЗА 2: LLM-вызовы БЕЗ лока (могут идти секунды/минуты) ───────
         # Fast Path в это время полностью свободен.
@@ -452,51 +512,165 @@ class SleepTimeWorker:
         synthesis = await self._generate_synthesis() if should_synthesize else None
 
         # ── ФАЗА 3: Запись результатов под локом (быстро) ─────────────────
+        # Результат фонового анализа — НЕ решение владельца и применяется к СВЕЖЕМУ
+        # сохранённому состоянию, а не к снимку из фазы 1. BACKGROUND ANALYSIS ≠ RIGHT TO MUTATE
+        # принятой цели: current_goal и CoreMemoryBlocks здесь не трогаются.
+        def apply(nb: ResearchNotebook) -> None:
+            # Предложение цели: только если с момента снимка владелец не менял цель.
+            if new_goal and new_goal != nb.current_goal:
+                if nb.goal_revision == basis_revision:
+                    nb.proposed_goal = new_goal
+                    nb.proposed_goal_at = datetime.now(UTC).isoformat()
+                    nb.proposed_goal_basis_revision = basis_revision
+                    logger.info(
+                        "SleepTimeWorker: предложена цель (не принята): '%s'", new_goal[:50]
+                    )
+                else:
+                    logger.info(
+                        "SleepTimeWorker: предложение цели устарело (ревизия %s → %s), отброшено",
+                        basis_revision, nb.goal_revision,
+                    )
+
+            # Записываем найденные gaps
+            for gap in gaps:
+                if len(nb.open_gaps) < MAX_OPEN_GAPS:
+                    nb.open_gaps.append(gap)
+
+            # Записываем синтез если он был сделан
+            if synthesis:
+                nb.synthesis_history.append({
+                    "at":      datetime.now(UTC).isoformat(),
+                    "content": synthesis,
+                })
+
+            nb.last_thought = datetime.now(UTC).isoformat()
+
         async with self._lock:
             if not self._notebook:
                 # Notebook могли закрыть пока мы думали — gracefully выходим
                 return
-
-            # Применяем переопределение цели
-            if new_goal and new_goal != self._notebook.current_goal:
-                old_goal = self._notebook.current_goal
-                self._notebook.current_goal = new_goal
-                self._notebook.extracted_intents.append({
-                    "goal":      new_goal,
-                    "prev_goal": old_goal,
-                    "confidence": 0.85,
-                    "at":        datetime.now(UTC).isoformat(),
-                })
-                logger.info(
-                    "SleepTimeWorker: цель изменена: '%s' → '%s'",
-                    old_goal[:50], new_goal[:50],
+            try:
+                self._commit_locked(apply)
+            except mutation_gate.UserMutationBlockedError as exc:
+                # Запись запрещена (SAFE_MODE / отозванные полномочия): анализ не сохраняем.
+                logger.warning(
+                    "SleepTimeWorker: запись блокнота запрещена (%s), результат отброшен",
+                    exc.reason_code,
                 )
-
-            # Записываем найденные gaps
-            for gap in gaps:
-                if len(self._notebook.open_gaps) < MAX_OPEN_GAPS:
-                    self._notebook.open_gaps.append(gap)
-
-            # Записываем синтез если он был сделан
+                return
+            except NotebookConflictError:
+                logger.warning("SleepTimeWorker: блокнот изменён другим писателем, результат отброшен")
+                return
             if synthesis:
-                self._notebook.synthesis_history.append({
-                    "at":      datetime.now(UTC).isoformat(),
-                    "content": synthesis,
-                })
                 self._facts_since_synthesis = 0
                 logger.info("SleepTimeWorker: синтез сгенерирован")
 
-            # Обновляем CoreMemoryBlocks если есть
-            if self.core_blocks and self._notebook.current_goal:
-                self.core_blocks.update(
-                    "current_goals",
-                    f"Активная цель: {self._notebook.current_goal}"
-                )
+    # ── Решение владельца о цели ──────────────────────────────────────────────
 
-            # Финальное сохранение
-            self._notebook.last_thought = datetime.now(UTC).isoformat()
-            self._notebook.version += 1
-            self._nb_store.save(self._notebook)
+    async def accept_goal(
+        self,
+        goal: str | None = None,
+        *,
+        decided_by: str,
+        expected_goal_revision: int | None = None,
+    ) -> ResearchNotebook:
+        """Принять цель решением владельца. Единственный путь изменения ``current_goal``.
+
+        ``goal=None`` принимает текущее предложение модели (``proposed_goal``) — только
+        если оно сделано на актуальной ревизии цели. ``expected_goal_revision`` защищает
+        от решения, основанного на устаревшем состоянии: при расхождении
+        ``GoalRevisionConflictError``. Запись и обновление CoreMemoryBlocks идут через
+        ``mutation_gate``; при блокировке исключение поднимается вызывающему.
+        PROPOSAL ≠ ADMISSION; INITIATIVE ≠ AUTHORIZATION.
+        """
+        who = (decided_by or "").strip()
+        if not who:
+            raise ValueError("decided_by is required: the owner decision must name its source")
+        async with self._lock:
+            if not self._notebook:
+                raise RuntimeError("worker is not started")
+            fresh = self._load_fresh_locked()
+            if goal is None:
+                if not fresh.proposed_goal:
+                    raise ValueError("no proposed goal to accept")
+                if fresh.proposed_goal_basis_revision != fresh.goal_revision:
+                    raise GoalRevisionConflictError("proposal was made against an older goal revision")
+                chosen = fresh.proposed_goal
+                if expected_goal_revision is None:
+                    expected_goal_revision = fresh.proposed_goal_basis_revision
+            else:
+                chosen = goal.strip()
+            if not chosen:
+                raise ValueError("goal must not be empty")
+
+            def apply(nb: ResearchNotebook) -> None:
+                if expected_goal_revision is not None and nb.goal_revision != expected_goal_revision:
+                    raise GoalRevisionConflictError(
+                        f"goal revision is {nb.goal_revision}, decision was based on {expected_goal_revision}"
+                    )
+                previous = nb.current_goal
+                nb.current_goal = chosen
+                nb.goal_revision += 1
+                nb.goal_decided_by = who
+                nb.extracted_intents.append({
+                    "kind":      "owner_decision",
+                    "goal":      chosen,
+                    "prev_goal": previous,
+                    "decided_by": who,
+                    "at":        datetime.now(UTC).isoformat(),
+                })
+                # Любое предложение, сделанное на прежней ревизии, устарело.
+                nb.proposed_goal = ""
+                nb.proposed_goal_at = ""
+                nb.proposed_goal_basis_revision = nb.goal_revision
+
+            nb = self._commit_locked(apply)
+            if self.core_blocks:
+                self.core_blocks.update(self._goal_block_name(), f"Активная цель: {nb.current_goal}")
+            return nb
+
+    # ── Единственный путь записи блокнота ─────────────────────────────────────
+
+    def _goal_block_name(self) -> str:
+        """Слот CoreMemoryBlocks с целью: общий для проекта по умолчанию, отдельный для остальных.
+
+        База блоков одна на процесс, поэтому цель проекта Б не должна перезаписывать
+        слот проекта А.
+        """
+        if self.project_id == DEFAULT_PROJECT_ID:
+            return GOAL_BLOCK_NAME
+        return f"{GOAL_BLOCK_NAME}:{self.project_id}"
+
+    def _load_fresh_locked(self) -> ResearchNotebook:
+        """Сохранённое состояние проекта (его мог изменить другой процесс); иначе кэш."""
+        stored = self._nb_store.load(self.project_id)
+        if stored is not None:
+            self._notebook = stored
+            return stored
+        assert self._notebook is not None
+        return self._notebook
+
+    def _commit_locked(self, apply: Callable[[ResearchNotebook], None]) -> ResearchNotebook:
+        """Прочитать свежее состояние, применить изменение, записать сравнением версий.
+
+        Вызывать под ``self._lock``. Устаревший снимок не может перезаписать более
+        свежую запись: при расхождении версии чтение и применение повторяются.
+        """
+        for _ in range(5):
+            stored = self._nb_store.load(self.project_id)
+            if stored is None:
+                base = ResearchNotebook.from_json(self._notebook.to_json()) if self._notebook \
+                    else ResearchNotebook(project_id=self.project_id)
+                expected: int | None = None
+            else:
+                base = stored
+                expected = stored.version
+            apply(base)
+            base.version = (expected or base.version) + 1
+            if self._nb_store.compare_and_save(base, expected):
+                self._notebook = base
+                return base
+        raise NotebookConflictError(f"notebook {self.project_id!r} kept changing; write abandoned")
 
     # ── Обновление из эпизода (вызывается при каждом сообщении) ──────────────
 
@@ -505,12 +679,11 @@ class SleepTimeWorker:
         Вызывается при каждом сообщении пользователя.
         Записывает факты и вопросы, запускает think() в фоне.
         """
-        async with self._lock:
-            if not self._notebook:
-                return
+        content = episode.get("content", "")
+        source = episode.get("source", "user")
+        added_fact = bool(content and len(content) > 20)
 
-            content = episode.get("content", "")
-
+        def apply(nb: ResearchNotebook) -> None:
             # Извлекаем вопросы простой эвристикой
             if "?" in content:
                 questions = [
@@ -519,19 +692,24 @@ class SleepTimeWorker:
                     if len(q.strip()) > 15
                 ][:3]
                 for q in questions:
-                    if q not in self._notebook.key_questions:
-                        self._notebook.key_questions.append(q)
+                    if q not in nb.key_questions:
+                        nb.key_questions.append(q)
 
             # Простой факт из эпизода
-            if content and len(content) > 20:
-                self._notebook.known_facts.append({
+            if added_fact:
+                nb.known_facts.append({
                     "content": content[:300],
-                    "source":  episode.get("source", "user"),
+                    "source":  source,
                     "at":      datetime.now(UTC).isoformat(),
                 })
-                self._facts_since_synthesis += 1
 
-            self._nb_store.save(self._notebook)
+        async with self._lock:
+            if not self._notebook:
+                return
+            # Запрет мутаций (SAFE_MODE / отозванные полномочия) поднимается вызывающему.
+            self._commit_locked(apply)
+            if added_fact:
+                self._facts_since_synthesis += 1
 
         self.notify_activity()
         # FIX v8.5.1 (Gemini): сохраняем ссылку на task —
@@ -588,6 +766,8 @@ class SleepTimeWorker:
         return {
             "project_id":        nb.project_id if nb else "?",
             "current_goal":      nb.current_goal if nb else "",
+            "proposed_goal":     nb.proposed_goal if nb else "",
+            "goal_revision":     nb.goal_revision if nb else 0,
             "facts_count":       len(nb.known_facts) if nb else 0,
             "questions_count":   len(nb.key_questions) if nb else 0,
             "open_gaps_count":   len(nb.open_gaps) if nb else 0,
