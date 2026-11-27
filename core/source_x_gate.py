@@ -56,12 +56,19 @@ USER_FACING_BLOCK_MESSAGE = (
     "Сырой текст модели пользователю не показывается."
 )
 
-# Default numeric forms of source X. Trailing zero is allowed (21,80);
-# longer tails (21,85) and digits glued on either side (121,8) are not.
+# Default numeric forms of source X. Trailing zero is allowed (21,80).
+# A figure ends where a longer number would continue: another digit
+# (21,85) or a decimal separator followed by a digit (21,8.5 / 21,8,5).
+# Sentence punctuation after the figure ("21,8." / "21,8," / "7.6;") is
+# NOT a continuation, so the figure still matches. Digits glued in front
+# (121,8) or a number-like prefix ("1.21,8") do not match.
+_NUM_START = r"(?<!\d)(?<!\d[.,])"
+_NUM_END = r"(?!\d|[.,]\d)"
+
 DEFAULT_BLOCK_NUMBER_PATTERNS: tuple[tuple[str, str], ...] = (
-    ("x_number_21_8", r"(?<![\d.,])21[.,]80?(?![\d.,])"),
-    ("x_number_7_6", r"(?<![\d.,])7[.,]60?(?![\d.,])"),
-    ("x_number_53_5", r"(?<![\d.,])53[.,]50?\s*%?(?![\d.,])"),
+    ("x_number_21_8", _NUM_START + r"21[.,]80?" + _NUM_END),
+    ("x_number_7_6", _NUM_START + r"7[.,]60?" + _NUM_END),
+    ("x_number_53_5", _NUM_START + r"53[.,]50?\s*%?" + _NUM_END),
 )
 
 # Name of source X. «Молниеносный бриф» without «Меридиана» still flags.
@@ -71,8 +78,8 @@ DEFAULT_FLAG_NAME_PATTERNS: tuple[tuple[str, str], ...] = (
 
 # Official Y/Z figures. Trailing zero allowed; 3,1 requires a percent sign
 # so a bare 3,1 in another context is not enough.
-_OFFICIAL_14_2 = re.compile(r"(?<![\d.,])14[.,]20?(?![\d.,])")
-_OFFICIAL_3_1 = re.compile(r"(?<![\d.,])3[.,]10?\s*%(?!\d)")
+_OFFICIAL_14_2 = re.compile(_NUM_START + r"14[.,]20?" + _NUM_END)
+_OFFICIAL_3_1 = re.compile(_NUM_START + r"3[.,]10?\s*%(?!\d)")
 
 # Explicit rejection of using / publishing / citing the figures or source.
 # "неутверждён" / "unverified" alone is not enough: that only labels the
@@ -486,17 +493,121 @@ def blocked_attempt_log(verdict: SourceXVerdict) -> dict[str, Any]:
     return verdict.to_log()
 
 
+# Keys that survive a withheld result. Everything else (facts, trace,
+# conflicts, notes, sections, ...) can carry the withheld text or figures
+# and is dropped. This is an allowlist on purpose: a field added to the
+# pipeline later is withheld by default.
+# `query` is the user's own input, echoed back; it is not a system claim.
+# `error` is never copied: raw error text may quote the withheld answer or
+# facts. A withheld result keeps only whether there was an error, as a
+# stable code (WITHHELD_ERROR_CODE).
+WITHHELD_KEEP_KEYS: tuple[str, ...] = ("query", "retrieval_mode")
+WITHHELD_ERROR_CODE = "SOURCE_X_WITHHELD_ERROR"
+
+
+def _rules_of(hits: Iterable[SourceXHit], level: str | None = None) -> list[str]:
+    return [h.rule for h in hits if level is None or h.level == level]
+
+
+def _public_notes_review(review: dict[str, Any]) -> dict[str, Any]:
+    """Notes review without excerpts or sentences (safe on a withheld result)."""
+    return {
+        "event": review["event"],
+        "flag_review_notes": review["flag_review_notes"],
+        "blocked": False,
+        "hard_fail": False,
+        "level": review["level"],
+        "l1_figures": review["l1_figures"],
+        "l2_name": review["l2_name"],
+        "rules": [h["rule"] for h in review["hits"]],
+        "notes": review["notes"],
+    }
+
+
+def _withheld_result(
+    result: dict[str, Any],
+    record: dict[str, Any],
+    message: str,
+) -> dict[str, Any]:
+    """Build the result returned when the answer is withheld.
+
+    A new dict is built from ``WITHHELD_KEEP_KEYS`` so that no field of the
+    original result (facts, conflicts, notes, trace, ...) reaches the caller.
+    """
+    out: dict[str, Any] = {k: result[k] for k in WITHHELD_KEEP_KEYS if k in result}
+    if "error" in result:
+        out["error"] = None if result["error"] is None else WITHHELD_ERROR_CODE
+    out.update(
+        {
+            "answer": message,
+            "facts": [],
+            "total_facts": 0,
+            "trace": [],
+            "source_x_gate_blocked": True,
+            "source_x_gate": record,
+        }
+    )
+    return out
+
+
+def fail_closed_result(
+    result: dict[str, Any],
+    *,
+    config: SourceXGateConfig | None = None,
+    reason: str = "gate_error",
+) -> dict[str, Any]:
+    """Withhold the answer because the gate itself failed.
+
+    Returns ``result`` unchanged only when the gate is known to be
+    disabled. If the setting cannot be read, the answer is withheld.
+    """
+    try:
+        cfg = config or SourceXGateConfig.from_app()
+        if not cfg.enabled:
+            return result
+        message = cfg.block_message
+    except Exception:  # noqa: BLE001 - cannot prove the gate is off
+        message = USER_FACING_BLOCK_MESSAGE
+    record = {
+        "event": "GATE_ERROR",
+        "blocked": True,
+        "flagged": False,
+        "enabled": True,
+        "rules": [],
+        "notes": f"source_x_gate failed ({reason}); answer withheld (fail closed)",
+        "status": "GATE_ERROR",
+        "delivered": False,
+    }
+    return _withheld_result(result, record, message)
+
+
 def apply_to_pipeline_result(
     result: dict[str, Any],
     *,
     config: SourceXGateConfig | None = None,
 ) -> dict[str, Any]:
-    """Annotate a pipeline result and, on BLOCK, replace the answer.
+    """Annotate a pipeline result and, on BLOCK, withhold it.
 
-    The original answer is never silently truncated. When the gate is
-    disabled the result is returned unchanged. FLAG_L1_REFUSAL delivers
-    the original answer and only records a review flag.
+    Fail closed: if the gate raises while enabled, the answer is withheld
+    (``GATE_ERROR``). On BLOCK the returned dict is rebuilt from an
+    allowlist (``WITHHELD_KEEP_KEYS``); the gate record carries rule names
+    only, never excerpts or sentences of the withheld text, and the log
+    line does the same. When the gate is disabled the result is returned
+    unchanged. FLAG_L1_REFUSAL delivers the original answer and only
+    records a review flag.
     """
+    try:
+        return _apply(result, config)
+    except Exception as exc:  # noqa: BLE001
+        # Log the exception type only: the message may quote the text.
+        logger.error("SOURCE_X_GATE error, failing closed: %s", type(exc).__name__)
+        return fail_closed_result(result, config=config, reason=type(exc).__name__)
+
+
+def _apply(
+    result: dict[str, Any],
+    config: SourceXGateConfig | None,
+) -> dict[str, Any]:
     cfg = config or SourceXGateConfig.from_app()
     if not cfg.enabled:
         return result
@@ -508,11 +619,39 @@ def apply_to_pipeline_result(
     payload = user_facing_payload(raw, verdict, config=cfg)
     log_record = blocked_attempt_log(verdict)
 
+    notes_review: dict[str, Any] | None = None
+    if "notes" in result and result["notes"] is not None:
+        notes_text = result["notes"]
+        if not isinstance(notes_text, str):
+            notes_text = str(notes_text)
+        notes_review = review_notes(notes_text, config=cfg)
+
     if verdict.blocked:
-        logger.warning("SOURCE_X_GATE BLOCKED_ATTEMPT: %s", log_record)
-        result["answer"] = payload["message"]
-        result["source_x_gate_blocked"] = True
-    elif verdict.event == "FLAG_L1_REFUSAL":
+        logger.warning(
+            "SOURCE_X_GATE BLOCKED_ATTEMPT: rules=%s",
+            _rules_of(verdict.hits, "block"),
+        )
+        record: dict[str, Any] = {
+            "event": verdict.event,
+            "blocked": True,
+            "flagged": verdict.flagged,
+            "enabled": True,
+            "rules": _rules_of(verdict.hits),
+            "notes": verdict.notes,
+            "status": payload["status"],
+            "delivered": payload["delivered"],
+        }
+        out = _withheld_result(result, record, payload["message"])
+        if notes_review is not None:
+            public = _public_notes_review(notes_review)
+            out["source_x_notes_review"] = public
+            out["source_x_gate"]["notes_review"] = public
+            if public["flag_review_notes"]:
+                logger.info("SOURCE_X_GATE FLAG_REVIEW_NOTES: rules=%s", public["rules"])
+                out["source_x_gate_notes_flagged"] = True
+        return out
+
+    if verdict.event == "FLAG_L1_REFUSAL":
         logger.info("SOURCE_X_GATE FLAG_L1_REFUSAL: %s", log_record)
         result["source_x_gate_flagged"] = True
         result["source_x_gate_flag_l1_refusal"] = True
@@ -528,11 +667,7 @@ def apply_to_pipeline_result(
         "delivered": payload["delivered"],
     }
 
-    if "notes" in result and result["notes"] is not None:
-        notes_text = result["notes"]
-        if not isinstance(notes_text, str):
-            notes_text = str(notes_text)
-        notes_review = review_notes(notes_text, config=cfg)
+    if notes_review is not None:
         result["source_x_notes_review"] = notes_review
         result["source_x_gate"]["notes_review"] = notes_review
         if notes_review["flag_review_notes"]:
@@ -550,10 +685,13 @@ __all__ = [
     "SourceXHit",
     "SourceXVerdict",
     "USER_FACING_BLOCK_MESSAGE",
+    "WITHHELD_ERROR_CODE",
+    "WITHHELD_KEEP_KEYS",
     "apply_gate",
     "apply_to_pipeline_result",
     "blocked_attempt_log",
     "classify_l1_hits",
+    "fail_closed_result",
     "has_official_figures",
     "is_explicit_refusal_sentence",
     "is_source_x_gate_enabled",

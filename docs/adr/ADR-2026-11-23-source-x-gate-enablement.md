@@ -9,8 +9,10 @@
 Identity-continuity and source-restriction probes (ICT-01 + TASK-03) showed
 that a text-only prohibition is not enough: some models still emit source-X
 figures (`21,8` / `7,6` / `53,5%`) in a user-facing draft. The enforcement
-layer has to live in Titan code, after ResponseGuardian and before
-OutputFaithfulnessChecker, not only in the prompt.
+layer has to live in Titan code, not only in the prompt. The gate is the
+last step of `core.pipeline.run`, after ResponseGuardian,
+OutputFaithfulnessChecker and every enrichment step, so that no later step
+can add a field that quotes withheld text.
 
 A six-model run (Velantrim-Memory-Ruslan
 [PR #62](https://github.com/velantrian/Velantrim-Memory-Ruslan/pull/62),
@@ -68,8 +70,8 @@ model and does not read API keys.
 - External actions: none.
 - User-visible influence: only when the flag is on — either a
   `FLAG_L1_REFUSAL` / `FLAG_REVIEW` / `FLAG_REVIEW_NOTES` annotation on a
-  delivered answer, or replacement of a blocked answer with a stub that
-  does not leak X figures.
+  delivered answer, or replacement of a blocked or failed result with a stub
+  that does not leak X figures.
 
 ## Data, scope and privacy
 
@@ -80,11 +82,38 @@ in a new store by this change.
 
 ## Failure semantics
 
-Fail closed on Level-1 figures that do not meet the soft-refusal rule:
-the user-facing answer is withheld. The filter itself is fail-safe when
-the flag is absent or off: the pipeline behaves as before. Parsing or
-pattern errors must not leak the withheld text. `notes` annotations never
-fail closed into a user-visible block.
+Fail closed. With the flag on:
+
+- Level-1 figures that do not meet the soft-refusal rule withhold the answer.
+- An exception inside the gate (`GATE_ERROR`), or a failure to call it,
+  withholds the answer. If the flag cannot be read, the answer is withheld.
+  Only a gate known to be disabled passes the result through unchanged.
+- A withheld result is rebuilt from an allowlist (`WITHHELD_KEEP_KEYS`:
+  `query`, the user's own input, and `retrieval_mode`) plus the stub answer
+  and gate record. A raw `error` is never copied; if the original result had
+  one, it becomes the stable code `SOURCE_X_WITHHELD_ERROR`. Facts, trace,
+  conflicts, notes and every enrichment field are dropped.
+- The gate record and the log line carry rule names only, never excerpts or
+  sentences of the withheld text. Exceptions are logged by type only.
+- `notes` annotations never fail closed into a user-visible block by
+  themselves.
+
+With the flag off (the default) the pipeline behaves as before.
+
+Figure detection treats sentence punctuation after a figure (`21,8.`,
+`21,8,`, `7.6;`) as a boundary. A figure continues only into another digit
+or a decimal separator followed by a digit (`21,85`, `21,8.5`).
+
+### Known limits (not fixed by this ADR)
+
+- Scope is `core.pipeline.run`, field `answer`. `POST /query` generates a
+  second model answer after the pipeline (`llm_answer`) and `/chat`,
+  `/chat/stream`, `/query/roles`, `/console/llm/test`, traces and audit
+  previews do not pass through the gate.
+- The refusal rule is a sentence-level keyword match. A negation anywhere in
+  a sentence qualifies it, whether or not it refers to the figure.
+- Figure matching is textual. Rounded, spelled-out or rephrased figures are
+  not detected, and a match does not prove the source was used.
 
 ## Observability and receipts
 
@@ -104,7 +133,9 @@ removes the hook; no migration is required.
 - `tests/test_source_x_gate.py`
 - `tests/test_source_x_soft_l1.py` (20 `FLAG_L1_REFUSAL` and 5
   `KEEP_STRICT` fixtures from the six-model report)
-- `tests/test_source_x_notes.py` (companion notes-annotation PR)
+- `tests/test_source_x_notes.py` (notes annotation)
+- `tests/test_source_x_gate_fail_closed.py` (fail-closed, punctuation after
+  figures, no figure or excerpt anywhere in a withheld result)
 - Hosted CI on the PR head, including this ADR for the architecture-freeze
   guard
 
