@@ -18,6 +18,7 @@ import asyncio
 import importlib
 import json
 import sqlite3
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,6 +29,12 @@ if TYPE_CHECKING:
     from core.sleep_time_worker import OwnerGoalDecision, SleepTimeWorker
 
 DEFAULT_BLOCK_TEXT = "Активные цели: не указано."
+LEGACY_GOAL = "Цель из старого фонового процесса"
+OLD_OVERWRITE_BLOCK = f"Активная цель: {LEGACY_GOAL}"     # what the old background overwrite wrote
+UNCONFIRMED_LABEL = (
+    "Цель НЕ подтверждена владельцем (происхождение неизвестно, записана "
+    f"прежним фоновым процессом): {LEGACY_GOAL}"
+)
 KEY_ID = "owner-key-1"
 SECRET = b"k" * 32
 GOAL_BLOCK_NAME = "current_goals"
@@ -560,7 +567,8 @@ async def test_legacy_goal_is_marked_unconfirmed_and_its_data_is_preserved(tmp_p
 
     context = w.system_context()
     assert "НЕ подтверждена" in context and "Цель из старого фонового процесса" in context
-    assert _block(tmp_path, GOAL_BLOCK_NAME) == DEFAULT_BLOCK_TEXT  # never projected as accepted
+    # the projection shows the same unconfirmed label as system_context(), never an accepted goal
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == UNCONFIRMED_LABEL
     assert (await w.get_notebook())["goal_status"] == "UNCONFIRMED_LEGACY"
 
     stored = _row(tmp_path, "velantrim-core")                      # background analysis kept the data
@@ -744,4 +752,203 @@ async def test_analysis_gaps_synthesis_and_next_step_still_work(tmp_path):
     snapshot = await w.get_notebook()
     assert snapshot["current_goal"] == "Цель" and snapshot["goal_status"] == "OWNER_CONFIRMED"
     assert "proposed_goal_id" in snapshot
+    await w.stop()
+
+
+# ── Stale projection of UNCONFIRMED_LEGACY and NONE goals ─────────────────────
+
+def _set_block(tmp_path: Path, name: str, content: str) -> None:
+    conn = sqlite3.connect(_paths(tmp_path)[0])
+    conn.execute("INSERT INTO core_blocks (name, content, last_updated) VALUES (?,?,?) "
+                 "ON CONFLICT(name) DO UPDATE SET content=excluded.content", (name, content, "2026-11-01T00:00:00+00:00"))
+    conn.commit()
+    conn.close()
+
+
+async def test_stale_projection_of_a_legacy_goal_is_realigned_and_its_text_is_archived(tmp_path):
+    original = json.loads(_write_legacy_notebook(tmp_path))
+    stw().CoreMemoryBlocks(_paths(tmp_path)[0])                       # creates the block table
+    _set_block(tmp_path, GOAL_BLOCK_NAME, OLD_OVERWRITE_BLOCK)        # old overwrite: looks "accepted"
+
+    w = _worker(tmp_path)
+    await w.start()
+
+    # the block no longer presents an unconfirmed goal as an accepted one ...
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == UNCONFIRMED_LABEL
+    assert w.system_context().count(UNCONFIRMED_LABEL) == 1
+    assert w.goal_projection_in_sync is True
+    # ... and nothing historical is lost: the replaced text is kept in the notebook row,
+    # every original field is untouched, and no decision was invented
+    stored = _row(tmp_path, "velantrim-core")
+    assert stored["goal_projection_archive"][0]["block"] == GOAL_BLOCK_NAME
+    assert stored["goal_projection_archive"][0]["content"] == OLD_OVERWRITE_BLOCK
+    assert stored["goal_projection_archive"][0]["goal_provenance"] == "UNCONFIRMED_LEGACY"
+    for key, value in original.items():
+        if key != "version":
+            assert stored[key] == value, key
+    assert stored["goal_revision"] == 0 and stored["goal_decided_by"] == ""
+
+    # idempotent: a second start neither duplicates the archive nor rewrites the row
+    await w.stop()
+    row_after_first = _raw(tmp_path, "velantrim-core")
+    again = _worker(tmp_path)
+    await again.start()
+    assert _raw(tmp_path, "velantrim-core") == row_after_first
+    assert len(_row(tmp_path, "velantrim-core")["goal_projection_archive"]) == 1
+    await again.stop()
+
+    # confirming the goal later keeps the archive and shows the accepted text
+    owner = _worker(tmp_path)
+    await owner.start()
+    await owner.accept_goal(set_goal(tmp_path, LEGACY_GOAL, decided_by="owner:review"))
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == OLD_OVERWRITE_BLOCK     # now it is an owner decision
+    assert _row(tmp_path, "velantrim-core")["goal_projection_archive"][0]["content"] == OLD_OVERWRITE_BLOCK
+    await owner.stop()
+
+
+async def test_a_failed_block_write_after_archiving_is_retried_without_duplicating_the_archive(tmp_path, monkeypatch):
+    _write_legacy_notebook(tmp_path)
+    stw().CoreMemoryBlocks(_paths(tmp_path)[0])
+    _set_block(tmp_path, GOAL_BLOCK_NAME, OLD_OVERWRITE_BLOCK)
+
+    w = _worker(tmp_path)
+    real_update = w.core_blocks.update
+    monkeypatch.setattr(w.core_blocks, "update",
+                        lambda name, content: (_ for _ in ()).throw(sqlite3.OperationalError("disk I/O error")))
+    await w.start()                                       # archive committed, block write failed
+    assert w.goal_projection_in_sync is False
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == OLD_OVERWRITE_BLOCK
+    assert [e["content"] for e in _row(tmp_path, "velantrim-core")["goal_projection_archive"]] == [OLD_OVERWRITE_BLOCK]
+
+    monkeypatch.setattr(w.core_blocks, "update", real_update)
+    await w.think()                                       # the retry finds it already archived
+    assert w.goal_projection_in_sync is True
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == UNCONFIRMED_LABEL
+    assert [e["content"] for e in _row(tmp_path, "velantrim-core")["goal_projection_archive"]] == [OLD_OVERWRITE_BLOCK]
+    await w.stop()
+
+
+async def test_stale_projection_without_any_goal_is_reset_and_its_text_is_archived(tmp_path):
+    seed = _worker(tmp_path)
+    await seed.start()
+    await seed.update_from_episode(EPISODE)                           # creates the notebook row, no goal
+    await _drain(seed)
+    await seed.stop()
+    assert _row(tmp_path, "velantrim-core")["current_goal"] == ""
+    _set_block(tmp_path, GOAL_BLOCK_NAME, "Активная цель: Цель, оставшаяся от прежнего процесса")
+
+    w = _worker(tmp_path)
+    await w.start()
+    assert w.notebook.goal_provenance == "NONE"
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == DEFAULT_BLOCK_TEXT
+    archive = _row(tmp_path, "velantrim-core")["goal_projection_archive"]
+    assert [e["content"] for e in archive] == ["Активная цель: Цель, оставшаяся от прежнего процесса"]
+    assert archive[0]["goal_provenance"] == "NONE"
+    assert any("направление проекта" in f["content"] for f in _row(tmp_path, "velantrim-core")["known_facts"])
+    await w.stop()
+
+
+async def test_realignment_writes_nothing_when_there_is_nothing_to_preserve(tmp_path):
+    seed = _worker(tmp_path)
+    await seed.start()
+    await seed.update_from_episode(EPISODE)
+    await _drain(seed)
+    await seed.stop()
+    notebook_before = _raw(tmp_path, "velantrim-core")
+
+    w = _worker(tmp_path)                                             # block is the default text
+    await w.start()
+    assert _raw(tmp_path, "velantrim-core") == notebook_before        # no archive entry, no new version
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == DEFAULT_BLOCK_TEXT
+
+    fresh_project = _worker(tmp_path, "project-without-a-row")        # no authoritative record at all
+    _set_block(tmp_path, fresh_project._goal_block_name(), "ручной текст")
+    await fresh_project.start()
+    assert _block(tmp_path, fresh_project._goal_block_name()) == "ручной текст"
+    await w.stop()
+    await fresh_project.stop()
+
+
+async def test_blocked_mutations_do_not_realign_or_archive(tmp_path, monkeypatch):
+    _write_legacy_notebook(tmp_path)
+    stw().CoreMemoryBlocks(_paths(tmp_path)[0])
+    _set_block(tmp_path, GOAL_BLOCK_NAME, OLD_OVERWRITE_BLOCK)
+    notebook_before = _raw(tmp_path, "velantrim-core")
+    _revoke(monkeypatch)
+
+    w = _worker(tmp_path)
+    await w.start()
+    assert w.goal_projection_in_sync is False
+    assert _raw(tmp_path, "velantrim-core") == notebook_before
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == OLD_OVERWRITE_BLOCK   # nothing replaced, so nothing to archive
+    await w.stop()
+
+
+# ── The signed decision is re-checked under the lock and on every write retry ─
+
+async def test_decision_that_expires_while_waiting_for_the_lock_is_refused(tmp_path, monkeypatch):
+    w = _worker(tmp_path)
+    await w.start()
+    monkeypatch.setattr(stw(), "OWNER_DECISION_MAX_AGE_SECONDS", 0.3)
+    decision = set_goal(tmp_path, "Цель, подписанная слишком давно")
+    before = _raw(tmp_path, "velantrim-core")
+
+    async with w._lock:                                  # another writer holds the lock
+        waiting = asyncio.create_task(w.accept_goal(decision))
+        await asyncio.sleep(0.05)
+        assert not waiting.done()                        # it passed the first check and is queued
+        await asyncio.sleep(0.5)                         # ... and the decision expires meanwhile
+    with pytest.raises(stw().OwnerAuthorityError, match="expired"):
+        await waiting
+
+    assert _raw(tmp_path, "velantrim-core") == before
+    assert _block(tmp_path, GOAL_BLOCK_NAME) == DEFAULT_BLOCK_TEXT
+    await w.stop()
+
+
+async def test_decision_that_expires_between_write_retries_is_refused(tmp_path, monkeypatch):
+    w = _worker(tmp_path)
+    await w.start()
+    monkeypatch.setattr(stw(), "OWNER_DECISION_MAX_AGE_SECONDS", 0.3)
+    decision = set_goal(tmp_path, "Цель, подписанная слишком давно")
+    before = _raw(tmp_path, "velantrim-core")
+    real = stw().NotebookStore.compare_and_save
+    attempts = {"n": 0}
+
+    def contended(self, nb, expected_version):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            time.sleep(0.5)                              # a slow, contended first attempt
+            return False                                 # lost the race: the write is retried
+        return real(self, nb, expected_version)
+
+    monkeypatch.setattr(stw().NotebookStore, "compare_and_save", contended)
+    with pytest.raises(stw().OwnerAuthorityError, match="expired"):
+        await w.accept_goal(decision)
+
+    assert attempts["n"] == 1                            # the retry never reached the database
+    assert _raw(tmp_path, "velantrim-core") == before
+    await w.stop()
+
+
+async def test_key_revoked_between_write_retries_is_honoured(tmp_path, monkeypatch):
+    w = _worker(tmp_path)
+    await w.start()
+    decision = set_goal(tmp_path, "Цель с ключом, отозванным посреди записи")
+    before = _raw(tmp_path, "velantrim-core")
+    real = stw().NotebookStore.compare_and_save
+    attempts = {"n": 0}
+
+    def revoked_midway(self, nb, expected_version):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            w._owner_authority = _authority(revoked={KEY_ID})   # the deployment revokes the key
+            return False
+        return real(self, nb, expected_version)
+
+    monkeypatch.setattr(stw().NotebookStore, "compare_and_save", revoked_midway)
+    with pytest.raises(stw().OwnerAuthorityError, match="revoked"):
+        await w.accept_goal(decision)
+    assert attempts["n"] == 1
+    assert _raw(tmp_path, "velantrim-core") == before
     await w.stop()

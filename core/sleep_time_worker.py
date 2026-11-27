@@ -267,6 +267,8 @@ class ResearchNotebook:
     proposed_goal_at:   str  = ""
     proposed_goal_basis_revision: int = 0  # goal_revision, на котором сделано предложение
     proposed_goal_id:   str = ""   # идентификатор конкретного предложения (подтверждение привязано к нему)
+    # Прежнее содержимое блока цели, замещённое при выравнивании проекции (история не удаляется).
+    goal_projection_archive: list[dict] = field(default_factory=list)
 
     @property
     def goal_provenance(self) -> str:
@@ -806,19 +808,17 @@ class SleepTimeWorker:
         через ``system_context()`` берёт цель из блокнота.
         PROPOSAL ≠ ADMISSION; INITIATIVE ≠ AUTHORIZATION.
         """
-        if self._owner_authority is None:
-            raise OwnerAuthorityError(
-                "owner authority is not configured for this worker; accepting goals is unavailable"
-            )
-        self._owner_authority.verify(
-            decision, project_id=self.project_id, now=datetime.now(UTC)
-        )
+        self._verify_decision(decision)           # быстрый отказ до ожидания блокировки
         async with self._lock:
             if not self._notebook:
                 raise RuntimeError("worker is not started")
 
             def apply(nb: ResearchNotebook) -> None:
-                # Проверка повторяется на каждой свежей базе: конкурентное решение
+                # Выполняется после получения блокировки и на КАЖДОЙ повторной попытке записи.
+                # Подпись, срок, проект и ключ проверяются заново: за время ожидания блокировки
+                # или конкуренции за запись решение могло истечь, а ключ — быть отозван.
+                self._verify_decision(decision)
+                # Ревизия цели тоже проверяется заново: конкурентное решение
                 # другого процесса делает это решение устаревшим.
                 if nb.goal_revision != decision.expected_goal_revision:
                     raise GoalRevisionConflictError(
@@ -856,6 +856,15 @@ class SleepTimeWorker:
             nb = self._commit_locked(apply)
             self._project_goal_locked()
             return nb
+
+    def _verify_decision(self, decision: OwnerGoalDecision) -> None:
+        """Проверить решение по текущему authority и текущему времени (вызывается повторно)."""
+        authority = self._owner_authority
+        if authority is None:
+            raise OwnerAuthorityError(
+                "owner authority is not configured for this worker; accepting goals is unavailable"
+            )
+        authority.verify(decision, project_id=self.project_id, now=datetime.now(UTC))
 
     # ── Авторитетное чтение и проекция цели ───────────────────────────────────
 
@@ -905,19 +914,59 @@ class SleepTimeWorker:
         try:
             for _ in range(3):
                 nb = self._nb_store.load(self.project_id)
-                if nb is None or nb.goal_provenance != "OWNER_CONFIRMED":
-                    return True
-                want = f"Активная цель: {nb.current_goal}"
-                if self.core_blocks.get(name) != want:
+                if nb is None:
+                    return True               # нет авторитетной записи — нечего проецировать
+                # Проекция всегда равна тому, что видит system_context(): принятая цель,
+                # помеченная неподтверждённая или текст по умолчанию. Никогда не «принятая»
+                # цель, которой владелец не принимал.
+                want = str(self._goal_context_text(nb))
+                current = self.core_blocks.get(name)
+                if current != want:
+                    if current and self._is_unrecorded_projection(nb, current):
+                        self._archive_projection_locked(nb, name, current)
                     self.core_blocks.update(name, want)
                 latest = self._nb_store.load(self.project_id)
-                if latest is not None and latest.current_goal == nb.current_goal \
+                if latest is not None and self._goal_context_text(latest) == want \
                         and self.core_blocks.get(name) == want:
                     return True
             return False
         except Exception as exc:  # noqa: BLE001 - projection is derived state, never authority
             logger.warning("SleepTimeWorker: проекция цели не обновлена: %s", exc)
             return False
+
+    @staticmethod
+    def _is_unrecorded_projection(nb: ResearchNotebook, content: str) -> bool:
+        """Содержимое блока, о котором в блокноте нет записи: его нужно сохранить до замены.
+
+        Не требует архивации: текст по умолчанию, наша пометка о неподтверждённой цели и
+        «Активная цель: …» для цели, принятой решением владельца (она есть в extracted_intents).
+        """
+        if content == GOAL_BLOCK_DEFAULT_TEXT or content.startswith("Цель НЕ подтверждена"):
+            return False
+        decided = {
+            f"Активная цель: {i.get('goal')}"
+            for i in nb.extracted_intents if i.get("kind") == "owner_decision"
+        }
+        return content not in decided
+
+    def _archive_projection_locked(self, nb: ResearchNotebook, name: str, content: str) -> None:
+        """Сохранить прежний текст блока цели в блокноте проекта (только добавление)."""
+        if any(e.get("block") == name and e.get("content") == content
+               for e in nb.goal_projection_archive):
+            return                            # уже сохранено (повтор после сбоя записи блока)
+
+        def apply(fresh: ResearchNotebook) -> None:
+            if any(e.get("block") == name and e.get("content") == content
+                   for e in fresh.goal_projection_archive):
+                return
+            fresh.goal_projection_archive.append({
+                "block": name,
+                "content": content,
+                "goal_provenance": fresh.goal_provenance,
+                "replaced_at": datetime.now(UTC).isoformat(),
+            })
+
+        self._commit_locked(apply)
 
     def _load_fresh_locked(self) -> ResearchNotebook:
         """Сохранённое состояние проекта (его мог изменить другой процесс); иначе кэш."""
