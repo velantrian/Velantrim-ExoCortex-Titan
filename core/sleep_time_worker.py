@@ -42,6 +42,8 @@ import json
 import logging
 import os
 import sqlite3
+import hashlib
+import hmac
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -60,7 +62,12 @@ DEFAULT_SLEEP_INTERVAL  = 600   # минимальный интервал меж
 SYNTHESIS_EVERY_N_FACTS = 5     # делать синтез каждые N новых фактов
 MAX_OPEN_GAPS           = 30    # максимум открытых пробелов в блокноте
 DEFAULT_PROJECT_ID      = "velantrim-core"
-GOAL_BLOCK_NAME         = "current_goals"  # общий слот CoreMemoryBlocks; см. _goal_block_name
+COMMIT_RETRIES          = 25    # попыток перечитать и записать при конкурентных писателях
+GOAL_BLOCK_NAME         = "current_goals"  # проекция цели в CoreMemoryBlocks; НЕ источник истины
+GOAL_BLOCK_DEFAULT_TEXT = "Активные цели: не указано."
+OWNER_DECISION_DOMAIN   = "velantrim.sleep-worker.owner-goal-decision.v1"
+OWNER_DECISION_MAX_AGE_SECONDS  = 300  # подпись решения владельца живёт 5 минут
+OWNER_DECISION_MAX_SKEW_SECONDS = 60   # допуск на расхождение часов
 
 
 # ─── CoreMemoryBlocks ─────────────────────────────────────────────────────────
@@ -101,7 +108,7 @@ class CoreMemoryBlocks:
     _DEFAULT_BLOCKS = {
         "user_profile":  "Пользователь: не указано. Стек: не указан.",
         "agent_persona": "Я — Velantrim ExoCortex, умная память для AI-агентов.",
-        "current_goals": "Активные цели: не указано.",
+        "current_goals": GOAL_BLOCK_DEFAULT_TEXT,
     }
 
     def __init__(self, db_path: str = CORE_BLOCKS_DB_PATH) -> None:
@@ -190,18 +197,43 @@ class CoreMemoryBlocks:
         block = self.blocks.get(name)
         return block.content if block else None
 
-    def get_system_context(self) -> str:
-        """
-        Собрать все блоки для system prompt.
-        Результат всегда ~500 токенов — не зависит от размера графа.
-        """
-        parts = []
-        for name, block in self.blocks.items():
-            parts.append(f"## {name}\n{block.content}")
-        return "\n\n".join(parts)
+    def _scoped_view(self, project_id: str | None) -> dict[str, str]:
+        """Блоки, видимые проекту: общие блоки и ТОЛЬКО его собственный слот цели.
 
-    def all_as_dict(self) -> dict[str, str]:
-        return {name: b.content for name, b in self.blocks.items()}
+        Слоты ``current_goals:<project_id>`` принадлежат своим проектам. Проект по
+        умолчанию видит неименованный ``current_goals``; любой другой проект видит
+        свой слот (или текст по умолчанию), но не цель проекта по умолчанию и не цели
+        других проектов. ``blocks``/``get`` остаются сырым доступом без фильтра.
+        """
+        pid = project_id or DEFAULT_PROJECT_ID
+        raw = self.blocks
+        view = {
+            name: block.content
+            for name, block in raw.items()
+            if not name.startswith(GOAL_BLOCK_NAME + ":")
+        }
+        if pid != DEFAULT_PROJECT_ID:
+            own = raw.get(f"{GOAL_BLOCK_NAME}:{pid}")
+            view[GOAL_BLOCK_NAME] = own.content if own else GOAL_BLOCK_DEFAULT_TEXT
+        return view
+
+    def get_system_context(
+        self, project_id: str | None = None, goal_text: str | None = None
+    ) -> str:
+        """
+        Собрать блоки проекта для system prompt.
+        Результат всегда ~500 токенов — не зависит от размера графа.
+
+        ``goal_text`` — авторитетная формулировка цели (из NotebookStore); она заменяет
+        сохранённую проекцию, которая может отставать после сбоя второй записи.
+        """
+        view = self._scoped_view(project_id)
+        if goal_text is not None:
+            view[GOAL_BLOCK_NAME] = goal_text
+        return "\n\n".join(f"## {name}\n{content}" for name, content in view.items())
+
+    def all_as_dict(self, project_id: str | None = None) -> dict[str, str]:
+        return self._scoped_view(project_id)
 
 
 # ─── Research Notebook (блокнот проекта) ──────────────────────────────────────
@@ -234,6 +266,20 @@ class ResearchNotebook:
     proposed_goal:      str  = ""   # предложение модели, не решение
     proposed_goal_at:   str  = ""
     proposed_goal_basis_revision: int = 0  # goal_revision, на котором сделано предложение
+    proposed_goal_id:   str = ""   # идентификатор конкретного предложения (подтверждение привязано к нему)
+
+    @property
+    def goal_provenance(self) -> str:
+        """NONE | OWNER_CONFIRMED | UNCONFIRMED_LEGACY.
+
+        Цель без подтверждённого решения владельца (записана прежним фоновым
+        перезаписыванием) не выдаётся за принятую; исходные данные не изменяются.
+        """
+        if not self.current_goal:
+            return "NONE"
+        if self.goal_revision > 0 and self.goal_decided_by:
+            return "OWNER_CONFIRMED"
+        return "UNCONFIRMED_LEGACY"
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False, default=str)
@@ -251,6 +297,171 @@ class NotebookConflictError(RuntimeError):
 
 class GoalRevisionConflictError(RuntimeError):
     """Решение владельца основано на устаревшей ревизии цели."""
+
+
+class ProposalMismatchError(GoalRevisionConflictError):
+    """Решение относится к другому предложению, чем сохранённое сейчас."""
+
+
+class OwnerAuthorityError(PermissionError):
+    """Решение владельца отсутствует, не подтверждено или не принадлежит этому воркеру."""
+
+
+_DECISION_ACTIONS = ("accept_proposal", "set_goal")
+
+
+def _proposal_id(project_id: str, goal: str, basis_revision: int, at: str) -> str:
+    raw = json.dumps([project_id, goal, basis_revision, at], ensure_ascii=False)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+@dataclass(frozen=True)
+class OwnerGoalDecision:
+    """Подписанное решение владельца о цели одного проекта.
+
+    Подпись (HMAC-SHA256, как у подписанных operator-решений Reader Core) связывает
+    проект, действие, ожидаемую ревизию цели, конкретное предложение либо текст цели,
+    автора и время. Строка ``decided_by`` сама по себе ничего не разрешает.
+    Повтор решения невозможен: после принятия ревизия цели растёт.
+    """
+
+    project_id: str
+    action: str
+    expected_goal_revision: int
+    proposal_id: str
+    goal: str
+    decided_by: str
+    issued_at: str
+    key_id: str
+    signature_hex: str
+
+    def signed_payload(self) -> bytes:
+        return _decision_payload(
+            project_id=self.project_id, action=self.action,
+            expected_goal_revision=self.expected_goal_revision,
+            proposal_id=self.proposal_id, goal=self.goal, decided_by=self.decided_by,
+            issued_at=self.issued_at, key_id=self.key_id,
+        )
+
+
+def _decision_payload(*, project_id: str, action: str, expected_goal_revision: int,
+                      proposal_id: str, goal: str, decided_by: str, issued_at: str,
+                      key_id: str) -> bytes:
+    return json.dumps(
+        {
+            "domain": OWNER_DECISION_DOMAIN,
+            "project_id": project_id,
+            "action": action,
+            "expected_goal_revision": expected_goal_revision,
+            "proposal_id": proposal_id,
+            "goal_sha256": hashlib.sha256(goal.encode("utf-8")).hexdigest(),
+            "decided_by": decided_by,
+            "issued_at": issued_at,
+            "key_id": key_id,
+        },
+        sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")
+
+
+def issue_owner_goal_decision(
+    *, key_id: str, secret: bytes, project_id: str, action: str,
+    expected_goal_revision: int, decided_by: str,
+    proposal_id: str = "", goal: str = "", issued_at: datetime | None = None,
+) -> OwnerGoalDecision:
+    """Подписать решение владельца. Вызывает тот, кто держит секрет развёртывания."""
+    if action not in _DECISION_ACTIONS:
+        raise ValueError(f"action must be one of {_DECISION_ACTIONS}")
+    if not (decided_by or "").strip() or not (key_id or "").strip() or not (project_id or "").strip():
+        raise ValueError("project_id, key_id and decided_by are required")
+    if action == "accept_proposal" and (not proposal_id or goal):
+        raise ValueError("accept_proposal names a proposal_id and carries no goal text")
+    if action == "set_goal" and (not goal.strip() or proposal_id):
+        raise ValueError("set_goal carries the goal text and no proposal_id")
+    stamp = (issued_at or datetime.now(UTC)).astimezone(UTC).isoformat()
+    payload = _decision_payload(
+        project_id=project_id, action=action, expected_goal_revision=expected_goal_revision,
+        proposal_id=proposal_id, goal=goal.strip(), decided_by=decided_by.strip(),
+        issued_at=stamp, key_id=key_id,
+    )
+    return OwnerGoalDecision(
+        project_id=project_id, action=action, expected_goal_revision=expected_goal_revision,
+        proposal_id=proposal_id, goal=goal.strip(), decided_by=decided_by.strip(),
+        issued_at=stamp, key_id=key_id,
+        signature_hex=hmac.new(secret, payload, hashlib.sha256).hexdigest(),
+    )
+
+
+@dataclass(frozen=True)
+class OwnerGoalAuthority:
+    """Проверяющая сторона решений владельца; секрет задаёт развёртывание.
+
+    Воркер без такого объекта не принимает цели вообще (путь недоступен). Ничто в
+    фоновом анализе, HTTP/MCP-маршрутах или LLM-вызовах этот объект не создаёт.
+    ``revoked_key_ids`` отзывает ключ: его прежние решения перестают приниматься.
+    """
+
+    key_id: str
+    secret: bytes = field(repr=False)
+    revoked_key_ids: frozenset[str] = frozenset()
+
+    def __post_init__(self) -> None:
+        if not (self.key_id or "").strip():
+            raise ValueError("key_id is required")
+        if not isinstance(self.secret, bytes) or len(self.secret) < 16:
+            raise ValueError("secret must be at least 16 bytes")
+
+    def verify(self, decision: OwnerGoalDecision, *, project_id: str, now: datetime) -> None:
+        if not isinstance(decision, OwnerGoalDecision):
+            raise OwnerAuthorityError("a signed OwnerGoalDecision is required")
+        if decision.key_id != self.key_id or decision.key_id in self.revoked_key_ids:
+            raise OwnerAuthorityError("decision key is unknown or revoked")
+        expected = hmac.new(self.secret, decision.signed_payload(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(decision.signature_hex, expected):
+            raise OwnerAuthorityError("decision signature is invalid")
+        if decision.project_id != project_id:
+            raise OwnerAuthorityError("decision belongs to another project")
+        if decision.action not in _DECISION_ACTIONS:
+            raise OwnerAuthorityError("unknown decision action")
+        try:
+            issued = datetime.fromisoformat(decision.issued_at)
+        except ValueError as exc:
+            raise OwnerAuthorityError("decision time is malformed") from exc
+        if issued.tzinfo is None:
+            raise OwnerAuthorityError("decision time must be timezone-aware")
+        age = (now - issued).total_seconds()
+        if age > OWNER_DECISION_MAX_AGE_SECONDS or age < -OWNER_DECISION_MAX_SKEW_SECONDS:
+            raise OwnerAuthorityError("decision is expired or issued in the future")
+
+
+@dataclass(frozen=True)
+class _AnalysisBasis:
+    """Основание фонового анализа: на чём он был посчитан."""
+
+    goal_revision: int
+    current_goal: str
+    fact_ids: frozenset[str]
+    questions: frozenset[str]
+
+    @staticmethod
+    def _fact_id(fact: dict) -> str:
+        raw = f"{fact.get('at', '')}|{fact.get('content', '')}"
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+    @classmethod
+    def of(cls, nb: "ResearchNotebook") -> "_AnalysisBasis":
+        return cls(
+            goal_revision=nb.goal_revision,
+            current_goal=nb.current_goal,
+            fact_ids=frozenset(cls._fact_id(f) for f in nb.known_facts),
+            questions=frozenset(nb.key_questions),
+        )
+
+    def holds_for(self, fresh: "ResearchNotebook") -> tuple[bool, bool]:
+        """(рамка цели не изменилась, исходные факты и вопросы не исчезли и не изменились)."""
+        now = _AnalysisBasis.of(fresh)
+        framing = (now.goal_revision, now.current_goal) == (self.goal_revision, self.current_goal)
+        inputs = self.fact_ids <= now.fact_ids and self.questions <= now.questions
+        return framing, inputs
 
 
 class NotebookStore:
@@ -362,6 +573,7 @@ class SleepTimeWorker:
         core_blocks: CoreMemoryBlocks | None = None,
         notebook_store: NotebookStore | None = None,
         llm_fn: Callable[[str], str] | None = None,
+        owner_authority: OwnerGoalAuthority | None = None,
     ) -> None:
         self.project_id     = project_id
         self.idle_timeout   = idle_timeout
@@ -371,6 +583,9 @@ class SleepTimeWorker:
         self.core_blocks    = core_blocks
         self._nb_store      = notebook_store or NotebookStore()
         self._llm_fn        = llm_fn  # callable(prompt) → str, None = mock
+        # Без authority принятие цели недоступно: accept_goal закрыт для любого вызывающего.
+        self._owner_authority = owner_authority
+        self.goal_projection_in_sync = True
 
         self._notebook: ResearchNotebook | None = None
         self._lock          = asyncio.Lock()
@@ -391,6 +606,8 @@ class SleepTimeWorker:
         self._notebook = self._nb_store.load(self.project_id) or ResearchNotebook(
             project_id=self.project_id
         )
+        # Проекция цели в CoreMemoryBlocks догоняет авторитетную запись после сбоя/падения.
+        self._project_goal_locked()
         # BUG-3 (PDR-033): сохраняем ссылку на task — иначе silent GC death
         self._task = asyncio.create_task(self._sleep_loop())
         logger.info("SleepTimeWorker: запущен (project=%s)", self.project_id)
@@ -498,7 +715,7 @@ class SleepTimeWorker:
             fresh = self._load_fresh_locked()
             recent_context = self._build_recent_context()
             facts_since_snapshot = self._facts_since_synthesis
-            basis_revision = fresh.goal_revision
+            basis = _AnalysisBasis.of(fresh)
 
         # ── ФАЗА 2: LLM-вызовы БЕЗ лока (могут идти секунды/минуты) ───────
         # Fast Path в это время полностью свободен.
@@ -513,36 +730,44 @@ class SleepTimeWorker:
 
         # ── ФАЗА 3: Запись результатов под локом (быстро) ─────────────────
         # Результат фонового анализа — НЕ решение владельца и применяется к СВЕЖЕМУ
-        # сохранённому состоянию, а не к снимку из фазы 1. BACKGROUND ANALYSIS ≠ RIGHT TO MUTATE
-        # принятой цели: current_goal и CoreMemoryBlocks здесь не трогаются.
+        # сохранённому состоянию. Предложение цели, пробелы и синтез посчитаны на
+        # конкретном основании (рамка цели, факты и вопросы); если основание
+        # изменилось к моменту записи, результат отбрасывается, а не дописывается.
+        # current_goal и CoreMemoryBlocks здесь не трогаются.
+        applied: dict[str, bool] = {"synthesis": False}
+
         def apply(nb: ResearchNotebook) -> None:
-            # Предложение цели: только если с момента снимка владелец не менял цель.
-            if new_goal and new_goal != nb.current_goal:
-                if nb.goal_revision == basis_revision:
+            framing_ok, inputs_ok = basis.holds_for(nb)
+            if framing_ok and inputs_ok:
+                if new_goal and new_goal != nb.current_goal:
+                    at = datetime.now(UTC).isoformat()
                     nb.proposed_goal = new_goal
-                    nb.proposed_goal_at = datetime.now(UTC).isoformat()
-                    nb.proposed_goal_basis_revision = basis_revision
+                    nb.proposed_goal_at = at
+                    nb.proposed_goal_basis_revision = nb.goal_revision
+                    nb.proposed_goal_id = _proposal_id(
+                        nb.project_id, new_goal, nb.goal_revision, at
+                    )
                     logger.info(
                         "SleepTimeWorker: предложена цель (не принята): '%s'", new_goal[:50]
                     )
-                else:
-                    logger.info(
-                        "SleepTimeWorker: предложение цели устарело (ревизия %s → %s), отброшено",
-                        basis_revision, nb.goal_revision,
-                    )
-
-            # Записываем найденные gaps
-            for gap in gaps:
-                if len(nb.open_gaps) < MAX_OPEN_GAPS:
-                    nb.open_gaps.append(gap)
-
-            # Записываем синтез если он был сделан
-            if synthesis:
-                nb.synthesis_history.append({
-                    "at":      datetime.now(UTC).isoformat(),
-                    "content": synthesis,
-                })
-
+                known = {g.get("gap") for g in nb.open_gaps}
+                for gap in gaps:
+                    if len(nb.open_gaps) < MAX_OPEN_GAPS and gap.get("gap") not in known:
+                        nb.open_gaps.append({**gap, "basis_goal_revision": nb.goal_revision})
+                if synthesis:
+                    nb.synthesis_history.append({
+                        "at":      datetime.now(UTC).isoformat(),
+                        "content": synthesis,
+                        "basis_goal_revision": nb.goal_revision,
+                    })
+                    applied["synthesis"] = True
+            elif new_goal or gaps or synthesis:
+                logger.info(
+                    "SleepTimeWorker: основание анализа изменилось (рамка цели: %s, факты и вопросы: %s), "
+                    "предложение, пробелы и синтез отброшены",
+                    "прежняя" if framing_ok else "изменена",
+                    "целы" if inputs_ok else "изменены",
+                )
             nb.last_thought = datetime.now(UTC).isoformat()
 
         async with self._lock:
@@ -561,85 +786,138 @@ class SleepTimeWorker:
             except NotebookConflictError:
                 logger.warning("SleepTimeWorker: блокнот изменён другим писателем, результат отброшен")
                 return
-            if synthesis:
+            if applied["synthesis"]:
                 self._facts_since_synthesis = 0
                 logger.info("SleepTimeWorker: синтез сгенерирован")
+            self._project_goal_locked()
 
     # ── Решение владельца о цели ──────────────────────────────────────────────
 
-    async def accept_goal(
-        self,
-        goal: str | None = None,
-        *,
-        decided_by: str,
-        expected_goal_revision: int | None = None,
-    ) -> ResearchNotebook:
-        """Принять цель решением владельца. Единственный путь изменения ``current_goal``.
+    async def accept_goal(self, decision: OwnerGoalDecision) -> ResearchNotebook:
+        """Принять цель по подписанному решению владельца. Единственный путь ``current_goal``.
 
-        ``goal=None`` принимает текущее предложение модели (``proposed_goal``) — только
-        если оно сделано на актуальной ревизии цели. ``expected_goal_revision`` защищает
-        от решения, основанного на устаревшем состоянии: при расхождении
-        ``GoalRevisionConflictError``. Запись и обновление CoreMemoryBlocks идут через
-        ``mutation_gate``; при блокировке исключение поднимается вызывающему.
+        Источник истины о принятой цели — строка блокнота в ``NotebookStore``. Решение
+        должно быть подписано ключом развёртывания (``OwnerGoalAuthority``), относиться к
+        этому проекту, не быть просроченным и быть привязано к ревизии цели и — для
+        принятия предложения — к конкретному ``proposal_id``. Без настроенного
+        authority путь закрыт. Строка ``decided_by`` сама по себе ничего не разрешает.
+        Проекция цели в CoreMemoryBlocks обновляется ПОСЛЕ фиксации в блокноте и не
+        является источником истины: при её сбое решение остаётся в силе, а чтение
+        через ``system_context()`` берёт цель из блокнота.
         PROPOSAL ≠ ADMISSION; INITIATIVE ≠ AUTHORIZATION.
         """
-        who = (decided_by or "").strip()
-        if not who:
-            raise ValueError("decided_by is required: the owner decision must name its source")
+        if self._owner_authority is None:
+            raise OwnerAuthorityError(
+                "owner authority is not configured for this worker; accepting goals is unavailable"
+            )
+        self._owner_authority.verify(
+            decision, project_id=self.project_id, now=datetime.now(UTC)
+        )
         async with self._lock:
             if not self._notebook:
                 raise RuntimeError("worker is not started")
-            fresh = self._load_fresh_locked()
-            if goal is None:
-                if not fresh.proposed_goal:
-                    raise ValueError("no proposed goal to accept")
-                if fresh.proposed_goal_basis_revision != fresh.goal_revision:
-                    raise GoalRevisionConflictError("proposal was made against an older goal revision")
-                chosen = fresh.proposed_goal
-                if expected_goal_revision is None:
-                    expected_goal_revision = fresh.proposed_goal_basis_revision
-            else:
-                chosen = goal.strip()
-            if not chosen:
-                raise ValueError("goal must not be empty")
 
             def apply(nb: ResearchNotebook) -> None:
-                if expected_goal_revision is not None and nb.goal_revision != expected_goal_revision:
+                # Проверка повторяется на каждой свежей базе: конкурентное решение
+                # другого процесса делает это решение устаревшим.
+                if nb.goal_revision != decision.expected_goal_revision:
                     raise GoalRevisionConflictError(
-                        f"goal revision is {nb.goal_revision}, decision was based on {expected_goal_revision}"
+                        f"goal revision is {nb.goal_revision}, "
+                        f"decision was based on {decision.expected_goal_revision}"
                     )
+                if decision.action == "accept_proposal":
+                    if not nb.proposed_goal or nb.proposed_goal_id != decision.proposal_id:
+                        raise ProposalMismatchError(
+                            "decision names a proposal that is not the stored one"
+                        )
+                    chosen = nb.proposed_goal
+                else:
+                    chosen = decision.goal
                 previous = nb.current_goal
                 nb.current_goal = chosen
                 nb.goal_revision += 1
-                nb.goal_decided_by = who
+                nb.goal_decided_by = decision.decided_by
                 nb.extracted_intents.append({
-                    "kind":      "owner_decision",
-                    "goal":      chosen,
-                    "prev_goal": previous,
-                    "decided_by": who,
-                    "at":        datetime.now(UTC).isoformat(),
+                    "kind":        "owner_decision",
+                    "goal":        chosen,
+                    "prev_goal":   previous,
+                    "decided_by":  decision.decided_by,
+                    "key_id":      decision.key_id,
+                    "action":      decision.action,
+                    "proposal_id": decision.proposal_id,
+                    "at":          datetime.now(UTC).isoformat(),
                 })
                 # Любое предложение, сделанное на прежней ревизии, устарело.
                 nb.proposed_goal = ""
                 nb.proposed_goal_at = ""
+                nb.proposed_goal_id = ""
                 nb.proposed_goal_basis_revision = nb.goal_revision
 
             nb = self._commit_locked(apply)
-            if self.core_blocks:
-                self.core_blocks.update(self._goal_block_name(), f"Активная цель: {nb.current_goal}")
+            self._project_goal_locked()
             return nb
 
-    # ── Единственный путь записи блокнота ─────────────────────────────────────
+    # ── Авторитетное чтение и проекция цели ───────────────────────────────────
 
     def _goal_block_name(self) -> str:
-        """Слот CoreMemoryBlocks с целью: общий для проекта по умолчанию, отдельный для остальных.
-
-        База блоков одна на процесс, поэтому цель проекта Б не должна перезаписывать
-        слот проекта А.
-        """
+        """Слот проекции цели: общий для проекта по умолчанию, отдельный для остальных."""
         if self.project_id == DEFAULT_PROJECT_ID:
             return GOAL_BLOCK_NAME
         return f"{GOAL_BLOCK_NAME}:{self.project_id}"
+
+    @staticmethod
+    def _goal_context_text(nb: ResearchNotebook | None) -> str | None:
+        """Как цель выглядит в system prompt; неподтверждённая цель помечена как таковая."""
+        if nb is None or nb.goal_provenance == "NONE":
+            return GOAL_BLOCK_DEFAULT_TEXT
+        if nb.goal_provenance == "OWNER_CONFIRMED":
+            return f"Активная цель: {nb.current_goal}"
+        return (
+            "Цель НЕ подтверждена владельцем (происхождение неизвестно, записана "
+            f"прежним фоновым процессом): {nb.current_goal}"
+        )
+
+    def system_context(self) -> str:
+        """Блоки system prompt ЭТОГО проекта; цель берётся из авторитетной записи блокнота."""
+        if self.core_blocks is None:
+            return ""
+        stored = self._nb_store.load(self.project_id) or self._notebook
+        return self.core_blocks.get_system_context(
+            self.project_id, goal_text=self._goal_context_text(stored)
+        )
+
+    def _project_goal_locked(self) -> bool:
+        """Привести проекцию цели в CoreMemoryBlocks к записи блокнота. True — совпадает.
+        Результат также доступен как ``goal_projection_in_sync``.
+
+        Проецируется только подтверждённая цель. Ошибка записи проекции не откатывает
+        решение владельца: она логируется, а следующий start/think/accept повторяет
+        попытку (операция идемпотентна и сверяется с блокнотом после записи).
+        """
+        in_sync = self._project_goal_impl()
+        self.goal_projection_in_sync = in_sync
+        return in_sync
+
+    def _project_goal_impl(self) -> bool:
+        if self.core_blocks is None:
+            return True
+        name = self._goal_block_name()
+        try:
+            for _ in range(3):
+                nb = self._nb_store.load(self.project_id)
+                if nb is None or nb.goal_provenance != "OWNER_CONFIRMED":
+                    return True
+                want = f"Активная цель: {nb.current_goal}"
+                if self.core_blocks.get(name) != want:
+                    self.core_blocks.update(name, want)
+                latest = self._nb_store.load(self.project_id)
+                if latest is not None and latest.current_goal == nb.current_goal \
+                        and self.core_blocks.get(name) == want:
+                    return True
+            return False
+        except Exception as exc:  # noqa: BLE001 - projection is derived state, never authority
+            logger.warning("SleepTimeWorker: проекция цели не обновлена: %s", exc)
+            return False
 
     def _load_fresh_locked(self) -> ResearchNotebook:
         """Сохранённое состояние проекта (его мог изменить другой процесс); иначе кэш."""
@@ -656,7 +934,7 @@ class SleepTimeWorker:
         Вызывать под ``self._lock``. Устаревший снимок не может перезаписать более
         свежую запись: при расхождении версии чтение и применение повторяются.
         """
-        for _ in range(5):
+        for _ in range(COMMIT_RETRIES):
             stored = self._nb_store.load(self.project_id)
             if stored is None:
                 base = ResearchNotebook.from_json(self._notebook.to_json()) if self._notebook \
@@ -767,6 +1045,8 @@ class SleepTimeWorker:
             "project_id":        nb.project_id if nb else "?",
             "current_goal":      nb.current_goal if nb else "",
             "proposed_goal":     nb.proposed_goal if nb else "",
+            "proposed_goal_id":  nb.proposed_goal_id if nb else "",
+            "goal_status":       nb.goal_provenance if nb else "NONE",
             "goal_revision":     nb.goal_revision if nb else 0,
             "facts_count":       len(nb.known_facts) if nb else 0,
             "questions_count":   len(nb.key_questions) if nb else 0,
@@ -832,6 +1112,7 @@ class SleepTimeWorker:
                 if not answered:
                     gaps.append({
                         "gap":      f"Вопрос без ответа: {q[:150]}",
+                        "question": q,
                         "priority": "medium",
                         "at":       datetime.now(UTC).isoformat(),
                     })
@@ -938,6 +1219,7 @@ def make_sleep_time_worker(
     core_blocks_db: str = CORE_BLOCKS_DB_PATH,
     notebook_db: str = NOTEBOOK_DB_PATH,
     llm_fn: Callable[[str], str] | None = None,
+    owner_authority: OwnerGoalAuthority | None = None,
 ) -> SleepTimeWorker:
     """
     Создать SleepTimeWorker с изолированными хранилищами.
@@ -955,4 +1237,5 @@ def make_sleep_time_worker(
         core_blocks=blocks,
         notebook_store=store,
         llm_fn=llm_fn,
+        owner_authority=owner_authority,
     )
