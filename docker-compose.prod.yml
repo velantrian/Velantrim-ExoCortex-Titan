@@ -88,13 +88,11 @@ services:
       - ENABLE_WRITE_GATE=1
       # Epistemic gate on the supported admission path.
       - ENABLE_TRUTH_GATE=1
-      # ENABLE_TRUTH_POLICY is pinned OFF, not on. PR #63 review (P1): the
-      # read-path verdict is FAIL-OPEN. server.py wraps the truth_policy block
-      # in `except Exception` that only logs at DEBUG and leaves
-      # truth_rejects_answer=False, so a policy that raises permits the answer
-      # instead of refusing it — and at LOG_LEVEL=INFO the failure is silent.
-      # Enabling it would advertise a gate that opens exactly when it breaks.
-      # Re-enable only after a reviewed runtime fix makes that path fail closed.
+      # ENABLE_TRUTH_POLICY stays pinned OFF. The historical /query fail-open
+      # adapter gap is repaired in main: evaluate_configured_truth_policy_runtime()
+      # blocks LLM generation on enabled policy/configuration failure.
+      # This does not establish end-to-end semantic support or all-route coverage.
+      # Changing this pin requires a separate reviewed activation decision.
       - ENABLE_TRUTH_POLICY=0
       # Passive read-path meta-monitor.
       - ENABLE_OBSERVER=1
@@ -291,10 +289,10 @@ services:
 networks:
   # A plain bridge network. It is NOT marked `internal: true`: an internal
   # network removes the gateway, which also removes published-port
-  # reachability, so it cannot host the API entrypoint. Outbound denial is
-  # therefore NOT claimed here — it rests on LLM_PROVIDER=none and the absence
-  # of provider credentials. See the operations doc for enforcing egress at the
-  # network layer if your environment requires it.
+  # reachability, so it cannot host the API entrypoint. Network-level outbound
+  # denial is NOT claimed here. The application policy pins deny/never above;
+  # LLM_PROVIDER=none is defence in depth, not a permission boundary.
+  # See the operations doc for network-layer egress enforcement.
   velantrim_prod:
     driver: bridge
 

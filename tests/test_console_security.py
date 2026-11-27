@@ -131,3 +131,15 @@ async def test_probe_uses_loopback_not_request_host(monkeypatch):
     assert captured["get_url"].startswith("http://127.0.0.1:8755/")
     assert "evil.example" not in captured["get_url"]
     assert result["status"] == 401
+
+
+@pytest.mark.parametrize("docs_url", [None, "/docs"])
+def test_api_discovery_reports_configured_docs_url(client, monkeypatch, docs_url):
+    monkeypatch.setattr(server.app, "docs_url", docs_url)
+    monkeypatch.setattr(server, "_console_available", lambda: False)
+    api = client.get("/api")
+    assert api.status_code == 200
+    assert api.json()["docs"] == docs_url
+    root = client.get("/")
+    assert root.status_code == 200
+    assert root.json()["api_docs"] == docs_url

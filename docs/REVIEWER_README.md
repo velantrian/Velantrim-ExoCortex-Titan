@@ -122,11 +122,12 @@ membership are not automatically proof of internal causal use or answer support.
 ## 9. Verification baseline
 
 ```bash
-python -m pip install -e ".[server,dev]"
-python -c "import core; print(core.__version__)"
-ruff check core/
-mypy core/
-pytest tests/test_smoke.py tests/test_invariants.py \
+uv lock --check
+uv sync --frozen --extra server --extra dev --extra parsers --extra retrieval --extra embeddings --extra graph-lab
+uv run --no-sync python -c "import core; print(core.__version__)"
+uv run --no-sync ruff check core/
+uv run --no-sync mypy core/
+uv run --no-sync pytest tests/test_smoke.py tests/test_invariants.py \
        tests/test_truth_gate.py tests/test_write_gate.py -v
 ```
 

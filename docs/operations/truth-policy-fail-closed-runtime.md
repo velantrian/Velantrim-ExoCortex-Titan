@@ -1,10 +1,11 @@
 # TruthPolicy fail-closed runtime boundary
 
-**Status:** runtime-adapter increment · no `/query` wiring yet
+**Status (2026-11-27):** runtime adapter and `/query` wiring in main; hardened profile remains disabled.
+**Verified code checkpoint:** `a83ed9ffba151a93732a5eb6e354e42e23e15b30` (static review; no activation claim).
 
 ## Problem
 
-The current `/query` integration evaluates TruthPolicy inside a broad `try/except`. When the feature is enabled and evaluation raises, the exception is logged and the request continues with `truth_rejects_answer=False`. That permits LLM generation after the configured truth gate failed to produce a verdict.
+The historical `/query` integration evaluated TruthPolicy inside a broad `try/except`. When the feature was enabled and evaluation raised, the request could continue with `truth_rejects_answer=False`. This motivated the adapter below.
 
 Feature-enabled policy failure must not collapse into permission.
 
@@ -51,19 +52,15 @@ Detailed exceptions remain in protected logs. Client-visible output never receiv
 - measured `reject` continues to block LLM generation;
 - the underlying admissibility policy is not changed.
 
-## Next increment
+## Current wiring and remaining work
 
-Replace the current broad fail-open `/query` block with one call to the adapter:
+`server.py::query` uses `evaluate_configured_truth_policy_runtime`, including
+configuration resolution inside the fail-closed boundary, and applies its
+`blocks_llm` result to the LLM-generation branch. See
+`tests/test_truth_policy_runtime.py`, `tests/test_truth_policy_configured_runtime.py`
+and `tests/test_truth_policy_query_wiring.py`. The latter checks source-level wiring;
+it is not a substitute for end-to-end deployed observation.
 
-```python
-_runtime_truth = evaluate_truth_policy_runtime(
-    req.query,
-    pipeline_facts,
-    mode=eff_mode,
-    enabled=is_truth_policy_enabled(),
-)
-truth_block = _runtime_truth.truth_block
-truth_rejects_answer = _runtime_truth.blocks_llm
-```
-
-That integration must be a separate minimal `server.py` PR after the erasure startup lifecycle PR merges.
+`ENABLE_TRUTH_POLICY=0` remains pinned in the hardened profile. This change does
+not authorize activation or claim that all routes, the legacy pipeline answer,
+logs or semantic support have been proven safe. Review those boundaries separately.

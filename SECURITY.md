@@ -11,7 +11,8 @@ can make an informed decision before deploying it.
 ## 1. Security model: local-first
 
 Velantrim Titan is a **local-first verifiable memory runtime**. By default it runs as a
-single process against a local SQLite store (`data/velantrim.db`) with no required
+single process against a local SQLite store (`data/velantrim_house.db` by default;
+`/app/data/velantrim.db` in the hardened Docker profile) with no required
 outbound network calls except the LLM provider you explicitly configure. There is no
 multi-tenant control plane, no telemetry, and no third-party service the runtime talks
 to on its own.
@@ -50,16 +51,23 @@ to hardcode or commit.
 
 ## 3. LLM provider key handling
 
-Provider credentials (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and other provider keys
-under `config/llm.example.env`) are read from environment variables at startup and used
-only to make outbound calls to that provider on the caller's behalf.
+Provider credentials may be configured through environment variables or supplied for an
+individual authenticated request. They are intended for provider calls, not for persistence
+or reflection in responses.
 
-- Provider keys are never returned in API responses. `test_console_security.py::test_bootstrap_never_leaks_key`
-  exists specifically to catch a regression here.
-- Provider keys are not written into the fact store; only the resulting generated text
-  (subject to the Truth Gate, see `docs/REVIEWER_README.md`) is.
-- If you do not configure a provider (`LLM_PROVIDER=none`), no outbound LLM calls are
-  made at all — the runtime still works as a pure memory/retrieval system.
+- The console bootstrap deliberately omits the server API key; its regression test
+  does not establish redaction for every provider exception.
+- **Open security defect [#511](https://github.com/velantrian/Velantrim-ExoCortex-Titan/issues/511):**
+  raw provider exception text can reach responses, logs, reasoning traces and events.
+  It may contain credentials. PR #514 is a remediation candidate, not a main-branch
+  guarantee. Do not send sensitive credentials/data to an unreviewed deployment;
+  inspect and rotate exposed credentials if an exposure is suspected.
+- `LLM_PROVIDER=none` disables the environment provider, not request-level provider
+  overrides. `VELANTRIM_NETWORK_MODE=deny` and `VELANTRIM_REMOTE_DATA_MODE=never`
+  are the application egress policy boundary used by the hardened profile. They
+  do not provide host/network isolation. The model-free memory path remains available.
+- Generated answers are not automatically verified or admitted to Canon. Read/query
+  traces are separate from canonical fact admission.
 
 ## 4. Docker deployment profiles
 
@@ -157,7 +165,7 @@ issue**. Instead:
 2. If advisories are not available to you, contact the maintainer through the channel
    listed in the repository's GitHub profile.
 
-Please include: the affected version (`GET /` or `GET /api` reports the running
+Please include: the affected version (`GET /api` reports the running
 version), a minimal reproduction, and the potential impact. This is a small,
 research-grade prototype maintained without a dedicated security team — please allow
 time for a response and a fix before any public disclosure.
@@ -165,7 +173,8 @@ time for a response and a fix before any public disclosure.
 ## 11. Current status
 
 Velantrim Titan 9.0 is a **research-grade prototype moving toward production
-hardening**. The controls above are real and enforced by tests where noted, but this
+hardening**. The controls above have bounded evidence where noted; the open provider-exception
+risk above is not covered by the bootstrap regression. This
 project has not undergone an independent third-party security audit or penetration
 test. Treat it accordingly: suitable for local use, research, and evaluation today;
 additional hardening (see `docs/PROJECT_STATUS.md` for the roadmap) is expected before

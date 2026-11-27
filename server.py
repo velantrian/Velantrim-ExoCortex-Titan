@@ -1510,7 +1510,7 @@ async def root():
         "name": "Velantrim Titan 9.0",
         "version": VELANTRIM_VERSION,
         "console": "/console/",
-        "api_docs": "/docs",
+        "api_docs": app.docs_url,
         "error": "static/console/index.html не найден — проверьте каталог запуска",
     }
 
@@ -1526,7 +1526,7 @@ async def api_info():
         "llm":      LLM_PROVIDER,
         "console":  "/console/" if _console_available() else None,
         "profiles": "/profiles",
-        "docs":     "/docs",
+        "docs":     app.docs_url,
     }
 
 

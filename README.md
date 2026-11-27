@@ -8,7 +8,7 @@
 >
 > **What exists:** A research-grade memory and orchestration prototype with explicit trust/write boundaries, audit surfaces and optional integrations. **Not** a production-authorized service or a guarantee of correct answers.
 >
-> **Explore:** [60-second explanation](#-titan-in-60-seconds) · [Quick start](#quick-start) · [Engineering status](docs/PROJECT_STATUS.md)
+> **Explore:** [60-second explanation](#titan-in-60-seconds) · [Quick start](#quick-start) · [Engineering status](docs/PROJECT_STATUS.md)
 
 > **Local-first verifiable memory for AI agents:** explicit epistemic states,
 > controlled write/admission boundaries, provenance, TRACE, retrieval, tools,
@@ -30,6 +30,8 @@
 > and observed runtime evidence.
 
 ---
+
+<a id="titan-in-60-seconds"></a>
 
 ## 👋 Titan in 60 seconds
 
@@ -66,6 +68,8 @@ language, but it does not automatically gain the right to mutate Canon.
 
 ---
 
+<a id="start-here"></a>
+
 ## 🧭 What should I open first?
 
 | You are… | Start here |
@@ -80,6 +84,8 @@ language, but it does not automatically gain the right to mutate Canon.
 | 🔬 Reading future work | [`research/`](research/) + [`research/ARCHITECTURE_AXES.md`](research/ARCHITECTURE_AXES.md) |
 
 ---
+
+<a id="system-map"></a>
 
 ## 🗺️ System at a glance
 
@@ -119,6 +125,8 @@ supported the final answer. Those stronger U/A claims require separate attributi
 
 ---
 
+<a id="status-legend"></a>
+
 ## 🧾 Status legend
 
 | Label | What it means |
@@ -139,6 +147,8 @@ For a concrete installation, inspect configuration plus `/health`, `/layers/stat
 `/titan/status`; do not infer live activation from this README alone.
 
 ---
+
+<a id="engineering-foundation"></a>
 
 ## ✅ Current engineering foundation
 
@@ -181,6 +191,8 @@ implemented + wired
 
 ---
 
+<a id="synaptic-exocortex"></a>
+
 ## 📄 Synaptic Exo-Cortex
 
 Current bounded status:
@@ -220,6 +232,8 @@ Key boundaries:
 Plan: [`docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md`](docs/SYNAPTIC_EXO_CORTEX_IMPLEMENTATION_PLAN.md)
 
 ---
+
+<a id="limitations"></a>
 
 ## 🛡️ What Titan does not promise
 
@@ -268,24 +282,29 @@ http://127.0.0.1:8000/health
 
 ### Local development
 
+Requires Python 3.11+ and `uv`. Full CI uses Python 3.11 and the locked profile; see [dependency lock](docs/operations/python-dependency-lock.md).
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate                  # Windows: .venv\Scripts\activate
-python -m pip install -e ".[server,dev]"
+uv sync --frozen --extra server --extra dev
 cp .env.example .env
-# VELANTRIM_API_KEY=...
-uvicorn server:app --port 8000 --reload
+# Set VELANTRIM_API_KEY; SLEEP_WORKER_ENABLED=false for passive memory.
+uv run --no-sync uvicorn server:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Verification baseline:
+Reproducible verification with the full CI dependency profile (Python 3.11):
 
 ```bash
-ruff check core/ --output-format=github
-mypy core/ --show-error-codes
-python -m pytest tests/ -v --tb=short
+uv lock --check
+uv sync --frozen --extra server --extra dev --extra parsers --extra retrieval --extra embeddings --extra graph-lab
+uv run --no-sync ruff check core/ --output-format=github
+uv run --no-sync mypy core/ --show-error-codes
+# Use a test-only API key and disposable DB paths; never use live memory.
+uv run --no-sync python -m pytest tests/ -v --tb=short --timeout=300 -x
 ```
 
 ---
+
+<a id="documentation"></a>
 
 ## 📚 Documentation
 
@@ -302,6 +321,8 @@ python -m pytest tests/ -v --tb=short
 
 ---
 
+<a id="language-strategy"></a>
+
 ## 🌐 Language strategy
 
 The repository landing page is English by default. Section parity is required between
@@ -316,6 +337,8 @@ SYSTEM_OVERVIEW.md    Russian atlas (same sections / claims)
 ```
 
 ---
+
+<a id="version"></a>
 
 ## 🧭 Version
 

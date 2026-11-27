@@ -1,6 +1,6 @@
 # ⚠️ Known Risks and Required Proof
 
-## 2026-11-27 — SleepTimeWorker no longer changes the accepted goal on its own (draft branch, stacked on #523, not merged)
+## 2026-11-27 — SleepTimeWorker accepted-goal protection (merged #539; bounded, not activated)
 
 `SleepTimeWorker.think()` used to ask the LLM for the "main goal", overwrite `ResearchNotebook.current_goal`, rewrite the `CoreMemoryBlocks` slot `current_goals` and save to SQLite without an owner decision. A background result could also overwrite a fresher state written by another process.
 
@@ -25,7 +25,7 @@ Remaining, not closed here:
 - **SQLite on one host only.** Cross-process behaviour is tested on a local filesystem; network filesystems and write contention beyond the default 5 s busy timeout are not covered.
 - **Separate pre-existing defect, not changed:** `_detect_gaps` counts a question as answered by its own source episode, so "question without an answer" gaps are rarely produced.
 
-## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
+## 2026-11-16 — Runtime data preservation and interface contracts (historical branch report; #525 merged 2026-11-27)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
 
@@ -36,7 +36,7 @@ Focused runtime regressions: **95 passed**; earlier component suite: **104 passe
 Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
 
 
-## 2026-11-16 — Audit remediation: canonical admission and evidence integrity (draft branch, not merged)
+## 2026-11-16 — Canonical admission and evidence integrity (historical branch report; #523 merged 2026-11-27)
 
 Both single and batch writes resolve claim/origin before the mandatory gate, reject classification failure and invalid explicit types, and preserve structured durable-write results. BM25 retains matching nonpositive scores without admitting nonmatching documents. The main query path requires FactsPack policy and returns bounded insufficiency when unavailable. Consolidation no longer manufactures confidence from lexical repetition. Explicit invalid promotion modes are rejected before durable reads/writes. This narrows audit A01/C05/C06/C07/C09; semantic support and distinct-record dedup remain separate open PRs.
 
@@ -47,7 +47,7 @@ Focused regression suite: **110 passed** (new regressions plus pipeline, model-f
 Decision history synchronized to the Notion record **Titan audit remediation — 2026-11-16 — draft implementation** (internal reference `41aac84d-0547-81b0-955a-d32cb01f6a7a`). Exact commit and PR evidence will be appended there. Fresh exact-head CI remains required; local tests are not CI or deployment evidence.
 
 
-## Reduced risk — records in the LLM prompt cannot be referenced (opt-in evidence labels; draft PR, not merged)
+## Reduced risk — opt-in /query evidence labels (merged #515; historical branch evidence)
 
 Until now the `/query` prompt carries record text only. Internal `fact_id` and epistemic fields are kept out of it on purpose (PR #453, `tests/test_prompt_epistemic_boundary.py`), so an answer cannot point at a record and nothing can check what an answer relied on.
 
@@ -533,7 +533,20 @@ default-branch code, so the new workflow entrypoint is proven in real Actions ex
 This governance hardening changes no runtime, Canon, capability, provider, Continuity,
 schema, Operator GO, runtime-authority or production-authority semantics.
 
+<a id="operational-residuals"></a>
+
 ## Operational residuals
+
+Dated 2026-11-27 main review (`a83ed9ffba151a93732a5eb6e354e42e23e15b30`):
+- P0 candidate: provider exception reflection in responses/logs/traces/events (#511; #514 open).
+- P0 candidate: FactsPack lexical dedup can remove distinct records and provenance (#509 open).
+- P1: Observer lexical support and unavailable checks can produce false-clean (#512; #509/#521/#522 open).
+- P1: notebook GET persists background analysis (#540 open); self-answer gap detection remains separate.
+- P1: MCP body/session resource bounds and Telegram write acknowledgement/idempotency (#524/#528 open).
+- Source-X gate remains research/default-off; reconcile #536/#537/#538 before any activation.
+- The /query TruthPolicy adapter now fails closed for LLM generation; hardened activation remains off.
+
+These are audit priorities, not approval to merge or enable. Verify live status first.
 
 Still not proved:
 
