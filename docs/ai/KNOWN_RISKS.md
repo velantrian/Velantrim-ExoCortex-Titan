@@ -1,5 +1,30 @@
 # ⚠️ Known Risks and Required Proof
 
+## 2026-11-27 — SleepTimeWorker no longer changes the accepted goal on its own (draft branch, stacked on #523, not merged)
+
+`SleepTimeWorker.think()` used to ask the LLM for the "main goal", overwrite `ResearchNotebook.current_goal`, rewrite the `CoreMemoryBlocks` slot `current_goals` and save to SQLite without an owner decision. A background result could also overwrite a fresher state written by another process.
+
+Now:
+- **One authority.** The accepted goal is the notebook row in `NotebookStore`. The `current_goals` block is a derived projection written after the notebook commit and re-aligned on start, think and accept; if that second write fails or the process dies between the writes, the decision stands and `SleepTimeWorker.system_context()` reads the goal from the notebook, not from the projection.
+- **Proposal vs decision.** The model's output is only `proposed_goal` with a `proposed_goal_id`. `current_goal` changes only through `SleepTimeWorker.accept_goal(OwnerGoalDecision)`. The decision is HMAC-SHA256-signed (the same primitive and `key_id` pattern as Reader Core operator decisions) and bound to the project, the goal revision and — for accepting a proposal — the exact `proposal_id`. The signature, expiry, project and key are re-checked after the worker lock is acquired and on every write retry, so a decision that expires or whose key is revoked while waiting is refused. A worker built without an `OwnerGoalAuthority` cannot accept goals at all. The server does not pass one, so the path is unavailable in production until the owner wires it.
+- **No stale overwrite.** Every notebook write (`update_from_episode`, `think`, `accept_goal`) reads the stored state and writes by version compare; concurrent decisions on one revision have one winner. A background result is applied only if its basis still holds: the goal framing is unchanged and the facts/questions it was computed from still exist. Otherwise the proposal, gaps and synthesis are dropped; new facts arriving meanwhile do not invalidate it.
+- **`mutation_gate`** on `NotebookStore.save`, `compare_and_save` and `CoreMemoryBlocks.update`.
+- **Read isolation.** `get_system_context(project_id)` / `all_as_dict(project_id)` show a project only its own goal slot (`current_goals:<project_id>`); the default project sees `current_goals`.
+- **Legacy goals.** A goal without an owner decision (`goal_revision=0`, no `goal_decided_by`) is `UNCONFIRMED_LEGACY`: stored data is untouched, the prompt context labels it as unconfirmed, the `current_goals` block is aligned to the same unconfirmed label (never an "accepted" goal), the block text it replaces is kept in the notebook row (`goal_projection_archive`, append-only, not duplicated on retries), and the owner can confirm it with a signed `set_goal`. The same alignment resets a stale block when the project has no goal (`NONE`).
+
+Covered by `tests/test_sleep_worker_goal_authority.py` (SQLite rows) and `tests/test_sleep_worker_cross_process.py` (separate processes, file SQLite, concurrent writers, a process dying between the two writes).
+
+Remaining, not closed here:
+- **No owner-facing entry point and no issuing tool.** Signing decisions needs code run by whoever holds the key; there is no HTTP/MCP route or CLI. Deliberately not added.
+- **The key is symmetric.** The worker holds the verifying secret, so code in the same process could also sign; the protection is against callers without the key (LLM output, background analysis, other routes), not against a compromised process. A signed decision is a bearer token for 5 minutes until used or until the goal revision changes.
+- **`decided_by` is a signed label**, not an authenticated session; key revocation is by `OwnerGoalAuthority.revoked_key_ids` or the policy gate.
+- **Legacy goals still reach the model as context** (labelled unconfirmed) and `_reassess_goal` / `suggest_next_step` still see `current_goal` text, confirmed or not.
+- **Other shared blocks** (`user_profile`, `agent_persona`) remain global across projects; only the goal slot is scoped. Raw `CoreMemoryBlocks.get` / `blocks` are unfiltered; `system_context()` is the isolated reader.
+- **The server still uses one worker, one `project_id` and no session key**; `/agent/episode` calls from different sessions share one notebook.
+- **`SLEEP_WORKER_ENABLED` defaults are unchanged**; `GET /agent/notebook` still runs `think()` (persisting analysis fields, not the goal).
+- **SQLite on one host only.** Cross-process behaviour is tested on a local filesystem; network filesystems and write contention beyond the default 5 s busy timeout are not covered.
+- **Separate pre-existing defect, not changed:** `_detect_gaps` counts a question as answered by its own source episode, so "question without an answer" gaps are rarely produced.
+
 ## 2026-11-16 — Audit remediation: runtime data preservation and interface contracts (draft branch, not merged)
 
 Audit A02/A05/A06/A07/A08/A09/A10/A11/A12/A13/A14/A15/A16/A17/A21/A22/A25 and C12: localhost-only dev port; PATCH/idempotency CORS; edge insertion preserves node properties; EventBus has an owned background consumer with inline fallback when absent; SleepTimeWorker start/stop owns all tasks and coalesces bursts; memory blocks read committed snapshots; archive recursion uses context-local depth and preserves complete child text; real MHI fields and DI/store/causal ownership are reconciled; embedding connections close on failure and failed commits report zero; graph loading/cycle search is bounded and failures explicit; roles apply supplied domain/mode through the existing policy owner; branch retrieval uses bounded policy results and reports degradation; facade session bridges use real APIs. Graph domain filtering remains explicitly unsupported rather than silently ignored. This branch is stacked on PR #523; no feature flag is activated.
