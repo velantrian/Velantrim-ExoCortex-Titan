@@ -952,3 +952,84 @@ async def test_key_revoked_between_write_retries_is_honoured(tmp_path, monkeypat
     assert attempts["n"] == 1
     assert _raw(tmp_path, "velantrim-core") == before
     await w.stop()
+
+
+# ── GET /agent/notebook is a read path, not an implicit background write ──────
+
+async def test_reading_notebook_does_not_persist_model_proposals(tmp_path):
+    seen_prompts = []
+
+    async def llm(prompt: str):
+        seen_prompts.append(prompt)
+        return "Следующий шаг без записи."
+
+    w = _worker(tmp_path, llm_fn=llm)
+    await w.start()
+    assert _raw(tmp_path, "velantrim-core") is None
+    for _ in range(2):
+        data = await w.get_notebook()
+        assert data["current_goal"] == ""
+        assert data["proposed_goal"] == ""
+        assert data["version"] == 1
+        assert data["suggested_next_step"] == "Следующий шаг без записи."
+    assert len(seen_prompts) == 2
+    assert all("ГЛАВНАЯ цель" not in prompt for prompt in seen_prompts)
+    assert _raw(tmp_path, "velantrim-core") is None
+    await w.stop()
+
+
+async def test_reading_notebook_uses_fresh_cross_process_goal_without_writing(tmp_path):
+    reader = _worker(tmp_path, llm_fn=None)
+    owner = _worker(tmp_path, llm_fn=None)
+    await reader.start()
+    await owner.start()
+    await owner.accept_goal(set_goal(tmp_path, "Подтверждённая свежая цель"))
+    before = _raw(tmp_path, "velantrim-core")
+    snapshot = await reader.get_notebook()
+    assert snapshot["current_goal"] == "Подтверждённая свежая цель"
+    assert snapshot["goal_status"] == "OWNER_CONFIRMED"
+    assert snapshot["goal_revision"] == 1
+    assert _raw(tmp_path, "velantrim-core") == before
+    await reader.stop()
+    await owner.stop()
+
+
+async def test_notebook_get_succeeds_when_mutations_are_blocked(tmp_path, monkeypatch):
+    w = _worker(tmp_path)
+    await w.start()
+    await w.accept_goal(set_goal(tmp_path, "Сохраняемая цель"))
+    before = _raw(tmp_path, "velantrim-core")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("GET attempted a user-state mutation")
+
+    monkeypatch.setattr(gate(), "ensure_user_mutations_allowed", forbidden)
+    snapshot = await w.get_notebook()
+    assert snapshot["current_goal"] == "Сохраняемая цель"
+    assert _raw(tmp_path, "velantrim-core") == before
+    await w.stop()
+
+
+async def test_notebook_get_and_step_use_one_snapshot_during_concurrent_goal_change(tmp_path):
+    owner = _worker(tmp_path)
+    await owner.start()
+    await owner.accept_goal(set_goal(tmp_path, "Цель до начала GET"))
+    seen = []
+
+    async def llm(prompt: str):
+        seen.append(prompt)
+        await owner.accept_goal(set_goal(tmp_path, "Новая цель после снимка"))
+        return "Предложение по прежней цели"
+
+    reader = _worker(tmp_path, llm_fn=llm)
+    await reader.start()
+    snapshot = await reader.get_notebook()
+    assert snapshot["current_goal"] == "Цель до начала GET"
+    assert "Цель до начала GET" in seen[0]
+    assert "Новая цель после снимка" not in seen[0]
+    assert snapshot["suggested_next_step"] == "Предложение по прежней цели"
+    assert _row(tmp_path, "velantrim-core")["current_goal"] == "Новая цель после снимка"
+    second = await reader.get_notebook()
+    assert second["current_goal"] == "Новая цель после снимка"
+    await reader.stop()
+    await owner.stop()

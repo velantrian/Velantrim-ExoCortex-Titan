@@ -474,13 +474,13 @@ class TestGetNotebook:
         await worker.stop()
 
     @pytest.mark.asyncio
-    async def test_get_notebook_increments_version(self, worker):
-        """get_notebook() вызывает think() → версия растёт."""
+    async def test_get_notebook_does_not_write_or_run_think(self, worker):
+        """GET не выполняет фоновый анализ и не создаёт строку SQLite."""
         await worker.start()
         v1 = worker.notebook.version
         await worker.get_notebook()
-        v2 = worker.notebook.version
-        assert v2 >= v1
+        assert worker.notebook.version == v1
+        assert worker._nb_store.load(worker.project_id) is None
         await worker.stop()
 
 
